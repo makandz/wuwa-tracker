@@ -237,7 +237,7 @@ function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
     "S+": "bg-emerald-700 text-white",
     S: "bg-emerald-950/70 text-emerald-200",
-    A: "bg-cyan-950/70 text-cyan-200",
+    A: "bg-app-accent-soft/70 text-app-accent-hover",
     B: "bg-sky-950/70 text-sky-200",
     C: "bg-amber-950/70 text-amber-200",
     D: "bg-orange-950/70 text-orange-200",
@@ -293,16 +293,16 @@ function parseWholePercent(value: string) {
 function roleButtonClasses(role: Role, active: boolean) {
   const palette: Record<Role, { active: string; inactive: string }> = {
     DPS: {
-      active: "border-rose-700 bg-rose-700 text-white",
-      inactive: "border-rose-700/70 bg-rose-950/35 text-rose-200 hover:bg-rose-900/40",
+      active: "border-rose-500/80 bg-rose-900/80 text-rose-50",
+      inactive: "border-rose-500/50 bg-rose-950/25 text-rose-200 hover:bg-rose-950/45",
     },
     Hybrid: {
-      active: "border-violet-700 bg-violet-700 text-white",
-      inactive: "border-violet-700/70 bg-violet-950/35 text-violet-200 hover:bg-violet-900/40",
+      active: "border-indigo-500/80 bg-indigo-900/80 text-indigo-50",
+      inactive: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200 hover:bg-indigo-950/45",
     },
     Support: {
-      active: "border-emerald-700 bg-emerald-700 text-white",
-      inactive: "border-emerald-700/70 bg-emerald-950/35 text-emerald-200 hover:bg-emerald-900/40",
+      active: "border-emerald-500/80 bg-emerald-900/80 text-emerald-50",
+      inactive: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200 hover:bg-emerald-950/45",
     },
   };
 
@@ -311,9 +311,9 @@ function roleButtonClasses(role: Role, active: boolean) {
 
 function rolePillClasses(role: Role) {
   const classes: Record<Role, string> = {
-    DPS: "border-rose-700/70 bg-rose-950/35 text-rose-200",
-    Hybrid: "border-violet-700/70 bg-violet-950/35 text-violet-200",
-    Support: "border-emerald-700/70 bg-emerald-950/35 text-emerald-200",
+    DPS: "border-rose-500/50 bg-rose-950/25 text-rose-200",
+    Hybrid: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200",
+    Support: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200",
   };
 
   return classes[role];
@@ -416,7 +416,7 @@ function getWeaponToneClasses(tone: WeaponRarityTone) {
       text: "text-violet-200",
     },
     standardGold: {
-      badge: "bg-yellow-300 text-zinc-950",
+      badge: "bg-yellow-300 text-app-bg",
       card: "border-yellow-500/60 bg-yellow-950/30",
       image: "border-yellow-500/60 bg-yellow-950/40",
       text: "text-yellow-200",
@@ -428,10 +428,10 @@ function getWeaponToneClasses(tone: WeaponRarityTone) {
       text: "text-red-200",
     },
     neutral: {
-      badge: "bg-zinc-700 text-white",
-      card: "border-zinc-700/80 bg-zinc-900/70",
-      image: "border-zinc-700/80 bg-zinc-800",
-      text: "text-stone-200",
+      badge: "bg-app-border text-white",
+      card: "border-app-border/80 bg-app-surface/70",
+      image: "border-app-border/80 bg-app-raised",
+      text: "text-app-muted",
     },
   };
 
@@ -535,12 +535,12 @@ function StatBlock({
       ? "border-emerald-500/60 bg-emerald-950/35 text-emerald-100"
       : tone === "warn"
         ? "border-amber-500/60 bg-amber-950/35 text-amber-100"
-        : "border-zinc-700/80 bg-zinc-900 text-stone-50";
+        : "border-app-border/80 bg-app-surface text-app-fg";
 
   return (
     <div className={`rounded-md border ${compact ? "p-2" : "p-3"} ${toneClass}`}>
       <div
-        className={`font-semibold uppercase tracking-normal text-stone-500 ${
+        className={`font-semibold uppercase tracking-normal text-app-muted-dim ${
           compact ? "text-[10px]" : "text-[11px]"
         }`}
       >
@@ -572,8 +572,8 @@ function RatingBlock({ label, value }: { label: string; value: RatingValue }) {
   const grade = getRatingGrade(value);
 
   return (
-    <div className="rounded-md border border-zinc-700/80 bg-zinc-900 p-2">
-      <div className="text-[10px] font-semibold uppercase tracking-normal text-stone-500">
+    <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
+      <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
         {label}
       </div>
       <div className="mt-0.5 flex items-baseline gap-1.5">
@@ -584,7 +584,7 @@ function RatingBlock({ label, value }: { label: string; value: RatingValue }) {
         >
           {grade}
         </span>
-        <span className="text-[11px] font-semibold leading-none text-stone-500">
+        <span className="text-[11px] font-semibold leading-none text-app-muted-dim">
           {value.toFixed(2)}
         </span>
       </div>
@@ -607,10 +607,10 @@ function TextButton({
 }) {
   const classes =
     variant === "primary"
-      ? "border-cyan-500 bg-cyan-500 text-zinc-950 hover:bg-cyan-400"
+      ? "border-app-accent bg-app-accent text-app-bg hover:bg-app-accent-hover"
       : variant === "danger"
-        ? "border-rose-700/70 bg-rose-950/35 text-rose-200 hover:bg-rose-900/40"
-        : "border-zinc-700 bg-zinc-900 text-stone-200 hover:bg-zinc-800";
+        ? "border-rose-500/50 bg-rose-950/25 text-rose-200 hover:bg-rose-950/45"
+        : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised";
 
   return (
     <button
@@ -636,7 +636,7 @@ function TextLink({
 }) {
   return (
     <a
-      className={`inline-flex items-center rounded-md border border-zinc-700 bg-zinc-900 font-semibold text-stone-200 transition hover:bg-zinc-800 ${
+      className={`inline-flex items-center rounded-md border border-app-border bg-app-surface font-semibold text-app-muted transition hover:bg-app-raised ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
       }`}
       href={href}
@@ -656,7 +656,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium text-stone-300">
+    <label className="grid gap-2 text-sm font-medium text-app-muted">
       {label}
       {children}
     </label>
@@ -677,14 +677,14 @@ function NumberInput({
   return (
     <div className="relative">
       <input
-        className="h-11 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 pr-9 text-sm text-stone-50 outline-none transition focus:border-cyan-700 focus:ring-2 focus:ring-cyan-500/25"
+        className="h-11 w-full rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
         inputMode="numeric"
         onChange={(event) => onChange(parseWholePercent(event.target.value) / 100)}
         placeholder={placeholder}
         type="text"
         value={percentValue}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-stone-500">
+      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-app-muted-dim">
         %
       </span>
     </div>
@@ -705,7 +705,7 @@ function StarBadge({
   const toneClass =
     tone === undefined
       ? quality >= 5
-        ? "bg-amber-300 text-zinc-950"
+        ? "bg-amber-300 text-app-bg"
         : quality === 4
           ? "bg-violet-500 text-white"
           : "bg-sky-500 text-white"
@@ -738,7 +738,7 @@ function WeaponStatusBadge({ status }: { status: string | null }) {
 
 function ImageFallback({ label }: { label: string }) {
   return (
-    <div className="grid h-full w-full place-items-center bg-zinc-800 text-lg font-bold text-stone-500">
+    <div className="grid h-full w-full place-items-center bg-app-raised text-lg font-bold text-app-muted-dim">
       {label.charAt(0)}
     </div>
   );
@@ -756,20 +756,20 @@ function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/75 p-3 sm:p-6">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-app-bg/75 p-3 sm:p-6">
       <div
         aria-modal="true"
-        className="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-zinc-700/80 bg-zinc-900 shadow-2xl"
+        className="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-2xl"
         role="dialog"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-zinc-700/80 px-4 py-4 sm:px-5">
+        <div className="flex items-start justify-between gap-4 border-b border-app-border/80 px-4 py-4 sm:px-5">
           <div>
-            <h2 className="text-xl font-semibold text-stone-50">{title}</h2>
-            {subtitle ? <p className="mt-1 text-sm text-stone-400">{subtitle}</p> : null}
+            <h2 className="text-xl font-semibold text-app-fg">{title}</h2>
+            {subtitle ? <p className="mt-1 text-sm text-app-muted-subtle">{subtitle}</p> : null}
           </div>
           <button
             aria-label="Close"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-zinc-700 bg-zinc-900 text-xl leading-none text-stone-300 transition hover:bg-zinc-800"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-app-border bg-app-surface text-xl leading-none text-app-muted transition hover:bg-app-raised"
             onClick={onClose}
             type="button"
           >
@@ -798,7 +798,7 @@ function SearchInput({
   return (
     <input
       aria-label={ariaLabel}
-      className={`w-full rounded-md border border-zinc-700 bg-zinc-900 text-stone-50 outline-none transition focus:border-cyan-700 focus:ring-2 focus:ring-cyan-500/25 ${
+      className={`w-full rounded-md border border-app-border bg-app-surface text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
         compact ? "h-9 px-2.5 text-xs" : "h-11 px-3 text-sm"
       }`}
       onChange={(event) => onChange(event.target.value)}
@@ -826,14 +826,14 @@ function SelectInput<TValue extends string>({
 }) {
   return (
     <label
-      className={`grid font-medium text-stone-300 ${
+      className={`grid font-medium text-app-muted ${
         compact && showLabel ? "gap-1 text-xs" : compact ? "gap-0 text-xs" : "gap-2 text-sm"
       }`}
     >
       {showLabel ? label : <span className="sr-only">{label}</span>}
       <select
         aria-label={label}
-        className={`w-full rounded-md border border-zinc-700 bg-zinc-900 font-semibold text-stone-50 outline-none transition focus:border-cyan-700 focus:ring-2 focus:ring-cyan-500/25 ${
+        className={`w-full rounded-md border border-app-border bg-app-surface font-semibold text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
           compact ? "h-9 px-2.5 text-xs" : "h-11 px-3 text-sm"
         }`}
         onChange={(event) => onChange(event.target.value as TValue)}
@@ -899,15 +899,15 @@ function CharacterPickerModal({
               <button
                 className={`grid overflow-hidden rounded-md border text-left transition ${
                   selected
-                    ? "border-cyan-400 bg-cyan-950/45 shadow-md"
-                    : "border-zinc-700/80 bg-zinc-900 hover:border-cyan-500 hover:shadow-md"
+                    ? "border-app-accent bg-app-accent-soft/55 shadow-md"
+                    : "border-app-border/80 bg-app-surface hover:border-app-accent hover:shadow-md"
                 } ${alreadyTracked ? "cursor-not-allowed opacity-45" : ""}`}
                 disabled={alreadyTracked}
                 key={character.Id}
                 onClick={() => onSelect(character)}
                 type="button"
               >
-                <div className="relative h-24 bg-zinc-800 sm:h-28">
+                <div className="relative h-24 bg-app-raised sm:h-28">
                   {character.RoleHeadIcon ? (
                     <Image
                       alt=""
@@ -922,17 +922,17 @@ function CharacterPickerModal({
                   <div className="absolute left-1.5 top-1.5 flex flex-wrap gap-1">
                     <StarBadge quality={character.QualityId} />
                     {alreadyTracked ? (
-                      <span className="rounded bg-zinc-950 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="rounded bg-app-bg px-1.5 py-0.5 text-[10px] font-bold text-white">
                         tracked
                       </span>
                     ) : null}
                   </div>
                 </div>
                 <div className="grid gap-0.5 p-2">
-                  <div className="truncate text-xs font-semibold text-stone-50">
+                  <div className="truncate text-xs font-semibold text-app-fg">
                     {character.Name}
                   </div>
-                  <div className="truncate text-[11px] text-stone-400">
+                  <div className="truncate text-[11px] text-app-muted-subtle">
                     {character.Element?.Name ?? "Unknown"} /{" "}
                     {character.WeaponType?.Name ?? "Unknown"}
                   </div>
@@ -942,7 +942,7 @@ function CharacterPickerModal({
           })}
         </div>
         {filteredCharacters.length === 0 ? (
-          <div className="rounded-md border border-dashed border-zinc-700 p-6 text-center text-sm text-stone-400">
+          <div className="rounded-md border border-dashed border-app-border p-6 text-center text-sm text-app-muted-subtle">
             No characters match that search.
           </div>
         ) : null}
@@ -1006,10 +1006,10 @@ function WeaponPickerModal({
         {weaponGroups.map((group) => (
           <section className="grid gap-3" key={group.title}>
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-bold uppercase tracking-normal text-stone-400">
+              <h3 className="text-sm font-bold uppercase tracking-normal text-app-muted-subtle">
                 {group.title}
               </h3>
-              <div className="h-px flex-1 bg-zinc-700/60" />
+              <div className="h-px flex-1 bg-app-border/60" />
             </div>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
               {group.weapons.map((weapon) => {
@@ -1027,8 +1027,8 @@ function WeaponPickerModal({
                   <button
                     className={`grid overflow-hidden rounded-md border text-left transition ${
                       selected
-                        ? "border-cyan-400 bg-cyan-950/45 shadow-md"
-                        : `${toneClasses.card} hover:border-cyan-500 hover:bg-zinc-800/80 hover:shadow-md`
+                        ? "border-app-accent bg-app-accent-soft/55 shadow-md"
+                        : `${toneClasses.card} hover:border-app-accent hover:bg-app-raised/80 hover:shadow-md`
                     }`}
                     key={weapon.Id}
                     onClick={() => onSelect(weapon)}
@@ -1051,12 +1051,12 @@ function WeaponPickerModal({
                       </div>
                     </div>
                     <div className="grid gap-0.5 p-2">
-                      <div className="truncate text-xs font-semibold text-stone-50">
+                      <div className="truncate text-xs font-semibold text-app-fg">
                         {weapon.Name}
                       </div>
-                      <div className="truncate text-[11px] text-stone-400">{weapon.TypeName}</div>
+                      <div className="truncate text-[11px] text-app-muted-subtle">{weapon.TypeName}</div>
                       {showInventory ? (
-                        <div className="truncate text-[11px] font-medium text-stone-500">
+                        <div className="truncate text-[11px] font-medium text-app-muted-dim">
                           Own {ownedCount} / Used {assignedCount}
                         </div>
                       ) : null}
@@ -1068,7 +1068,7 @@ function WeaponPickerModal({
           </section>
         ))}
         {weaponGroups.length === 0 ? (
-          <div className="rounded-md border border-dashed border-zinc-700 p-6 text-center text-sm text-stone-400">
+          <div className="rounded-md border border-dashed border-app-border p-6 text-center text-sm text-app-muted-subtle">
             No weapons match that search.
           </div>
         ) : null}
@@ -1100,17 +1100,17 @@ function PickerSummary({
 
   return (
     <div className="grid gap-3">
-      <div className="text-sm font-medium text-stone-300">{label}</div>
+      <div className="text-sm font-medium text-app-muted">{label}</div>
       <button
-        className={`grid gap-4 rounded-md border p-3 text-left transition hover:border-cyan-500 hover:bg-zinc-800/80 sm:grid-cols-[auto_1fr_auto] ${
-          toneClasses ? toneClasses.card : "border-zinc-700/80 bg-zinc-900/70"
+        className={`grid gap-4 rounded-md border p-3 text-left transition hover:border-app-accent hover:bg-app-raised/80 sm:grid-cols-[auto_1fr_auto] ${
+          toneClasses ? toneClasses.card : "border-app-border/80 bg-app-surface/70"
         }`}
         onClick={onClick}
         type="button"
       >
         <div
           className={`relative h-20 w-20 overflow-hidden rounded-md border ${
-            toneClasses ? toneClasses.image : "border-zinc-700/80 bg-zinc-900"
+            toneClasses ? toneClasses.image : "border-app-border/80 bg-app-surface"
           }`}
         >
           {image ? (
@@ -1127,12 +1127,12 @@ function PickerSummary({
         </div>
         <div className="min-w-0 self-center">
           <div className="flex flex-wrap items-center gap-2">
-            <div className="truncate text-lg font-semibold text-stone-50">{title}</div>
+            <div className="truncate text-lg font-semibold text-app-fg">{title}</div>
             <StarBadge quality={quality} tone={rarityTone} />
           </div>
-          <div className="mt-1 text-sm text-stone-400">{meta}</div>
+          <div className="mt-1 text-sm text-app-muted-subtle">{meta}</div>
         </div>
-        <div className="self-center rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm font-semibold text-stone-200">
+        <div className="self-center rounded-md border border-app-border bg-app-surface px-3 py-2 text-sm font-semibold text-app-muted">
           {actionLabel}
         </div>
       </button>
@@ -1152,14 +1152,14 @@ function ErInput({
   return (
     <div className="relative">
       <input
-        className="h-11 w-full rounded-md border border-zinc-700 bg-zinc-900 px-3 pr-9 text-sm text-stone-50 outline-none transition focus:border-cyan-700 focus:ring-2 focus:ring-cyan-500/25"
+        className="h-11 w-full rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
         inputMode="numeric"
         onChange={(event) => onChange(parseWholePercent(event.target.value))}
         placeholder={placeholder}
         type="text"
         value={value ? String(Math.round(value)) : ""}
       />
-      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-stone-500">
+      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-app-muted-dim">
         %
       </span>
     </div>
@@ -1198,7 +1198,7 @@ function CharacterAvatar({
 }) {
   return (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-md border border-zinc-700/80 bg-zinc-800 ${
+      className={`relative shrink-0 overflow-hidden rounded-md border border-app-border/80 bg-app-raised ${
         compact ? "h-12 w-12" : "h-14 w-14"
       }`}
     >
@@ -1211,14 +1211,14 @@ function CharacterAvatar({
           src={character.characterIcon}
         />
       ) : (
-        <div className="grid h-full w-full place-items-center text-lg font-bold text-stone-500">
+        <div className="grid h-full w-full place-items-center text-lg font-bold text-app-muted-dim">
           {character.characterName.charAt(0)}
         </div>
       )}
       <span
         className={`absolute bottom-0 right-0 px-1 text-[10px] font-bold ${
           character.qualityId >= 5
-            ? "bg-amber-300 text-zinc-950"
+            ? "bg-amber-300 text-app-bg"
             : "bg-violet-500 text-white"
         }`}
       >
@@ -1236,9 +1236,9 @@ function ProgressBar({
   compact?: boolean;
 }) {
   return (
-    <div className={`${compact ? "h-1.5" : "h-2"} overflow-hidden rounded-full bg-zinc-800`}>
+    <div className={`${compact ? "h-1.5" : "h-2"} overflow-hidden rounded-full bg-app-raised`}>
       <div
-        className="h-full rounded-full bg-cyan-700 transition-all"
+        className="h-full rounded-full bg-app-accent-strong transition-all"
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
@@ -1373,12 +1373,12 @@ function Dashboard({
 
   return (
     <>
-      <section className="border-b border-zinc-700/80 bg-zinc-900">
+      <section className="border-b border-app-border/80 bg-app-surface">
         <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-cyan-300">Wuthering Waves</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-normal text-stone-50">
+              <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
+              <h1 className="mt-1 text-3xl font-bold tracking-normal text-app-fg">
                 Build Tracker
               </h1>
             </div>
@@ -1419,9 +1419,9 @@ function Dashboard({
 
       <main className="mx-auto grid w-full max-w-7xl gap-3 px-4 py-5 sm:px-6 lg:px-8">
         {characters.length === 0 ? (
-          <div className="rounded-md border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center">
-            <h2 className="text-xl font-semibold text-stone-50">No tracked characters yet</h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-stone-400">
+          <div className="rounded-md border border-dashed border-app-border bg-app-surface p-8 text-center">
+            <h2 className="text-xl font-semibold text-app-fg">No tracked characters yet</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-app-muted-subtle">
               Add a character from the live catalog, assign roles and a weapon, then track echo
               pieces, skill completion, ER targets, and ratings locally in this browser.
             </p>
@@ -1433,7 +1433,7 @@ function Dashboard({
           </div>
         ) : (
           <div className="grid gap-2.5">
-            <section className="flex flex-wrap items-center gap-2 rounded-md border border-zinc-700/80 bg-zinc-900 px-3 py-2 shadow-sm">
+            <section className="flex flex-wrap items-center gap-2 rounded-md border border-app-border/80 bg-app-surface px-3 py-2 shadow-sm">
               <div className="min-w-[220px] flex-1">
                 <SearchInput
                   ariaLabel="Search"
@@ -1484,17 +1484,17 @@ function Dashboard({
                   value={sortKey}
                 />
               </div>
-              <label className="flex min-h-9 items-center gap-2 whitespace-nowrap text-xs font-semibold text-stone-300">
+              <label className="flex min-h-9 items-center gap-2 whitespace-nowrap text-xs font-semibold text-app-muted">
                 <input
                   checked={hideComplete}
-                  className="h-3.5 w-3.5 accent-cyan-400"
+                  className="h-3.5 w-3.5 accent-app-accent"
                   onChange={(event) => setHideComplete(event.target.checked)}
                   type="checkbox"
                 />
                 Hide completed
               </label>
               <div className="ml-auto flex min-h-9 items-center gap-2">
-                <span className="whitespace-nowrap text-xs font-medium text-stone-500">
+                <span className="whitespace-nowrap text-xs font-medium text-app-muted-dim">
                   {visibleCharacters.length}/{characters.length}
                 </span>
                 {filtersActive ? (
@@ -1515,7 +1515,7 @@ function Dashboard({
             </section>
 
             {visibleCharacters.length === 0 ? (
-              <div className="rounded-md border border-dashed border-zinc-700 bg-zinc-900 p-8 text-center text-sm text-stone-400">
+              <div className="rounded-md border border-dashed border-app-border bg-app-surface p-8 text-center text-sm text-app-muted-subtle">
                 No characters match those filters.
               </div>
             ) : null}
@@ -1538,10 +1538,10 @@ function Dashboard({
 
               return (
                 <button
-                  className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-cyan-400 hover:shadow-md lg:grid-cols-[minmax(240px,1.15fr)_minmax(230px,0.9fr)_minmax(210px,0.8fr)] ${
+                  className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(240px,1.15fr)_minmax(230px,0.9fr)_minmax(210px,0.8fr)] ${
                     complete
                       ? "border-emerald-500/60 bg-emerald-950/35"
-                      : "border-zinc-700/80 bg-zinc-900"
+                      : "border-app-border/80 bg-app-surface"
                   }`}
                   key={character.id}
                   onClick={() => onOpen(character.id)}
@@ -1551,7 +1551,7 @@ function Dashboard({
                     <CharacterAvatar compact character={character} />
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h2 className="truncate text-base font-semibold text-stone-50">
+                        <h2 className="truncate text-base font-semibold text-app-fg">
                           {character.characterName}
                         </h2>
                         <span
@@ -1564,7 +1564,7 @@ function Dashboard({
                           {complete ? "Done" : "In progress"}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-xs text-stone-400">
+                      <p className="mt-0.5 text-xs text-app-muted-subtle">
                         {character.elementName} / {character.weaponTypeName}
                       </p>
                       <div className="mt-1.5 flex flex-wrap gap-1">
@@ -1585,8 +1585,8 @@ function Dashboard({
                   <div className="grid gap-2">
                     <div>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-stone-300">Checklist</span>
-                        <span className="text-stone-500">{checklistCount}/6</span>
+                        <span className="font-medium text-app-muted">Checklist</span>
+                        <span className="text-app-muted-dim">{checklistCount}/6</span>
                       </div>
                       <div className="mt-1.5">
                         <ProgressBar compact value={progress} />
@@ -1599,15 +1599,15 @@ function Dashboard({
                     </div>
                   </div>
 
-                  <div className="grid content-start gap-1.5 text-xs text-stone-300">
+                  <div className="grid content-start gap-1.5 text-xs text-app-muted">
                     <div className="flex justify-between gap-3">
-                      <span className="text-stone-500">Weapon</span>
+                      <span className="text-app-muted-dim">Weapon</span>
                       <span className="flex min-w-0 flex-wrap justify-end gap-1">
                         <span
                           className={`truncate rounded px-1.5 py-0.5 font-semibold ${
                             character.weaponName
                               ? `${weaponToneClasses.badge}`
-                              : "bg-zinc-800 text-stone-400"
+                              : "bg-app-raised text-app-muted-subtle"
                           }`}
                         >
                           {character.weaponName || "Not selected"}
@@ -1616,14 +1616,14 @@ function Dashboard({
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-stone-500">Echo Crit</span>
-                      <span className="font-medium text-stone-100">
+                      <span className="text-app-muted-dim">Echo Crit</span>
+                      <span className="font-medium text-app-fg">
                         {formatPercent(character.critRate)} / {formatPercent(character.critDmg)}
                       </span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-stone-500">ER</span>
-                      <span className="font-medium text-stone-100">
+                      <span className="text-app-muted-dim">ER</span>
+                      <span className="font-medium text-app-fg">
                         {character.actualEr || 0}% / {character.expectedEr || 0}%
                       </span>
                     </div>
@@ -1741,10 +1741,10 @@ function WeaponInventoryScreen({
 
         <div className="grid gap-2 p-2">
           <div className="min-w-0">
-            <div className="truncate text-xs font-semibold text-stone-50">
+            <div className="truncate text-xs font-semibold text-app-fg">
               {weapon.Name}
             </div>
-            <div className="truncate text-[11px] text-stone-400">
+            <div className="truncate text-[11px] text-app-muted-subtle">
               {weapon.TypeName} / Used {assigned}
             </div>
           </div>
@@ -1752,7 +1752,7 @@ function WeaponInventoryScreen({
           <div className="grid grid-cols-[2rem_1fr_2rem] items-center gap-1">
             <button
               aria-label={`Decrease ${weapon.Name}`}
-              className="h-8 rounded-md border border-zinc-700 bg-zinc-900 text-base font-semibold text-stone-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-8 rounded-md border border-app-border bg-app-surface text-base font-semibold text-app-muted transition hover:bg-app-raised disabled:cursor-not-allowed disabled:opacity-40"
               disabled={count === 0}
               onClick={() => setWeaponCount(weapon.Id, count - 1)}
               type="button"
@@ -1761,7 +1761,7 @@ function WeaponInventoryScreen({
             </button>
             <input
               aria-label={`${weapon.Name} copies`}
-              className="h-8 min-w-0 rounded-md border border-zinc-700 bg-zinc-900 text-center text-sm font-semibold text-stone-50 outline-none focus:border-cyan-700 focus:ring-2 focus:ring-cyan-500/25"
+              className="h-8 min-w-0 rounded-md border border-app-border bg-app-surface text-center text-sm font-semibold text-app-fg outline-none focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
               inputMode="numeric"
               onChange={(event) =>
                 setWeaponCount(weapon.Id, parseWholePercent(event.target.value))
@@ -1771,7 +1771,7 @@ function WeaponInventoryScreen({
             />
             <button
               aria-label={`Increase ${weapon.Name}`}
-              className="h-8 rounded-md border border-zinc-700 bg-zinc-900 text-base font-semibold text-stone-200 transition hover:bg-zinc-800"
+              className="h-8 rounded-md border border-app-border bg-app-surface text-base font-semibold text-app-muted transition hover:bg-app-raised"
               onClick={() => setWeaponCount(weapon.Id, count + 1)}
               type="button"
             >
@@ -1787,8 +1787,8 @@ function WeaponInventoryScreen({
     <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-cyan-300">Wuthering Waves</p>
-          <h1 className="mt-1 text-2xl font-bold text-stone-50">Weapon Inventory</h1>
+          <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
+          <h1 className="mt-1 text-2xl font-bold text-app-fg">Weapon Inventory</h1>
         </div>
         <TextButton onClick={onBack}>Dashboard</TextButton>
       </div>
@@ -1803,13 +1803,13 @@ function WeaponInventoryScreen({
         />
       </section>
 
-      <section className="grid gap-4 rounded-md border border-zinc-700/80 bg-zinc-900 p-5 shadow-sm">
+      <section className="grid gap-4 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
         <SearchInput onChange={setQuery} placeholder="Search weapons" value={query} />
 
         {catalog.loading ? (
-          <p className="text-sm text-stone-400">Loading weapon catalog...</p>
+          <p className="text-sm text-app-muted-subtle">Loading weapon catalog...</p>
         ) : weaponGroups.length === 0 ? (
-          <div className="rounded-md border border-dashed border-zinc-700 p-6 text-center text-sm text-stone-400">
+          <div className="rounded-md border border-dashed border-app-border p-6 text-center text-sm text-app-muted-subtle">
             No weapons match that search.
           </div>
         ) : (
@@ -1817,10 +1817,10 @@ function WeaponInventoryScreen({
             {weaponGroups.map((group) => (
               <section className="grid gap-3" key={group.title}>
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-bold uppercase tracking-normal text-stone-400">
+                  <h2 className="text-sm font-bold uppercase tracking-normal text-app-muted-subtle">
                     {group.title}
                   </h2>
-                  <div className="h-px flex-1 bg-zinc-700/60" />
+                  <div className="h-px flex-1 bg-app-border/60" />
                 </div>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
                   {group.weapons.map((weapon) => renderWeaponCard(weapon))}
@@ -1937,8 +1937,8 @@ function AddScreen({
     <main className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-cyan-300">Wuthering Waves</p>
-          <h1 className="mt-1 text-2xl font-bold text-stone-50">Add Character</h1>
+          <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
+          <h1 className="mt-1 text-2xl font-bold text-app-fg">Add Character</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <TextButton onClick={onBack}>Dashboard</TextButton>
@@ -1948,9 +1948,9 @@ function AddScreen({
         </div>
       </div>
 
-      <section className="grid gap-5 rounded-md border border-zinc-700/80 bg-zinc-900 p-5 shadow-sm">
+      <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
         {catalog.loading ? (
-          <p className="text-sm text-stone-400">Loading character and weapon catalog...</p>
+          <p className="text-sm text-app-muted-subtle">Loading character and weapon catalog...</p>
         ) : catalog.error ? (
           <p className="text-sm text-rose-300">{catalog.error}</p>
         ) : (
@@ -1990,7 +1990,7 @@ function AddScreen({
             />
 
             <div>
-              <div className="mb-2 text-sm font-medium text-stone-300">Roles</div>
+              <div className="mb-2 text-sm font-medium text-app-muted">Roles</div>
               <div className="flex flex-wrap gap-2">
                 {ROLES.map((role) => (
                   <RoleToggle
@@ -2121,7 +2121,7 @@ function DetailScreen({
           <CharacterAvatar character={character} />
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-stone-50">{character.characterName}</h1>
+              <h1 className="text-2xl font-bold text-app-fg">{character.characterName}</h1>
               <span
                 className={`rounded px-2 py-0.5 text-xs font-semibold ${
                   complete
@@ -2132,7 +2132,7 @@ function DetailScreen({
                 {complete ? "Done" : "In progress"}
               </span>
             </div>
-            <p className="mt-1 text-sm text-stone-400">
+            <p className="mt-1 text-sm text-app-muted-subtle">
               {character.elementName} / {character.weaponTypeName}
             </p>
           </div>
@@ -2157,8 +2157,8 @@ function DetailScreen({
       </section>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="grid content-start gap-5 rounded-md border border-zinc-700/80 bg-zinc-900 p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-stone-50">Build Setup</h2>
+        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-app-fg">Build Setup</h2>
           <PickerSummary
             actionLabel="Change"
             image={selectedWeapon?.Icon}
@@ -2200,7 +2200,7 @@ function DetailScreen({
           ) : null}
 
           <div>
-            <div className="mb-2 text-sm font-medium text-stone-300">Roles</div>
+            <div className="mb-2 text-sm font-medium text-app-muted">Roles</div>
             <div className="flex flex-wrap gap-2">
               {ROLES.map((role) => (
                 <RoleToggle
@@ -2214,14 +2214,14 @@ function DetailScreen({
           </div>
 
           <div>
-            <div className="mb-2 text-sm font-medium text-stone-300">4 Cost Main Stat</div>
+            <div className="mb-2 text-sm font-medium text-app-muted">4 Cost Main Stat</div>
             <div className="grid grid-cols-3 gap-2">
               {FOUR_COST_OPTIONS.map((option) => (
                 <button
                   className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                     character.fourCostMain === option.value
-                      ? "border-cyan-500 bg-cyan-500 text-zinc-950"
-                      : "border-zinc-700 bg-zinc-900 text-stone-300 hover:bg-zinc-800"
+                      ? "border-app-accent bg-app-accent text-app-bg"
+                      : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
                   }`}
                   key={option.value}
                   onClick={() => patchCharacter({ fourCostMain: option.value })}
@@ -2273,8 +2273,8 @@ function DetailScreen({
           </div>
         </section>
 
-        <section className="grid content-start gap-5 rounded-md border border-zinc-700/80 bg-zinc-900 p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-stone-50">Completion</h2>
+        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div className="grid gap-3">
             {[
               ["skills", "Skills / Forte level ups"],
@@ -2285,13 +2285,13 @@ function DetailScreen({
               ["oneCostB", "1 cost echo 2 built"],
             ].map(([key, label]) => (
               <label
-                className="flex items-center justify-between gap-4 rounded-md border border-zinc-700/80 bg-zinc-900/70 px-3 py-3 text-sm font-medium text-stone-200"
+                className="flex items-center justify-between gap-4 rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3 text-sm font-medium text-app-muted"
                 key={key}
               >
                 {label}
                 <input
                   checked={character.checklist[key as keyof Checklist]}
-                  className="h-5 w-5 accent-cyan-400"
+                  className="h-5 w-5 accent-app-accent"
                   onChange={(event) =>
                     patchChecklist(key as keyof Checklist, event.target.checked)
                   }
@@ -2303,7 +2303,7 @@ function DetailScreen({
 
           <Field label="Notes">
             <textarea
-              className="min-h-40 rounded-md border border-zinc-700 bg-zinc-900 p-3 text-sm text-stone-50 outline-none transition focus:border-cyan-700 focus:ring-2 focus:ring-cyan-500/25"
+              className="min-h-40 rounded-md border border-app-border bg-app-surface p-3 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
               onChange={(event) => patchCharacter({ notes: event.target.value })}
               value={character.notes}
             />
@@ -2551,7 +2551,7 @@ export default function Tracker() {
   }
 
   return (
-    <div className="min-h-screen bg-[#111113] text-stone-50">
+    <div className="min-h-screen bg-app-bg text-app-fg">
       {screen.name === "dashboard" ? (
         <Dashboard
           assignmentCounts={assignmentCounts}
