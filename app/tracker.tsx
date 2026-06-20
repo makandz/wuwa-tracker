@@ -7,9 +7,19 @@ const CHARACTER_API = "https://api-v2.encore.moe/api/en/character";
 const WEAPON_API = "https://api-v2.encore.moe/api/en/weapon";
 const STORAGE_KEY = "wuwa-tracker.characters.v1";
 const INVENTORY_STORAGE_KEY = "wuwa-tracker.weapon-inventory.v1";
+const DASHBOARD_SORT_STORAGE_KEY = "wuwa-tracker.dashboard-sort.v1";
 const PRYDWEN_CHARACTER_BASE_URL = "https://www.prydwen.gg/wuthering-waves/characters";
 const PRYDWEN_CHARACTER_SLUG_OVERRIDES: Record<string, string> = {};
 const ROLES = ["DPS", "Hybrid", "Support"] as const;
+const DASHBOARD_SORT_KEYS = [
+  "updated",
+  "name",
+  "completionDesc",
+  "completionAsc",
+  "weightDesc",
+  "weightAsc",
+] as const;
+const DEFAULT_DASHBOARD_SORT_KEY: DashboardSortKey = "weightDesc";
 const STANDARD_FIVE_STAR_WEAPONS = new Set([
   "abyss surges",
   "boson astrolabe",
@@ -25,20 +35,14 @@ const STANDARD_FIVE_STAR_WEAPONS = new Set([
 const FOUR_COST_OPTIONS = [
   { label: "Crit Rate", value: "CR" },
   { label: "Crit DMG", value: "CD" },
-  { label: "44111 CR/CD", value: "BOTH" },
+  { label: "CR/CD", value: "BOTH" },
 ] as const;
 
 type Role = (typeof ROLES)[number];
 type FourCostMain = (typeof FOUR_COST_OPTIONS)[number]["value"];
 type WeaponRarityTone = "blue" | "purple" | "standardGold" | "limitedGold" | "neutral";
 type RatingGrade = "S+" | "S" | "A" | "B" | "C" | "D" | "F";
-type DashboardSortKey =
-  | "updated"
-  | "name"
-  | "completionDesc"
-  | "completionAsc"
-  | "weightDesc"
-  | "weightAsc";
+type DashboardSortKey = (typeof DASHBOARD_SORT_KEYS)[number];
 type RoleFilter = "all" | Role;
 type WeaponFilter = "all" | "selected" | "missing" | "attention";
 type RatingValue = number | null;
@@ -96,6 +100,7 @@ type TrackedCharacter = {
   weaponName: string;
   weaponQualityId: number | null;
   fourCostMain: FourCostMain;
+  noCrit?: boolean;
   critRate: number;
   critDmg: number;
   checklist: Checklist;
@@ -174,6 +179,70 @@ function isComplete(character: TrackedCharacter) {
   return checklistTotal(character.checklist) === CHECKLIST_ITEM_COUNT;
 }
 
+function getPrimaryRole(roles: Role[]) {
+  return ROLES.find((role) => roles.includes(role)) ?? "DPS";
+}
+
+function compareRatingValues(aValue: RatingValue, bValue: RatingValue, direction: "asc" | "desc") {
+  if (aValue === null && bValue === null) {
+    return 0;
+  }
+
+  if (aValue === null) {
+    return 1;
+  }
+
+  if (bValue === null) {
+    return -1;
+  }
+
+  return direction === "asc" ? aValue - bValue : bValue - aValue;
+}
+
+function sortDashboardCharacters(characters: TrackedCharacter[], sortKey: DashboardSortKey) {
+  return [...characters].sort((a, b) => {
+    const aProgress = checklistProgress(a);
+    const bProgress = checklistProgress(b);
+    const aWeight = getRatings(a).weighted;
+    const bWeight = getRatings(b).weighted;
+
+    switch (sortKey) {
+      case "name":
+        return a.characterName.localeCompare(b.characterName);
+      case "completionDesc":
+        return (
+          bProgress - aProgress ||
+          compareRatingValues(aWeight, bWeight, "desc") ||
+          a.characterName.localeCompare(b.characterName)
+        );
+      case "completionAsc":
+        return (
+          aProgress - bProgress ||
+          compareRatingValues(aWeight, bWeight, "desc") ||
+          a.characterName.localeCompare(b.characterName)
+        );
+      case "weightDesc":
+        return (
+          compareRatingValues(aWeight, bWeight, "desc") ||
+          bProgress - aProgress ||
+          a.characterName.localeCompare(b.characterName)
+        );
+      case "weightAsc":
+        return (
+          compareRatingValues(aWeight, bWeight, "asc") ||
+          bProgress - aProgress ||
+          a.characterName.localeCompare(b.characterName)
+        );
+      case "updated":
+      default:
+        return (
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
+          a.characterName.localeCompare(b.characterName)
+        );
+    }
+  });
+}
+
 function roundRating(value: number) {
   if (!Number.isFinite(value)) {
     return 0;
@@ -183,6 +252,15 @@ function roundRating(value: number) {
 }
 
 function getRatings(character: TrackedCharacter) {
+  if (character.noCrit) {
+    return {
+      crRating: null,
+      cdRating: null,
+      weighted: null,
+      issue: "",
+    };
+  }
+
   const critRateBase =
     character.fourCostMain === "CR" || character.fourCostMain === "BOTH" ? 0.22 : 0;
   const critDmgBase =
@@ -235,13 +313,13 @@ function getRatingGrade(value: number): RatingGrade {
 
 function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
-    "S+": "bg-emerald-700 text-white",
-    S: "bg-emerald-950/70 text-emerald-200",
-    A: "bg-app-accent-soft/70 text-app-accent-hover",
-    B: "bg-sky-950/70 text-sky-200",
-    C: "bg-amber-950/70 text-amber-200",
-    D: "bg-orange-950/70 text-orange-200",
-    F: "bg-rose-950/70 text-rose-200",
+    "S+": "rating-s-plus border border-yellow-100 bg-yellow-300 text-app-bg",
+    S: "border border-yellow-200/90 bg-yellow-400 text-app-bg",
+    A: "border border-emerald-400/70 bg-emerald-950/80 text-emerald-100",
+    B: "border border-cyan-400/70 bg-cyan-950/80 text-cyan-100",
+    C: "border border-amber-400/70 bg-amber-950/80 text-amber-100",
+    D: "border border-orange-400/60 bg-orange-950/80 text-orange-100",
+    F: "border border-rose-400/60 bg-rose-950/80 text-rose-100",
   };
 
   return classes[grade];
@@ -257,10 +335,6 @@ function formatPercent(value: number) {
 
 function formatRatingValue(value: RatingValue) {
   return value === null ? "Check stats" : value.toFixed(2);
-}
-
-function sortableRatingValue(value: RatingValue) {
-  return value ?? Number.NEGATIVE_INFINITY;
 }
 
 function getPrydwenCharacterUrl(characterName: string) {
@@ -352,6 +426,47 @@ function rolePillClasses(role: Role) {
     DPS: "border-rose-500/50 bg-rose-950/25 text-rose-200",
     Hybrid: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200",
     Support: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200",
+  };
+
+  return classes[role];
+}
+
+function characterRoleToneClasses(role: Role, complete: boolean) {
+  const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
+    DPS: {
+      complete: "border-rose-500/80 border-l-4 bg-rose-950/55",
+      incomplete: "border-rose-400/55 border-l-4 bg-rose-950/20",
+      status: complete
+        ? "border border-rose-400/60 bg-rose-950/75 text-rose-100"
+        : "border border-rose-300/45 bg-rose-950/30 text-rose-200",
+    },
+    Hybrid: {
+      complete: "border-indigo-500/80 border-l-4 bg-indigo-950/55",
+      incomplete: "border-indigo-400/55 border-l-4 bg-indigo-950/20",
+      status: complete
+        ? "border border-indigo-400/60 bg-indigo-950/75 text-indigo-100"
+        : "border border-indigo-300/45 bg-indigo-950/30 text-indigo-200",
+    },
+    Support: {
+      complete: "border-emerald-500/80 border-l-4 bg-emerald-950/55",
+      incomplete: "border-emerald-400/55 border-l-4 bg-emerald-950/20",
+      status: complete
+        ? "border border-emerald-400/60 bg-emerald-950/75 text-emerald-100"
+        : "border border-emerald-300/45 bg-emerald-950/30 text-emerald-200",
+    },
+  };
+
+  return {
+    card: complete ? classes[role].complete : classes[role].incomplete,
+    status: classes[role].status,
+  };
+}
+
+function roleSectionClasses(role: Role) {
+  const classes: Record<Role, string> = {
+    DPS: "border-rose-500/50 bg-rose-950/20 text-rose-100",
+    Hybrid: "border-indigo-500/50 bg-indigo-950/20 text-indigo-100",
+    Support: "border-emerald-500/50 bg-emerald-950/20 text-emerald-100",
   };
 
   return classes[role];
@@ -554,6 +669,24 @@ function readStoredWeaponInventory() {
       .filter((item) => item.weaponId && item.count > 0) as WeaponInventoryItem[];
   } catch {
     return [];
+  }
+}
+
+function isDashboardSortKey(value: unknown): value is DashboardSortKey {
+  return DASHBOARD_SORT_KEYS.includes(value as DashboardSortKey);
+}
+
+function readStoredDashboardSortKey() {
+  try {
+    if (typeof window === "undefined") {
+      return DEFAULT_DASHBOARD_SORT_KEY;
+    }
+
+    const storedSortKey = localStorage.getItem(DASHBOARD_SORT_STORAGE_KEY);
+
+    return isDashboardSortKey(storedSortKey) ? storedSortKey : DEFAULT_DASHBOARD_SORT_KEY;
+  } catch {
+    return DEFAULT_DASHBOARD_SORT_KEY;
   }
 }
 
@@ -1336,15 +1469,24 @@ function Dashboard({
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [weaponFilter, setWeaponFilter] = useState<WeaponFilter>("all");
   const [hideComplete, setHideComplete] = useState(false);
-  const [sortKey, setSortKey] = useState<DashboardSortKey>("updated");
+  const [sortKey, setSortKey] = useState<DashboardSortKey>(readStoredDashboardSortKey);
   const completeCount = characters.filter(isComplete).length;
-  const validWeights = characters
+  const critWeightedCharacters = characters.filter((character) => !character.noCrit);
+  const validWeights = critWeightedCharacters
     .map((character) => getRatings(character).weighted)
     .filter((weight): weight is number => weight !== null);
   const averageWeighted =
     validWeights.length > 0
       ? validWeights.reduce((sum, weight) => sum + weight, 0) / validWeights.length
       : null;
+  const averageWeightedValue =
+    characters.length === 0
+      ? "0.00"
+      : averageWeighted !== null
+        ? formatRatingValue(averageWeighted)
+        : critWeightedCharacters.length === 0
+          ? "No crit"
+          : formatRatingValue(null);
   const totalWeaponCopies = weaponInventory.reduce((sum, item) => sum + item.count, 0);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCharacters = useMemo(() => {
@@ -1393,47 +1535,37 @@ function Dashboard({
       return haystack.includes(normalizedQuery);
     });
 
-    return [...filtered].sort((a, b) => {
-      const aProgress = checklistProgress(a);
-      const bProgress = checklistProgress(b);
-      const aWeight = sortableRatingValue(getRatings(a).weighted);
-      const bWeight = sortableRatingValue(getRatings(b).weighted);
-
-      switch (sortKey) {
-        case "name":
-          return a.characterName.localeCompare(b.characterName);
-        case "completionDesc":
-          return bProgress - aProgress || bWeight - aWeight || a.characterName.localeCompare(b.characterName);
-        case "completionAsc":
-          return aProgress - bProgress || bWeight - aWeight || a.characterName.localeCompare(b.characterName);
-        case "weightDesc":
-          return bWeight - aWeight || bProgress - aProgress || a.characterName.localeCompare(b.characterName);
-        case "weightAsc":
-          return aWeight - bWeight || bProgress - aProgress || a.characterName.localeCompare(b.characterName);
-        case "updated":
-        default:
-          return (
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
-            a.characterName.localeCompare(b.characterName)
-          );
-      }
-    });
+    return filtered;
   }, [
     assignmentCounts,
     characters,
     hideComplete,
     normalizedQuery,
     roleFilter,
-    sortKey,
     weaponFilter,
     weaponInventory,
   ]);
+  const groupedCharacters = useMemo(
+    () =>
+      ROLES.map((role) => ({
+        role,
+        characters: sortDashboardCharacters(
+          visibleCharacters.filter((character) => getPrimaryRole(character.roles) === role),
+          sortKey,
+        ),
+      })).filter((group) => group.characters.length > 0),
+    [sortKey, visibleCharacters],
+  );
+
+  useEffect(() => {
+    localStorage.setItem(DASHBOARD_SORT_STORAGE_KEY, sortKey);
+  }, [sortKey]);
+
   const filtersActive =
     normalizedQuery ||
     roleFilter !== "all" ||
     weaponFilter !== "all" ||
-    hideComplete ||
-    sortKey !== "updated";
+    hideComplete;
 
   return (
     <>
@@ -1474,7 +1606,7 @@ function Dashboard({
             />
             <StatBlock
               label="Avg Weighted"
-              value={characters.length === 0 ? "0.00" : formatRatingValue(averageWeighted)}
+              value={averageWeightedValue}
             />
             <StatBlock label="Weapon Copies" value={String(totalWeaponCopies)} />
           </div>
@@ -1569,7 +1701,6 @@ function Dashboard({
                       setRoleFilter("all");
                       setWeaponFilter("all");
                       setHideComplete(false);
-                      setSortKey("updated");
                     }}
                   >
                     Reset
@@ -1584,117 +1715,150 @@ function Dashboard({
               </div>
             ) : null}
 
-            {visibleCharacters.map((character) => {
-              const complete = isComplete(character);
-              const checklistCount = checklistTotal(character.checklist);
-              const progress = checklistProgress(character);
-              const ratings = getRatings(character);
-              const weaponStatus = getWeaponInventoryStatus({
-                weaponId: character.weaponId,
-                inventory: weaponInventory,
-                assignmentCounts,
-              });
-              const weaponTone = getWeaponRarityTone({
-                name: character.weaponName,
-                qualityId: character.weaponQualityId,
-              });
-              const weaponToneClasses = getWeaponToneClasses(weaponTone);
-
-              return (
-                <button
-                  className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(240px,1.15fr)_minmax(230px,0.9fr)_minmax(210px,0.8fr)] ${
-                    complete
-                      ? "border-emerald-500/60 bg-emerald-950/35"
-                      : "border-app-border/80 bg-app-surface"
-                  }`}
-                  key={character.id}
-                  onClick={() => onOpen(character.id)}
-                  type="button"
+            {groupedCharacters.map((group) => (
+              <section className="grid gap-2" key={group.role}>
+                <div
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 ${roleSectionClasses(
+                    group.role,
+                  )}`}
                 >
-                  <div className="flex min-w-0 gap-2.5">
-                    <CharacterAvatar compact character={character} />
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <h2 className="truncate text-base font-semibold text-app-fg">
-                          {character.characterName}
-                        </h2>
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${
-                            complete
-                              ? "bg-emerald-950/70 text-emerald-200"
-                              : "bg-amber-950/70 text-amber-200"
-                          }`}
-                        >
-                          {complete ? "Done" : "In progress"}
-                        </span>
+                  <h2 className="text-sm font-bold uppercase tracking-normal">{group.role}</h2>
+                  <span className="text-xs font-semibold">{group.characters.length}</span>
+                </div>
+
+                {group.characters.map((character) => {
+                  const complete = isComplete(character);
+                  const primaryRole = getPrimaryRole(character.roles);
+                  const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
+                  const checklistCount = checklistTotal(character.checklist);
+                  const progress = checklistProgress(character);
+                  const ratings = getRatings(character);
+                  const weaponStatus = getWeaponInventoryStatus({
+                    weaponId: character.weaponId,
+                    inventory: weaponInventory,
+                    assignmentCounts,
+                  });
+                  const weaponTone = getWeaponRarityTone({
+                    name: character.weaponName,
+                    qualityId: character.weaponQualityId,
+                  });
+                  const weaponToneClasses = getWeaponToneClasses(weaponTone);
+
+                  return (
+                    <button
+                      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(240px,1.15fr)_minmax(230px,0.9fr)_minmax(210px,0.8fr)] ${
+                        characterToneClasses.card
+                      }`}
+                      key={character.id}
+                      onClick={() => onOpen(character.id)}
+                      type="button"
+                    >
+                      <div className="flex min-w-0 gap-2.5">
+                        <CharacterAvatar compact character={character} />
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h2 className="truncate text-base font-semibold text-app-fg">
+                              {character.characterName}
+                            </h2>
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${characterToneClasses.status}`}
+                            >
+                              {complete ? "Done" : "In progress"}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-app-muted-subtle">
+                            {character.elementName} / {character.weaponTypeName}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {character.roles.map((role) => (
+                              <span
+                                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${rolePillClasses(
+                                  role,
+                                )}`}
+                                key={role}
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      <p className="mt-0.5 text-xs text-app-muted-subtle">
-                        {character.elementName} / {character.weaponTypeName}
-                      </p>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {character.roles.map((role) => (
-                          <span
-                            className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${rolePillClasses(
-                              role,
-                            )}`}
-                            key={role}
-                          >
-                            {role}
+
+                      <div className="grid gap-2">
+                        <div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-app-muted">Checklist</span>
+                            <span className="text-app-muted-dim">{checklistCount}/6</span>
+                          </div>
+                          <div className="mt-1.5">
+                            <ProgressBar compact value={progress} />
+                          </div>
+                        </div>
+                        {character.noCrit ? (
+                          <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
+                            <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+                              Rating
+                            </div>
+                            <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
+                              No crit
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <RatingBlock label="CR" value={ratings.crRating} />
+                            <RatingBlock label="CD" value={ratings.cdRating} />
+                            <RatingBlock label="Weight" value={ratings.weighted} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid content-start gap-1.5 text-xs text-app-muted">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-app-muted-dim">Weapon</span>
+                          <span className="flex min-w-0 flex-wrap justify-end gap-1">
+                            <span
+                              className={`truncate rounded px-1.5 py-0.5 font-semibold ${
+                                character.weaponName
+                                  ? `${weaponToneClasses.badge}`
+                                  : "bg-app-raised text-app-muted-subtle"
+                              }`}
+                            >
+                              {character.weaponName || "Not selected"}
+                            </span>
+                            <WeaponStatusBadge status={weaponStatus} />
                           </span>
-                        ))}
+                        </div>
+                        {character.noCrit ? null : (
+                          <div className="flex justify-between gap-3">
+                            <span className="text-app-muted-dim">Echo Crit</span>
+                            <span className="font-medium text-app-fg">
+                              {formatPercent(character.critRate)} / {formatPercent(character.critDmg)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between gap-3">
+                          <span className="text-app-muted-dim">ER</span>
+                          <span className="font-medium text-app-fg">
+                            {character.actualEr || 0}% / {character.expectedEr || 0}%
+                          </span>
+                        </div>
+                        {character.notes.trim() ? (
+                          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+                            <span className="text-app-muted-dim">Notes</span>
+                            <span
+                              className="block min-w-0 truncate rounded bg-app-surface/70 px-1.5 py-1 text-right font-medium text-app-fg"
+                              title={character.notes}
+                            >
+                              {character.notes}
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium text-app-muted">Checklist</span>
-                        <span className="text-app-muted-dim">{checklistCount}/6</span>
-                      </div>
-                      <div className="mt-1.5">
-                        <ProgressBar compact value={progress} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      <RatingBlock label="CR" value={ratings.crRating} />
-                      <RatingBlock label="CD" value={ratings.cdRating} />
-                      <RatingBlock label="Weight" value={ratings.weighted} />
-                    </div>
-                  </div>
-
-                  <div className="grid content-start gap-1.5 text-xs text-app-muted">
-                    <div className="flex justify-between gap-3">
-                      <span className="text-app-muted-dim">Weapon</span>
-                      <span className="flex min-w-0 flex-wrap justify-end gap-1">
-                        <span
-                          className={`truncate rounded px-1.5 py-0.5 font-semibold ${
-                            character.weaponName
-                              ? `${weaponToneClasses.badge}`
-                              : "bg-app-raised text-app-muted-subtle"
-                          }`}
-                        >
-                          {character.weaponName || "Not selected"}
-                        </span>
-                        <WeaponStatusBadge status={weaponStatus} />
-                      </span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span className="text-app-muted-dim">Echo Crit</span>
-                      <span className="font-medium text-app-fg">
-                        {formatPercent(character.critRate)} / {formatPercent(character.critDmg)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between gap-3">
-                      <span className="text-app-muted-dim">ER</span>
-                      <span className="font-medium text-app-fg">
-                        {character.actualEr || 0}% / {character.expectedEr || 0}%
-                      </span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+                    </button>
+                  );
+                })}
+              </section>
+            ))}
           </div>
         )}
       </main>
@@ -1936,6 +2100,8 @@ function AddScreen({
     : [];
   const [weaponId, setWeaponId] = useState<number | null>(availableWeapons[0]?.Id ?? null);
   const [roles, setRoles] = useState<Role[]>(["DPS"]);
+  const [fourCostMain, setFourCostMain] = useState<FourCostMain>("CR");
+  const [noCrit, setNoCrit] = useState(false);
   const [characterPickerOpen, setCharacterPickerOpen] = useState(false);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const trackedIds = useMemo(
@@ -1985,7 +2151,8 @@ function AddScreen({
       weaponId: selectedWeaponForSave?.Id ?? null,
       weaponName: selectedWeaponForSave?.Name ?? "",
       weaponQualityId: selectedWeaponForSave?.QualityId ?? null,
-      fourCostMain: "CR",
+      fourCostMain,
+      noCrit,
       critRate: 0,
       critDmg: 0,
       checklist: { ...emptyChecklist },
@@ -2067,6 +2234,40 @@ function AddScreen({
               </div>
             </div>
 
+            <div>
+              <div className="mb-2 text-sm font-medium text-app-muted">4 Cost Main Stat</div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {FOUR_COST_OPTIONS.map((option) => (
+                  <button
+                    className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
+                      !noCrit && fourCostMain === option.value
+                        ? "border-app-accent bg-app-accent text-app-bg"
+                        : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                    }`}
+                    key={option.value}
+                    onClick={() => {
+                      setFourCostMain(option.value);
+                      setNoCrit(false);
+                    }}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                <button
+                  className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
+                    noCrit
+                      ? "border-app-accent bg-app-accent text-app-bg"
+                      : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                  }`}
+                  onClick={() => setNoCrit((current) => !current)}
+                  type="button"
+                >
+                  No crit
+                </button>
+              </div>
+            </div>
+
             {characterPickerOpen ? (
               <CharacterPickerModal
                 characters={catalog.characters}
@@ -2132,6 +2333,8 @@ function DetailScreen({
   );
   const ratings = getRatings(character);
   const complete = isComplete(character);
+  const primaryRole = getPrimaryRole(character.roles);
+  const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const selectedWeapon = weapons.find((weapon) => weapon.Id === character.weaponId) ?? null;
   const weaponStatus = getWeaponInventoryStatus({
@@ -2187,11 +2390,7 @@ function DetailScreen({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-app-fg">{character.characterName}</h1>
               <span
-                className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                  complete
-                    ? "bg-emerald-950/70 text-emerald-200"
-                    : "bg-amber-950/70 text-amber-200"
-                }`}
+                className={`rounded px-2 py-0.5 text-xs font-semibold ${characterToneClasses.status}`}
               >
                 {complete ? "Done" : "In progress"}
               </span>
@@ -2210,15 +2409,24 @@ function DetailScreen({
         </div>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <StatBlock label="CR Rating" tone={ratings.crRating === null ? "warn" : "neutral"} value={formatRatingValue(ratings.crRating)} />
-        <StatBlock label="CD Rating" tone={ratings.cdRating === null ? "warn" : "neutral"} value={formatRatingValue(ratings.cdRating)} />
-        <StatBlock
-          label="Weighted"
-          tone={ratings.weighted === null ? "warn" : ratings.weighted >= 1 ? "good" : "neutral"}
-          value={formatRatingValue(ratings.weighted)}
-        />
-      </section>
+      {character.noCrit ? (
+        <section className="rounded-md border border-app-border/80 bg-app-surface p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+            Crit Rating
+          </div>
+          <div className="mt-1 text-lg font-semibold leading-none text-app-muted">No crit</div>
+        </section>
+      ) : (
+        <section className="grid gap-3 sm:grid-cols-3">
+          <StatBlock label="CR Rating" tone={ratings.crRating === null ? "warn" : "neutral"} value={formatRatingValue(ratings.crRating)} />
+          <StatBlock label="CD Rating" tone={ratings.cdRating === null ? "warn" : "neutral"} value={formatRatingValue(ratings.cdRating)} />
+          <StatBlock
+            label="Weighted"
+            tone={ratings.weighted === null ? "warn" : ratings.weighted >= 1 ? "good" : "neutral"}
+            value={formatRatingValue(ratings.weighted)}
+          />
+        </section>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
@@ -2279,39 +2487,59 @@ function DetailScreen({
 
           <div>
             <div className="mb-2 text-sm font-medium text-app-muted">4 Cost Main Stat</div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {FOUR_COST_OPTIONS.map((option) => (
                 <button
                   className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
-                    character.fourCostMain === option.value
+                    !character.noCrit && character.fourCostMain === option.value
                       ? "border-app-accent bg-app-accent text-app-bg"
                       : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
                   }`}
                   key={option.value}
-                  onClick={() => patchCharacter({ fourCostMain: option.value })}
+                  onClick={() => patchCharacter({ fourCostMain: option.value, noCrit: false })}
                   type="button"
                 >
                   {option.label}
                 </button>
               ))}
+              <button
+                className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
+                  character.noCrit
+                    ? "border-app-accent bg-app-accent text-app-bg"
+                    : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                }`}
+                onClick={() => patchCharacter({ noCrit: !character.noCrit })}
+                type="button"
+              >
+                No crit
+              </button>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Echo Crit Rate">
-              <NumberInput
-                onChange={(value) => patchCharacter({ critRate: value })}
-                placeholder="75"
-                value={character.critRate}
-              />
-            </Field>
-            <Field label="Echo Crit DMG">
-              <NumberInput
-                onChange={(value) => patchCharacter({ critDmg: value })}
-                placeholder="150"
-                value={character.critDmg}
-              />
-            </Field>
+          <div>
+            <div className="mb-2 text-sm font-medium text-app-muted">Echo Crit</div>
+            {character.noCrit ? (
+              <div className="rounded-md border border-app-border/80 bg-app-surface px-3 py-2 text-sm font-medium text-app-muted">
+                No crit
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Echo Crit Rate">
+                  <NumberInput
+                    onChange={(value) => patchCharacter({ critRate: value })}
+                    placeholder="37.5"
+                    value={character.critRate}
+                  />
+                </Field>
+                <Field label="Echo Crit DMG">
+                  <NumberInput
+                    onChange={(value) => patchCharacter({ critDmg: value })}
+                    placeholder="75"
+                    value={character.critDmg}
+                  />
+                </Field>
+              </div>
+            )}
           </div>
           {ratings.issue ? (
             <div className="rounded-md border border-amber-500/60 bg-amber-950/35 px-3 py-2 text-sm font-medium text-amber-100">
