@@ -1,4 +1,4 @@
-import type { Checklist, DashboardSortKey, Role, Screen } from "./types";
+import type { Checklist, DashboardSortKey, Role } from "./types";
 
 export const CHARACTER_API = "https://api-v2.encore.moe/api/en/character";
 export const WEAPON_API = "https://api-v2.encore.moe/api/en/weapon";
@@ -61,4 +61,3 @@ export const CHECKLIST_SEGMENTS: {
   { key: "oneCostB", label: "1 cost echo 2", shortLabel: "E5" },
 ];
 export const CHECKLIST_ITEM_COUNT = Object.keys(emptyChecklist).length;
-export const DEFAULT_SCREEN: Screen = { name: "dashboard" };

@@ -81,13 +81,3 @@ export type WeaponInventoryItem = {
   weaponId: number;
   count: number;
 };
-
-export type Screen =
-  | { name: "dashboard" }
-  | { name: "add" }
-  | { name: "inventory" }
-  | { name: "detail"; id: string };
-
-export type TrackerHistoryState = {
-  wuwaTrackerScreen?: Screen;
-};

@@ -1,5 +1,5 @@
-import Tracker from "./tracker";
+import { DashboardRoute } from "./tracker";
 
 export default function Home() {
-  return <Tracker />;
+  return <DashboardRoute />;
 }

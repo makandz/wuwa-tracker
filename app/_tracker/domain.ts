@@ -169,13 +169,13 @@ export function getRatingGrade(value: number): RatingGrade {
 
 export function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
-    "S+": "rating-s-plus border border-yellow-100 bg-yellow-300 text-app-bg",
-    S: "border border-yellow-200/90 bg-yellow-400 text-app-bg",
-    A: "border border-emerald-400/70 bg-emerald-950/80 text-emerald-100",
-    B: "border border-cyan-400/70 bg-cyan-950/80 text-cyan-100",
-    C: "border border-amber-400/70 bg-amber-950/80 text-amber-100",
-    D: "border border-orange-400/60 bg-orange-950/80 text-orange-100",
-    F: "border border-rose-400/60 bg-rose-950/80 text-rose-100",
+    "S+": "rating-s-plus border border-weapon-gold-text text-app-bg",
+    S: "border border-weapon-gold-strong bg-weapon-gold-text text-app-bg",
+    A: "border border-status-good-border bg-status-good-bg text-status-good-text",
+    B: "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
+    C: "border border-status-warn-border bg-status-warn-bg text-status-warn-text",
+    D: "border border-weapon-limited-strong bg-weapon-limited-bg text-weapon-limited-text",
+    F: "border border-status-danger-border bg-status-danger-bg text-status-danger-text",
   };
 
   return classes[grade];
@@ -292,16 +292,16 @@ export function formatDecimalInputValue(value: number) {
 export function roleButtonClasses(role: Role, active: boolean) {
   const palette: Record<Role, { active: string; inactive: string }> = {
     DPS: {
-      active: "border-rose-500/80 bg-rose-900/80 text-rose-50",
-      inactive: "border-rose-500/50 bg-rose-950/25 text-rose-200 hover:bg-rose-950/45",
+      active: "border-role-dps-border bg-role-dps-active text-role-dps-text",
+      inactive: "border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text hover:bg-role-dps-bg",
     },
     Hybrid: {
-      active: "border-indigo-500/80 bg-indigo-900/80 text-indigo-50",
-      inactive: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200 hover:bg-indigo-950/45",
+      active: "border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text",
+      inactive: "border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text hover:bg-role-hybrid-bg",
     },
     Support: {
-      active: "border-emerald-500/80 bg-emerald-900/80 text-emerald-50",
-      inactive: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200 hover:bg-emerald-950/45",
+      active: "border-role-support-border bg-role-support-active text-role-support-text",
+      inactive: "border-role-support-border/65 bg-role-support-bg/45 text-role-support-text hover:bg-role-support-bg",
     },
   };
 
@@ -310,9 +310,9 @@ export function roleButtonClasses(role: Role, active: boolean) {
 
 export function rolePillClasses(role: Role) {
   const classes: Record<Role, string> = {
-    DPS: "border-rose-500/50 bg-rose-950/25 text-rose-200",
-    Hybrid: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200",
-    Support: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200",
+    DPS: "border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text",
+    Hybrid: "border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text",
+    Support: "border-role-support-border/65 bg-role-support-bg/45 text-role-support-text",
   };
 
   return classes[role];
@@ -321,25 +321,25 @@ export function rolePillClasses(role: Role) {
 export function characterRoleToneClasses(role: Role, complete: boolean) {
   const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
     DPS: {
-      complete: "border-rose-500/80 border-l-4 bg-rose-950/55",
-      incomplete: "border-rose-400/55 border-l-4 bg-rose-950/20",
+      complete: "border-role-dps-border border-l-4 bg-role-dps-bg/72",
+      incomplete: "border-role-dps-border/70 border-l-4 bg-role-dps-bg/38",
       status: complete
-        ? "border border-rose-400/60 bg-rose-950/75 text-rose-100"
-        : "border border-rose-300/45 bg-rose-950/30 text-rose-200",
+        ? "border border-role-dps-border bg-role-dps-active text-role-dps-text"
+        : "border border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text",
     },
     Hybrid: {
-      complete: "border-indigo-500/80 border-l-4 bg-indigo-950/55",
-      incomplete: "border-indigo-400/55 border-l-4 bg-indigo-950/20",
+      complete: "border-role-hybrid-border border-l-4 bg-role-hybrid-bg/72",
+      incomplete: "border-role-hybrid-border/70 border-l-4 bg-role-hybrid-bg/38",
       status: complete
-        ? "border border-indigo-400/60 bg-indigo-950/75 text-indigo-100"
-        : "border border-indigo-300/45 bg-indigo-950/30 text-indigo-200",
+        ? "border border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text"
+        : "border border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text",
     },
     Support: {
-      complete: "border-emerald-500/80 border-l-4 bg-emerald-950/55",
-      incomplete: "border-emerald-400/55 border-l-4 bg-emerald-950/20",
+      complete: "border-role-support-border border-l-4 bg-role-support-bg/72",
+      incomplete: "border-role-support-border/70 border-l-4 bg-role-support-bg/38",
       status: complete
-        ? "border border-emerald-400/60 bg-emerald-950/75 text-emerald-100"
-        : "border border-emerald-300/45 bg-emerald-950/30 text-emerald-200",
+        ? "border border-role-support-border bg-role-support-active text-role-support-text"
+        : "border border-role-support-border/65 bg-role-support-bg/45 text-role-support-text",
     },
   };
 
@@ -351,9 +351,9 @@ export function characterRoleToneClasses(role: Role, complete: boolean) {
 
 export function roleSectionClasses(role: Role) {
   const classes: Record<Role, string> = {
-    DPS: "border-rose-500/50 bg-rose-950/20 text-rose-100",
-    Hybrid: "border-indigo-500/50 bg-indigo-950/20 text-indigo-100",
-    Support: "border-emerald-500/50 bg-emerald-950/20 text-emerald-100",
+    DPS: "border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text",
+    Hybrid: "border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text",
+    Support: "border-role-support-border/65 bg-role-support-bg/45 text-role-support-text",
   };
 
   return classes[role];
@@ -447,28 +447,28 @@ export function getWeaponToneClasses(tone: WeaponRarityTone) {
     }
   > = {
     blue: {
-      badge: "bg-sky-600 text-white",
-      card: "border-sky-500/60 bg-sky-950/30",
-      image: "border-sky-500/60 bg-sky-950/40",
-      text: "text-sky-200",
+      badge: "bg-weapon-blue-strong text-white",
+      card: "border-weapon-blue-strong/70 bg-weapon-blue-bg/45",
+      image: "border-weapon-blue-strong/70 bg-weapon-blue-bg",
+      text: "text-weapon-blue-text",
     },
     purple: {
-      badge: "bg-violet-600 text-white",
-      card: "border-violet-500/60 bg-violet-950/30",
-      image: "border-violet-500/60 bg-violet-950/40",
-      text: "text-violet-200",
+      badge: "bg-weapon-purple-strong text-white",
+      card: "border-weapon-purple-strong/70 bg-weapon-purple-bg/45",
+      image: "border-weapon-purple-strong/70 bg-weapon-purple-bg",
+      text: "text-weapon-purple-text",
     },
     standardGold: {
-      badge: "bg-yellow-300 text-app-bg",
-      card: "border-yellow-500/60 bg-yellow-950/30",
-      image: "border-yellow-500/60 bg-yellow-950/40",
-      text: "text-yellow-200",
+      badge: "bg-weapon-gold-text text-app-bg",
+      card: "border-weapon-gold-strong/70 bg-weapon-gold-bg/45",
+      image: "border-weapon-gold-strong/70 bg-weapon-gold-bg",
+      text: "text-weapon-gold-text",
     },
     limitedGold: {
-      badge: "bg-red-700 text-white",
-      card: "border-red-500/60 bg-red-950/30",
-      image: "border-red-500/60 bg-red-950/40",
-      text: "text-red-200",
+      badge: "bg-weapon-limited-strong text-white",
+      card: "border-weapon-limited-strong/70 bg-weapon-limited-bg/45",
+      image: "border-weapon-limited-strong/70 bg-weapon-limited-bg",
+      text: "text-weapon-limited-text",
     },
     neutral: {
       badge: "bg-app-border text-white",
