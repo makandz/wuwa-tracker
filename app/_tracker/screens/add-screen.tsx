@@ -187,9 +187,10 @@ export function AddScreen({
                   <button
                     className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                       !noCrit && fourCostMain === option.value
-                        ? "border-app-accent bg-app-accent text-app-bg"
-                        : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                        ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
+                        : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
                     }`}
+                    aria-pressed={!noCrit && fourCostMain === option.value}
                     key={option.value}
                     onClick={() => {
                       setFourCostMain(option.value);
@@ -203,9 +204,10 @@ export function AddScreen({
                 <button
                   className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                     noCrit
-                      ? "border-app-accent bg-app-accent text-app-bg"
-                      : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                      ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
+                      : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
                   }`}
+                  aria-pressed={noCrit}
                   onClick={() => setNoCrit((current) => !current)}
                   type="button"
                 >

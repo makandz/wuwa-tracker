@@ -40,6 +40,7 @@ export function Dashboard({
   onAdd,
   onOpen,
   onInventory,
+  onMatrix,
   onExport,
   onImport,
   onClear,
@@ -51,6 +52,7 @@ export function Dashboard({
   onAdd: () => void;
   onOpen: (id: string) => void;
   onInventory: () => void;
+  onMatrix: () => void;
   onExport: () => void;
   onImport: (event: ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
@@ -178,6 +180,7 @@ export function Dashboard({
               <TextButton onClick={onAdd} variant="primary">
                 Add Character
               </TextButton>
+              <TextButton onClick={onMatrix}>Matrix Planner</TextButton>
               <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
               <TextButton onClick={onExport}>Export</TextButton>
               <TextButton onClick={() => importRef.current?.click()}>Import</TextButton>

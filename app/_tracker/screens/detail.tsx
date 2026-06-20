@@ -27,6 +27,19 @@ import {
   WeaponStatusBadge,
 } from "../components/ui";
 
+const FORTE_CHECKLIST_ITEM = {
+  key: "skills",
+  label: "Skills / Forte level ups",
+} satisfies { key: keyof Checklist; label: string };
+
+const ECHO_CHECKLIST_ITEMS = [
+  { key: "fourCost", label: "Echo 1" },
+  { key: "threeCostA", label: "Echo 2" },
+  { key: "threeCostB", label: "Echo 3" },
+  { key: "oneCostA", label: "Echo 4" },
+  { key: "oneCostB", label: "Echo 5" },
+] satisfies { key: keyof Checklist; label: string }[];
+
 export function DetailScreen({
   character,
   weapons,
@@ -216,9 +229,10 @@ export function DetailScreen({
                 <button
                   className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                     !character.noCrit && character.fourCostMain === option.value
-                      ? "border-app-accent bg-app-accent text-app-bg"
-                      : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                      ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
+                      : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
                   }`}
+                  aria-pressed={!character.noCrit && character.fourCostMain === option.value}
                   key={option.value}
                   onClick={() => patchCharacter({ fourCostMain: option.value, noCrit: false })}
                   type="button"
@@ -229,9 +243,10 @@ export function DetailScreen({
               <button
                 className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                   character.noCrit
-                    ? "border-app-accent bg-app-accent text-app-bg"
-                    : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised"
+                    ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
+                    : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
                 }`}
+                aria-pressed={character.noCrit}
                 onClick={() => patchCharacter({ noCrit: !character.noCrit })}
                 type="button"
               >
@@ -292,29 +307,43 @@ export function DetailScreen({
         <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div className="grid gap-3">
-            {[
-              ["skills", "Skills / Forte level ups"],
-              ["fourCost", "4 cost echo built"],
-              ["threeCostA", "3 cost echo 1 built"],
-              ["threeCostB", "3 cost echo 2 built"],
-              ["oneCostA", "1 cost echo 1 built"],
-              ["oneCostB", "1 cost echo 2 built"],
-            ].map(([key, label]) => (
-              <label
-                className="flex items-center justify-between gap-4 rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3 text-sm font-medium text-app-muted"
-                key={key}
-              >
-                {label}
-                <input
-                  checked={character.checklist[key as keyof Checklist]}
-                  className="h-5 w-5 accent-app-accent"
-                  onChange={(event) =>
-                    patchChecklist(key as keyof Checklist, event.target.checked)
-                  }
-                  type="checkbox"
-                />
-              </label>
-            ))}
+            <label className="flex items-center justify-between gap-4 rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3 text-sm font-medium text-app-muted">
+              {FORTE_CHECKLIST_ITEM.label}
+              <input
+                checked={character.checklist[FORTE_CHECKLIST_ITEM.key]}
+                className="h-5 w-5 accent-app-accent"
+                onChange={(event) =>
+                  patchChecklist(FORTE_CHECKLIST_ITEM.key, event.target.checked)
+                }
+                type="checkbox"
+              />
+            </label>
+
+            <div
+              aria-label="Echos"
+              className="rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3"
+              role="group"
+            >
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                <div className="mr-auto text-sm font-medium text-app-muted">Echos</div>
+                <div className="grid flex-1 grid-cols-5 gap-2 min-[520px]:flex min-[520px]:justify-end">
+                  {ECHO_CHECKLIST_ITEMS.map((item) => (
+                    <label
+                      className="flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-app-border bg-app-surface px-2 py-2 text-xs font-semibold text-app-muted"
+                      key={item.key}
+                    >
+                      <span>{item.label}</span>
+                      <input
+                        checked={character.checklist[item.key]}
+                        className="h-4 w-4 shrink-0 accent-app-accent"
+                        onChange={(event) => patchChecklist(item.key, event.target.checked)}
+                        type="checkbox"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           <Field label="Notes">

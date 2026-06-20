@@ -416,6 +416,7 @@ export function RoleToggle({
 }) {
   return (
     <button
+      aria-pressed={active}
       className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${roleButtonClasses(
         role,
         active,

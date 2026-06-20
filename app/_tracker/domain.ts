@@ -1,5 +1,7 @@
 import {
   CHECKLIST_ITEM_COUNT,
+  MATRIX_DOUBLE_USE_CHARACTER_IDS,
+  MATRIX_DOUBLE_USE_CHARACTER_NAMES,
   PRYDWEN_CHARACTER_BASE_URL,
   PRYDWEN_CHARACTER_SLUG_OVERRIDES,
   ROLES,
@@ -237,6 +239,17 @@ export function getPrydwenCharacterUrl(characterName: string) {
   return `${PRYDWEN_CHARACTER_BASE_URL}/${slug}`;
 }
 
+export function getMatrixCharacterMaxUses(character: TrackedCharacter) {
+  if (
+    MATRIX_DOUBLE_USE_CHARACTER_IDS.has(character.characterId) ||
+    MATRIX_DOUBLE_USE_CHARACTER_NAMES.has(character.characterName.toLowerCase())
+  ) {
+    return 2;
+  }
+
+  return 1;
+}
+
 export function sanitizeWholeNumberInput(value: string) {
   return value.replace(/\D/g, "");
 }
@@ -292,16 +305,22 @@ export function formatDecimalInputValue(value: number) {
 export function roleButtonClasses(role: Role, active: boolean) {
   const palette: Record<Role, { active: string; inactive: string }> = {
     DPS: {
-      active: "border-role-dps-border bg-role-dps-active text-role-dps-text",
-      inactive: "border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text hover:bg-role-dps-bg",
+      active:
+        "border-2 border-role-dps-border bg-role-dps-active text-role-dps-text shadow-[0_0_0_1px_rgb(211_108_133_/_0.22),0_10px_24px_rgb(211_108_133_/_0.16)]",
+      inactive:
+        "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-role-dps-border/80 hover:bg-role-dps-bg/35 hover:text-role-dps-text hover:opacity-100",
     },
     Hybrid: {
-      active: "border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text",
-      inactive: "border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text hover:bg-role-hybrid-bg",
+      active:
+        "border-2 border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text shadow-[0_0_0_1px_rgb(126_160_232_/_0.22),0_10px_24px_rgb(126_160_232_/_0.16)]",
+      inactive:
+        "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-role-hybrid-border/80 hover:bg-role-hybrid-bg/35 hover:text-role-hybrid-text hover:opacity-100",
     },
     Support: {
-      active: "border-role-support-border bg-role-support-active text-role-support-text",
-      inactive: "border-role-support-border/65 bg-role-support-bg/45 text-role-support-text hover:bg-role-support-bg",
+      active:
+        "border-2 border-role-support-border bg-role-support-active text-role-support-text shadow-[0_0_0_1px_rgb(103_196_158_/_0.22),0_10px_24px_rgb(103_196_158_/_0.16)]",
+      inactive:
+        "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-role-support-border/80 hover:bg-role-support-bg/35 hover:text-role-support-text hover:opacity-100",
     },
   };
 

@@ -81,3 +81,8 @@ export type WeaponInventoryItem = {
   weaponId: number;
   count: number;
 };
+
+export type MatrixTeam = {
+  id: string;
+  slots: [string | null, string | null, string | null];
+};

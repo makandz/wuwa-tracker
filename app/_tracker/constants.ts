@@ -5,9 +5,19 @@ export const WEAPON_API = "https://api-v2.encore.moe/api/en/weapon";
 export const STORAGE_KEY = "wuwa-tracker.characters.v1";
 export const INVENTORY_STORAGE_KEY = "wuwa-tracker.weapon-inventory.v1";
 export const DASHBOARD_SORT_STORAGE_KEY = "wuwa-tracker.dashboard-sort.v1";
+export const MATRIX_STORAGE_KEY = "wuwa-tracker.matrix-teams.v1";
 export const PRYDWEN_CHARACTER_BASE_URL =
   "https://www.prydwen.gg/wuthering-waves/characters";
 export const PRYDWEN_CHARACTER_SLUG_OVERRIDES: Record<string, string> = {};
+// Prefer IDs when Matrix vigor data is available; names should be lowercase.
+export const MATRIX_DOUBLE_USE_CHARACTER_IDS = new Set<number>([]);
+export const MATRIX_DOUBLE_USE_CHARACTER_NAMES = new Set<string>([
+  "baizhi",
+  "buling",
+  "mornye",
+  "shorekeeper",
+  "verina",
+]);
 
 export const ROLES: Role[] = ["DPS", "Hybrid", "Support"];
 export const DASHBOARD_SORT_KEYS: DashboardSortKey[] = [

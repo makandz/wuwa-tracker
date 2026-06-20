@@ -8,7 +8,7 @@ import {
   type SetStateAction,
 } from "react";
 
-import type { Catalog, TrackedCharacter, WeaponInventoryItem } from "./types";
+import type { Catalog, MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "./types";
 import { useCatalog } from "./use-catalog";
 import { usePersistedTrackerState } from "./use-persisted-tracker-state";
 
@@ -18,6 +18,8 @@ type TrackerContextValue = {
   setCharacters: Dispatch<SetStateAction<TrackedCharacter[]>>;
   weaponInventory: WeaponInventoryItem[];
   setWeaponInventory: Dispatch<SetStateAction<WeaponInventoryItem[]>>;
+  matrixTeams: MatrixTeam[];
+  setMatrixTeams: Dispatch<SetStateAction<MatrixTeam[]>>;
   storageLoaded: boolean;
 };
 
@@ -30,6 +32,8 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     setCharacters,
     weaponInventory,
     setWeaponInventory,
+    matrixTeams,
+    setMatrixTeams,
     storageLoaded,
   } = usePersistedTrackerState();
 
@@ -41,6 +45,8 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
         setCharacters,
         weaponInventory,
         setWeaponInventory,
+        matrixTeams,
+        setMatrixTeams,
         storageLoaded,
       }}
     >

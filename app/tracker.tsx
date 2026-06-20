@@ -11,6 +11,7 @@ import { Dashboard } from "./_tracker/screens/dashboard";
 import { WeaponInventoryScreen } from "./_tracker/screens/inventory";
 import { AddScreen } from "./_tracker/screens/add-screen";
 import { DetailScreen } from "./_tracker/screens/detail";
+import { MatrixScreen } from "./_tracker/screens/matrix";
 
 function getCharacterHref(id: string) {
   return `/characters/${encodeURIComponent(id)}`;
@@ -23,6 +24,8 @@ export function DashboardRoute() {
     setCharacters,
     weaponInventory,
     setWeaponInventory,
+    matrixTeams,
+    setMatrixTeams,
   } = useTrackerData();
   const importRef = useRef<HTMLInputElement | null>(null);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
@@ -54,6 +57,7 @@ export function DashboardRoute() {
 
       setCharacters(imported.characters);
       setWeaponInventory(imported.weaponInventory);
+      setMatrixTeams(imported.matrixTeams);
       router.replace("/");
     } catch {
       alert("That JSON file could not be imported.");
@@ -68,9 +72,10 @@ export function DashboardRoute() {
         importRef={importRef}
         onAdd={() => router.push("/add")}
         onClear={clearData}
-        onExport={() => exportTrackerData(characters, weaponInventory)}
+        onExport={() => exportTrackerData(characters, weaponInventory, matrixTeams)}
         onImport={importCharacters}
         onInventory={() => router.push("/inventory")}
+        onMatrix={() => router.push("/matrix")}
         onOpen={(id) => router.push(getCharacterHref(id))}
         weaponInventory={weaponInventory}
       />
@@ -120,6 +125,22 @@ export function AddCharacterRoute() {
         onCreate={addCharacter}
         tracked={characters}
         weaponInventory={weaponInventory}
+      />
+    </div>
+  );
+}
+
+export function MatrixRoute() {
+  const { characters, matrixTeams, setMatrixTeams } = useTrackerData();
+  const router = useRouter();
+
+  return (
+    <div className="min-h-screen bg-app-bg text-app-fg">
+      <MatrixScreen
+        characters={characters}
+        onBack={() => router.push("/")}
+        onUpdateTeams={setMatrixTeams}
+        teams={matrixTeams}
       />
     </div>
   );
