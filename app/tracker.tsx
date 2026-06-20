@@ -3,731 +3,63 @@
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 
-const CHARACTER_API = "https://api-v2.encore.moe/api/en/character";
-const WEAPON_API = "https://api-v2.encore.moe/api/en/weapon";
-const STORAGE_KEY = "wuwa-tracker.characters.v1";
-const INVENTORY_STORAGE_KEY = "wuwa-tracker.weapon-inventory.v1";
-const DASHBOARD_SORT_STORAGE_KEY = "wuwa-tracker.dashboard-sort.v1";
-const PRYDWEN_CHARACTER_BASE_URL = "https://www.prydwen.gg/wuthering-waves/characters";
-const PRYDWEN_CHARACTER_SLUG_OVERRIDES: Record<string, string> = {};
-const ROLES = ["DPS", "Hybrid", "Support"] as const;
-const DASHBOARD_SORT_KEYS = [
-  "updated",
-  "name",
-  "completionDesc",
-  "completionAsc",
-  "weightDesc",
-  "weightAsc",
-] as const;
-const DEFAULT_DASHBOARD_SORT_KEY: DashboardSortKey = "weightDesc";
-const STANDARD_FIVE_STAR_WEAPONS = new Set([
-  "abyss surges",
-  "boson astrolabe",
-  "cosmic ripples",
-  "emerald of genesis",
-  "laser shearer",
-  "lustrous razor",
-  "phasic homogenizer",
-  "pulsation bracer",
-  "radiance cleaver",
-  "static mist",
-]);
-const FOUR_COST_OPTIONS = [
-  { label: "Crit Rate", value: "CR" },
-  { label: "Crit DMG", value: "CD" },
-  { label: "CR/CD", value: "BOTH" },
-] as const;
-
-type Role = (typeof ROLES)[number];
-type FourCostMain = (typeof FOUR_COST_OPTIONS)[number]["value"];
-type WeaponRarityTone = "blue" | "purple" | "standardGold" | "limitedGold" | "neutral";
-type RatingGrade = "S+" | "S" | "A" | "B" | "C" | "D" | "F";
-type DashboardSortKey = (typeof DASHBOARD_SORT_KEYS)[number];
-type RoleFilter = "all" | Role;
-type WeaponFilter = "all" | "selected" | "missing" | "attention";
-type RatingValue = number | null;
-
-type ApiCharacter = {
-  Id: number;
-  Name: string;
-  QualityId: number;
-  Element?: {
-    Name?: string;
-  };
-  RoleHeadIcon?: string;
-  WeaponType?: {
-    Id?: number;
-    Name?: string;
-  };
-};
-
-type ApiWeapon = {
-  Id: number;
-  Name: string;
-  Icon?: string;
-  Type: number;
-  QualityId: number;
-  TypeName: string;
-};
-
-type Catalog = {
-  characters: ApiCharacter[];
-  weapons: ApiWeapon[];
-  loading: boolean;
-  error: string;
-};
-
-type Checklist = {
-  skills: boolean;
-  fourCost: boolean;
-  threeCostA: boolean;
-  threeCostB: boolean;
-  oneCostA: boolean;
-  oneCostB: boolean;
-};
-
-type TrackedCharacter = {
-  id: string;
-  characterId: number;
-  characterName: string;
-  characterIcon: string;
-  qualityId: number;
-  elementName: string;
-  weaponTypeId: number;
-  weaponTypeName: string;
-  roles: Role[];
-  weaponId: number | null;
-  weaponName: string;
-  weaponQualityId: number | null;
-  fourCostMain: FourCostMain;
-  noCrit?: boolean;
-  critRate: number;
-  critDmg: number;
-  checklist: Checklist;
-  expectedEr: number;
-  actualEr: number;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type WeaponInventoryItem = {
-  weaponId: number;
-  count: number;
-};
-
-type Screen =
-  | { name: "dashboard" }
-  | { name: "add" }
-  | { name: "inventory" }
-  | { name: "detail"; id: string };
-type TrackerHistoryState = {
-  wuwaTrackerScreen?: Screen;
-};
-
-const emptyChecklist: Checklist = {
-  skills: false,
-  fourCost: false,
-  threeCostA: false,
-  threeCostB: false,
-  oneCostA: false,
-  oneCostB: false,
-};
-const CHECKLIST_SEGMENTS: { key: keyof Checklist; label: string; shortLabel: string }[] = [
-  { key: "skills", label: "Skills", shortLabel: "Sk" },
-  { key: "fourCost", label: "4 cost echo", shortLabel: "E1" },
-  { key: "threeCostA", label: "3 cost echo 1", shortLabel: "E2" },
-  { key: "threeCostB", label: "3 cost echo 2", shortLabel: "E3" },
-  { key: "oneCostA", label: "1 cost echo 1", shortLabel: "E4" },
-  { key: "oneCostB", label: "1 cost echo 2", shortLabel: "E5" },
-];
-const CHECKLIST_ITEM_COUNT = Object.keys(emptyChecklist).length;
-const DEFAULT_SCREEN: Screen = { name: "dashboard" };
-
-function isScreen(value: unknown): value is Screen {
-  if (!value || typeof value !== "object" || !("name" in value)) {
-    return false;
-  }
-
-  const screen = value as Partial<Screen>;
-
-  if (
-    screen.name === "dashboard" ||
-    screen.name === "add" ||
-    screen.name === "inventory"
-  ) {
-    return true;
-  }
-
-  return screen.name === "detail" && typeof screen.id === "string";
-}
-
-function getHistoryScreenFromState(state: unknown) {
-  const maybeScreen = (state as TrackerHistoryState | null)?.wuwaTrackerScreen;
-  return isScreen(maybeScreen) ? maybeScreen : null;
-}
-
-function getInitialScreen() {
-  if (typeof window === "undefined") {
-    return DEFAULT_SCREEN;
-  }
-
-  return getHistoryScreenFromState(window.history.state) ?? DEFAULT_SCREEN;
-}
-
-function checklistTotal(checklist: Checklist) {
-  return Object.values(checklist).filter(Boolean).length;
-}
-
-function checklistProgress(character: TrackedCharacter) {
-  return (checklistTotal(character.checklist) / CHECKLIST_ITEM_COUNT) * 100;
-}
-
-function isComplete(character: TrackedCharacter) {
-  return checklistTotal(character.checklist) === CHECKLIST_ITEM_COUNT;
-}
-
-function getPrimaryRole(roles: Role[]) {
-  return ROLES.find((role) => roles.includes(role)) ?? "DPS";
-}
-
-function compareRatingValues(aValue: RatingValue, bValue: RatingValue, direction: "asc" | "desc") {
-  if (aValue === null && bValue === null) {
-    return 0;
-  }
-
-  if (aValue === null) {
-    return 1;
-  }
-
-  if (bValue === null) {
-    return -1;
-  }
-
-  return direction === "asc" ? aValue - bValue : bValue - aValue;
-}
-
-function sortDashboardCharacters(characters: TrackedCharacter[], sortKey: DashboardSortKey) {
-  return [...characters].sort((a, b) => {
-    const aProgress = checklistProgress(a);
-    const bProgress = checklistProgress(b);
-    const aWeight = getRatings(a).weighted;
-    const bWeight = getRatings(b).weighted;
-
-    switch (sortKey) {
-      case "name":
-        return a.characterName.localeCompare(b.characterName);
-      case "completionDesc":
-        return (
-          bProgress - aProgress ||
-          compareRatingValues(aWeight, bWeight, "desc") ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "completionAsc":
-        return (
-          aProgress - bProgress ||
-          compareRatingValues(aWeight, bWeight, "desc") ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "weightDesc":
-        return (
-          compareRatingValues(aWeight, bWeight, "desc") ||
-          bProgress - aProgress ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "weightAsc":
-        return (
-          compareRatingValues(aWeight, bWeight, "asc") ||
-          bProgress - aProgress ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "updated":
-      default:
-        return (
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
-          a.characterName.localeCompare(b.characterName)
-        );
-    }
-  });
-}
-
-function roundRating(value: number) {
-  if (!Number.isFinite(value)) {
-    return 0;
-  }
-
-  return Math.round(value * 100) / 100;
-}
-
-function getRatings(character: TrackedCharacter) {
-  if (character.noCrit) {
-    return {
-      crRating: null,
-      cdRating: null,
-      weighted: null,
-      issue: "",
-    };
-  }
-
-  const critRateBase =
-    character.fourCostMain === "CR" || character.fourCostMain === "BOTH" ? 0.22 : 0;
-  const critDmgBase =
-    character.fourCostMain === "CD" || character.fourCostMain === "BOTH" ? 0.44 : 0;
-  const crRating = (character.critRate - critRateBase) / (0.075 * 5);
-  const cdRating = (character.critDmg - critDmgBase) / (0.15 * 5);
-  const crRatingValid = crRating >= 0;
-  const cdRatingValid = cdRating >= 0;
-  const weighted = crRatingValid && cdRatingValid ? (crRating + cdRating) / 2 : null;
-  const issues = [
-    !crRatingValid ? `Crit Rate must be at least ${formatPercent(critRateBase)}.` : "",
-    !cdRatingValid ? `Crit DMG must be at least ${formatPercent(critDmgBase)}.` : "",
-  ].filter(Boolean);
-
-  return {
-    crRating: crRatingValid ? roundRating(crRating) : null,
-    cdRating: cdRatingValid ? roundRating(cdRating) : null,
-    weighted: weighted === null ? null : roundRating(weighted),
-    issue: issues.join(" "),
-  };
-}
-
-function getRatingGrade(value: number): RatingGrade {
-  if (value >= 1.2) {
-    return "S+";
-  }
-
-  if (value >= 1.05) {
-    return "S";
-  }
-
-  if (value >= 0.9) {
-    return "A";
-  }
-
-  if (value >= 0.75) {
-    return "B";
-  }
-
-  if (value >= 0.55) {
-    return "C";
-  }
-
-  if (value >= 0.35) {
-    return "D";
-  }
-
-  return "F";
-}
-
-function ratingGradeClasses(grade: RatingGrade) {
-  const classes: Record<RatingGrade, string> = {
-    "S+": "rating-s-plus border border-yellow-100 bg-yellow-300 text-app-bg",
-    S: "border border-yellow-200/90 bg-yellow-400 text-app-bg",
-    A: "border border-emerald-400/70 bg-emerald-950/80 text-emerald-100",
-    B: "border border-cyan-400/70 bg-cyan-950/80 text-cyan-100",
-    C: "border border-amber-400/70 bg-amber-950/80 text-amber-100",
-    D: "border border-orange-400/60 bg-orange-950/80 text-orange-100",
-    F: "border border-rose-400/60 bg-rose-950/80 text-rose-100",
-  };
-
-  return classes[grade];
-}
-
-function formatPercent(value: number) {
-  if (!Number.isFinite(value)) {
-    return "0%";
-  }
-
-  return `${Math.round(value * 1000) / 10}%`;
-}
-
-function formatRatingValue(value: RatingValue) {
-  return value === null ? "Check stats" : value.toFixed(2);
-}
-
-function averageRatingValues(values: RatingValue[]) {
-  const validValues = values.filter((value): value is number => value !== null);
-
-  if (validValues.length === 0) {
-    return null;
-  }
-
-  return roundRating(validValues.reduce((sum, value) => sum + value, 0) / validValues.length);
-}
-
-function getRoleSummary(characters: TrackedCharacter[]) {
-  const ratings = characters.map(getRatings);
-  const critCharacterCount = characters.filter((character) => !character.noCrit).length;
-
-  return {
-    count: characters.length,
-    critCharacterCount,
-    averageCr: averageRatingValues(ratings.map((rating) => rating.crRating)),
-    averageCd: averageRatingValues(ratings.map((rating) => rating.cdRating)),
-    averageWeighted: averageRatingValues(ratings.map((rating) => rating.weighted)),
-  };
-}
-
-function formatRoleSummaryValue(value: RatingValue, critCharacterCount: number) {
-  if (value !== null) {
-    return formatRatingValue(value);
-  }
-
-  return critCharacterCount === 0 ? "No crit" : "Check";
-}
-
-function getPrydwenCharacterUrl(characterName: string) {
-  const overrideSlug = PRYDWEN_CHARACTER_SLUG_OVERRIDES[characterName];
-  const slug =
-    overrideSlug ??
-    characterName
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
-
-  return `${PRYDWEN_CHARACTER_BASE_URL}/${slug}`;
-}
-
-function sanitizeWholeNumberInput(value: string) {
-  return value.replace(/\D/g, "");
-}
-
-function sanitizeDecimalInput(value: string) {
-  const normalized = value.replace(",", ".");
-  let sanitized = "";
-  let hasDecimal = false;
-
-  for (const character of normalized) {
-    if (/\d/.test(character)) {
-      sanitized += character;
-      continue;
-    }
-
-    if (character === "." && !hasDecimal) {
-      sanitized += character;
-      hasDecimal = true;
-    }
-  }
-
-  return sanitized;
-}
-
-function parseWholeNumberInput(value: string) {
-  const parsed = Number(sanitizeWholeNumberInput(value));
-
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
-  }
-
-  return parsed;
-}
-
-function parseDecimalInput(value: string) {
-  const parsed = Number(sanitizeDecimalInput(value));
-
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return 0;
-  }
-
-  return parsed;
-}
-
-function formatDecimalInputValue(value: number) {
-  if (!value) {
-    return "";
-  }
-
-  return String(Math.round(value * 1000) / 1000);
-}
-
-function roleButtonClasses(role: Role, active: boolean) {
-  const palette: Record<Role, { active: string; inactive: string }> = {
-    DPS: {
-      active: "border-rose-500/80 bg-rose-900/80 text-rose-50",
-      inactive: "border-rose-500/50 bg-rose-950/25 text-rose-200 hover:bg-rose-950/45",
-    },
-    Hybrid: {
-      active: "border-indigo-500/80 bg-indigo-900/80 text-indigo-50",
-      inactive: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200 hover:bg-indigo-950/45",
-    },
-    Support: {
-      active: "border-emerald-500/80 bg-emerald-900/80 text-emerald-50",
-      inactive: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200 hover:bg-emerald-950/45",
-    },
-  };
-
-  return active ? palette[role].active : palette[role].inactive;
-}
-
-function rolePillClasses(role: Role) {
-  const classes: Record<Role, string> = {
-    DPS: "border-rose-500/50 bg-rose-950/25 text-rose-200",
-    Hybrid: "border-indigo-500/50 bg-indigo-950/25 text-indigo-200",
-    Support: "border-emerald-500/50 bg-emerald-950/25 text-emerald-200",
-  };
-
-  return classes[role];
-}
-
-function characterRoleToneClasses(role: Role, complete: boolean) {
-  const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
-    DPS: {
-      complete: "border-rose-500/80 border-l-4 bg-rose-950/55",
-      incomplete: "border-rose-400/55 border-l-4 bg-rose-950/20",
-      status: complete
-        ? "border border-rose-400/60 bg-rose-950/75 text-rose-100"
-        : "border border-rose-300/45 bg-rose-950/30 text-rose-200",
-    },
-    Hybrid: {
-      complete: "border-indigo-500/80 border-l-4 bg-indigo-950/55",
-      incomplete: "border-indigo-400/55 border-l-4 bg-indigo-950/20",
-      status: complete
-        ? "border border-indigo-400/60 bg-indigo-950/75 text-indigo-100"
-        : "border border-indigo-300/45 bg-indigo-950/30 text-indigo-200",
-    },
-    Support: {
-      complete: "border-emerald-500/80 border-l-4 bg-emerald-950/55",
-      incomplete: "border-emerald-400/55 border-l-4 bg-emerald-950/20",
-      status: complete
-        ? "border border-emerald-400/60 bg-emerald-950/75 text-emerald-100"
-        : "border border-emerald-300/45 bg-emerald-950/30 text-emerald-200",
-    },
-  };
-
-  return {
-    card: complete ? classes[role].complete : classes[role].incomplete,
-    status: classes[role].status,
-  };
-}
-
-function roleSectionClasses(role: Role) {
-  const classes: Record<Role, string> = {
-    DPS: "border-rose-500/50 bg-rose-950/20 text-rose-100",
-    Hybrid: "border-indigo-500/50 bg-indigo-950/20 text-indigo-100",
-    Support: "border-emerald-500/50 bg-emerald-950/20 text-emerald-100",
-  };
-
-  return classes[role];
-}
-
-function getInventoryCount(inventory: WeaponInventoryItem[], weaponId: number | null) {
-  if (!weaponId) {
-    return 0;
-  }
-
-  return inventory.find((item) => item.weaponId === weaponId)?.count ?? 0;
-}
-
-function getAssignmentCounts(characters: TrackedCharacter[]) {
-  return characters.reduce<Record<number, number>>((counts, character) => {
-    if (!character.weaponId) {
-      return counts;
-    }
-
-    counts[character.weaponId] = (counts[character.weaponId] ?? 0) + 1;
-    return counts;
-  }, {});
-}
-
-function getWeaponInventoryStatus({
-  weaponId,
-  inventory,
-  assignmentCounts,
-}: {
-  weaponId: number | null;
-  inventory: WeaponInventoryItem[];
-  assignmentCounts: Record<number, number>;
-}) {
-  if (!weaponId) {
-    return null;
-  }
-
-  const owned = getInventoryCount(inventory, weaponId);
-  const assigned = assignmentCounts[weaponId] ?? 0;
-
-  if (owned === 0) {
-    return "Not in inventory";
-  }
-
-  if (assigned > owned) {
-    return "Shared";
-  }
-
-  return null;
-}
-
-function normalizeWeaponName(name: string | null | undefined) {
-  return (name ?? "").trim().toLowerCase();
-}
-
-function getWeaponRarityTone({
-  name,
-  qualityId,
-}: {
-  name?: string | null;
-  qualityId?: number | null;
-}): WeaponRarityTone {
-  if (qualityId === 3) {
-    return "blue";
-  }
-
-  if (qualityId === 4) {
-    return "purple";
-  }
-
-  if (qualityId === 5) {
-    return STANDARD_FIVE_STAR_WEAPONS.has(normalizeWeaponName(name))
-      ? "standardGold"
-      : "limitedGold";
-  }
-
-  return "neutral";
-}
-
-function getWeaponToneClasses(tone: WeaponRarityTone) {
-  const classes: Record<
-    WeaponRarityTone,
-    {
-      badge: string;
-      card: string;
-      image: string;
-      text: string;
-    }
-  > = {
-    blue: {
-      badge: "bg-sky-600 text-white",
-      card: "border-sky-500/60 bg-sky-950/30",
-      image: "border-sky-500/60 bg-sky-950/40",
-      text: "text-sky-200",
-    },
-    purple: {
-      badge: "bg-violet-600 text-white",
-      card: "border-violet-500/60 bg-violet-950/30",
-      image: "border-violet-500/60 bg-violet-950/40",
-      text: "text-violet-200",
-    },
-    standardGold: {
-      badge: "bg-yellow-300 text-app-bg",
-      card: "border-yellow-500/60 bg-yellow-950/30",
-      image: "border-yellow-500/60 bg-yellow-950/40",
-      text: "text-yellow-200",
-    },
-    limitedGold: {
-      badge: "bg-red-700 text-white",
-      card: "border-red-500/60 bg-red-950/30",
-      image: "border-red-500/60 bg-red-950/40",
-      text: "text-red-200",
-    },
-    neutral: {
-      badge: "bg-app-border text-white",
-      card: "border-app-border/80 bg-app-surface/70",
-      image: "border-app-border/80 bg-app-raised",
-      text: "text-app-muted",
-    },
-  };
-
-  return classes[tone];
-}
-
-function exportTrackerData(
-  characters: TrackedCharacter[],
-  weaponInventory: WeaponInventoryItem[],
-) {
-  const blob = new Blob(
-    [
-      JSON.stringify(
-        {
-          version: 2,
-          exportedAt: new Date().toISOString(),
-          characters,
-          weaponInventory,
-        },
-        null,
-        2,
-      ),
-    ],
-    { type: "application/json" },
-  );
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-
-  link.href = url;
-  link.download = `wuwa-tracker-${new Date().toISOString().slice(0, 10)}.json`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function readStoredCharacters() {
-  try {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const raw = localStorage.getItem(STORAGE_KEY);
-
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed as TrackedCharacter[];
-  } catch {
-    return [];
-  }
-}
-
-function readStoredWeaponInventory() {
-  try {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const raw = localStorage.getItem(INVENTORY_STORAGE_KEY);
-
-    if (!raw) {
-      return [];
-    }
-
-    const parsed = JSON.parse(raw);
-
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-
-    return parsed
-      .map((item) => ({
-        weaponId: Number(item.weaponId),
-        count: Math.max(0, Math.round(Number(item.count) || 0)),
-      }))
-      .filter((item) => item.weaponId && item.count > 0) as WeaponInventoryItem[];
-  } catch {
-    return [];
-  }
-}
-
-function isDashboardSortKey(value: unknown): value is DashboardSortKey {
-  return DASHBOARD_SORT_KEYS.includes(value as DashboardSortKey);
-}
-
-function readStoredDashboardSortKey() {
-  try {
-    if (typeof window === "undefined") {
-      return DEFAULT_DASHBOARD_SORT_KEY;
-    }
-
-    const storedSortKey = localStorage.getItem(DASHBOARD_SORT_STORAGE_KEY);
-
-    return isDashboardSortKey(storedSortKey) ? storedSortKey : DEFAULT_DASHBOARD_SORT_KEY;
-  } catch {
-    return DEFAULT_DASHBOARD_SORT_KEY;
-  }
-}
+import {
+  CHECKLIST_SEGMENTS,
+  DEFAULT_SCREEN,
+  FOUR_COST_OPTIONS,
+  ROLES,
+  emptyChecklist,
+} from "./_tracker/constants";
+import {
+  characterRoleToneClasses,
+  checklistTotal,
+  formatDecimalInputValue,
+  formatPercent,
+  formatRatingValue,
+  formatRoleSummaryValue,
+  getAssignmentCounts,
+  getPrimaryRole,
+  getPrydwenCharacterUrl,
+  getRatingGrade,
+  getRatings,
+  getRoleSummary,
+  getWeaponInventoryStatus,
+  getWeaponRarityTone,
+  getWeaponToneClasses,
+  isComplete,
+  parseDecimalInput,
+  parseWholeNumberInput,
+  ratingGradeClasses,
+  roleButtonClasses,
+  rolePillClasses,
+  roleSectionClasses,
+  sanitizeDecimalInput,
+  sortDashboardCharacters,
+} from "./_tracker/domain";
+import {
+  exportTrackerData,
+  parseImportedTrackerData,
+  readStoredDashboardSortKey,
+  writeStoredDashboardSortKey,
+} from "./_tracker/storage";
+import type {
+  ApiCharacter,
+  ApiWeapon,
+  Catalog,
+  Checklist,
+  DashboardSortKey,
+  FourCostMain,
+  RatingValue,
+  Role,
+  RoleFilter,
+  TrackedCharacter,
+  WeaponFilter,
+  WeaponInventoryItem,
+  WeaponRarityTone,
+} from "./_tracker/types";
+import { useCatalog } from "./_tracker/use-catalog";
+import { usePersistedTrackerState } from "./_tracker/use-persisted-tracker-state";
+import { useTrackerNavigation } from "./_tracker/use-tracker-navigation";
 
 function StatBlock({
   label,
@@ -1613,7 +945,7 @@ function Dashboard({
   );
 
   useEffect(() => {
-    localStorage.setItem(DASHBOARD_SORT_STORAGE_KEY, sortKey);
+    writeStoredDashboardSortKey(sortKey);
   }, [sortKey]);
 
   const filtersActive =
@@ -2678,143 +2010,16 @@ function DetailScreen({
 }
 
 export default function Tracker() {
-  const [screen, setScreen] = useState<Screen>(getInitialScreen);
-  const [characters, setCharacters] = useState<TrackedCharacter[]>([]);
-  const [weaponInventory, setWeaponInventory] = useState<WeaponInventoryItem[]>([]);
-  const [catalog, setCatalog] = useState<Catalog>({
-    characters: [],
-    weapons: [],
-    loading: true,
-    error: "",
-  });
+  const { screen, navigateToScreen } = useTrackerNavigation();
+  const {
+    characters,
+    setCharacters,
+    weaponInventory,
+    setWeaponInventory,
+    storageLoaded,
+  } = usePersistedTrackerState();
+  const catalog = useCatalog();
   const importRef = useRef<HTMLInputElement | null>(null);
-  const storageLoadedRef = useRef(false);
-  const initialScreenRef = useRef(screen);
-
-  function navigateToScreen(nextScreen: Screen, replace = false) {
-    setScreen(nextScreen);
-
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const nextState: TrackerHistoryState = {
-      ...(window.history.state ?? {}),
-      wuwaTrackerScreen: nextScreen,
-    };
-
-    if (replace) {
-      window.history.replaceState(nextState, "", window.location.href);
-      return;
-    }
-
-    window.history.pushState(nextState, "", window.location.href);
-  }
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      storageLoadedRef.current = true;
-      setCharacters(readStoredCharacters());
-      setWeaponInventory(readStoredWeaponInventory());
-    }, 0);
-
-    return () => window.clearTimeout(timeoutId);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!getHistoryScreenFromState(window.history.state)) {
-      window.history.replaceState(
-        {
-          ...(window.history.state ?? {}),
-          wuwaTrackerScreen: initialScreenRef.current,
-        } satisfies TrackerHistoryState,
-        "",
-        window.location.href,
-      );
-    }
-
-    function handlePopState(event: PopStateEvent) {
-      setScreen(getHistoryScreenFromState(event.state) ?? DEFAULT_SCREEN);
-    }
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!storageLoadedRef.current) {
-      return;
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
-  }, [characters]);
-
-  useEffect(() => {
-    if (!storageLoadedRef.current) {
-      return;
-    }
-
-    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(weaponInventory));
-  }, [weaponInventory]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadCatalog() {
-      try {
-        const [characterResponse, weaponResponse] = await Promise.all([
-          fetch(CHARACTER_API),
-          fetch(WEAPON_API),
-        ]);
-
-        if (!characterResponse.ok || !weaponResponse.ok) {
-          throw new Error("Catalog request failed.");
-        }
-
-        const characterJson = (await characterResponse.json()) as { roleList?: ApiCharacter[] };
-        const weaponJson = (await weaponResponse.json()) as { weapons?: ApiWeapon[] };
-
-        if (!active) {
-          return;
-        }
-
-        setCatalog({
-          characters: [...(characterJson.roleList ?? [])].sort((a, b) =>
-            a.Name.localeCompare(b.Name),
-          ),
-          weapons: [...(weaponJson.weapons ?? [])].sort((a, b) =>
-            a.Name.localeCompare(b.Name),
-          ),
-          loading: false,
-          error: "",
-        });
-      } catch {
-        if (!active) {
-          return;
-        }
-
-        setCatalog({
-          characters: [],
-          weapons: [],
-          loading: false,
-          error: "Could not load the live character and weapon catalog.",
-        });
-      }
-    }
-
-    loadCatalog();
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const selectedCharacter = useMemo(() => {
     if (screen.name !== "detail") {
@@ -2827,7 +2032,7 @@ export default function Tracker() {
 
   useEffect(() => {
     if (
-      !storageLoadedRef.current ||
+      !storageLoaded ||
       screen.name !== "detail" ||
       characters.some((character) => character.id === screen.id)
     ) {
@@ -2835,7 +2040,7 @@ export default function Tracker() {
     }
 
     navigateToScreen(DEFAULT_SCREEN, true);
-  }, [characters, screen]);
+  }, [characters, navigateToScreen, screen, storageLoaded]);
 
   function addCharacter(character: TrackedCharacter) {
     setCharacters((current) => [...current, character]);
@@ -2882,31 +2087,10 @@ export default function Tracker() {
 
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as {
-        characters?: TrackedCharacter[];
-        weaponInventory?: WeaponInventoryItem[];
-      };
-      const importedCharacters = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray(parsed.characters)
-          ? parsed.characters
-          : null;
+      const imported = parseImportedTrackerData(text);
 
-      if (!importedCharacters) {
-        throw new Error("Invalid file.");
-      }
-
-      setCharacters(importedCharacters);
-      setWeaponInventory(
-        Array.isArray(parsed) || !Array.isArray(parsed.weaponInventory)
-          ? []
-          : parsed.weaponInventory
-              .map((item) => ({
-                weaponId: Number(item.weaponId),
-                count: Math.max(0, Math.round(Number(item.count) || 0)),
-              }))
-              .filter((item) => item.weaponId && item.count > 0),
-      );
+      setCharacters(imported.characters);
+      setWeaponInventory(imported.weaponInventory);
       navigateToScreen({ name: "dashboard" }, true);
     } catch {
       alert("That JSON file could not be imported.");
