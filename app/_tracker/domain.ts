@@ -9,6 +9,7 @@ import {
 } from "./constants";
 import type {
   Checklist,
+  CharacterBadgeTone,
   DashboardSortKey,
   RatingGrade,
   RatingValue,
@@ -17,6 +18,27 @@ import type {
   WeaponInventoryItem,
   WeaponRarityTone,
 } from "./types";
+
+const CHARACTER_RARITY_OVERRIDES: Record<
+  string,
+  {
+    qualityId: number;
+    badgeTone?: CharacterBadgeTone;
+    animatedBadge?: boolean;
+  }
+> = {
+  aalto: {
+    qualityId: 6,
+    animatedBadge: true,
+  },
+  roccia: {
+    qualityId: 4,
+  },
+  brant: {
+    qualityId: 2,
+    badgeTone: "blue",
+  },
+};
 
 export function checklistTotal(checklist: Checklist) {
   return Object.values(checklist).filter(Boolean).length;
@@ -146,16 +168,36 @@ export function getRatingGrade(value: number): RatingGrade {
     return "S+";
   }
 
-  if (value >= 1.05) {
+  if (value >= 1.12) {
     return "S";
   }
 
-  if (value >= 0.9) {
+  if (value >= 1.06) {
+    return "S-";
+  }
+
+  if (value >= 1.02) {
+    return "A+";
+  }
+
+  if (value >= 0.98) {
     return "A";
   }
 
-  if (value >= 0.75) {
+  if (value >= 0.92) {
+    return "A-";
+  }
+
+  if (value >= 0.86) {
+    return "B+";
+  }
+
+  if (value >= 0.8) {
     return "B";
+  }
+
+  if (value >= 0.75) {
+    return "B-";
   }
 
   if (value >= 0.55) {
@@ -173,8 +215,13 @@ export function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
     "S+": "rating-s-plus border border-weapon-gold-text text-app-bg",
     S: "border border-weapon-gold-strong bg-weapon-gold-text text-app-bg",
+    "S-": "border border-weapon-gold-strong bg-weapon-gold-bg text-weapon-gold-text",
+    "A+": "border border-status-good-border bg-status-good-bg text-status-good-text",
     A: "border border-status-good-border bg-status-good-bg text-status-good-text",
+    "A-": "border border-status-good-border bg-status-good-bg text-status-good-text",
+    "B+": "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
     B: "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
+    "B-": "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
     C: "border border-status-warn-border bg-status-warn-bg text-status-warn-text",
     D: "border border-weapon-limited-strong bg-weapon-limited-bg text-weapon-limited-text",
     F: "border border-status-danger-border bg-status-danger-bg text-status-danger-text",
@@ -237,6 +284,26 @@ export function getPrydwenCharacterUrl(characterName: string) {
       .replace(/^-+|-+$/g, "");
 
   return `${PRYDWEN_CHARACTER_BASE_URL}/${slug}`;
+}
+
+export function normalizeCharacterName(name: string | null | undefined) {
+  return (name ?? "").trim().toLowerCase();
+}
+
+export function getCharacterRarityDisplay({
+  name,
+  qualityId,
+}: {
+  name?: string | null;
+  qualityId?: number | null;
+}) {
+  const override = CHARACTER_RARITY_OVERRIDES[normalizeCharacterName(name)];
+
+  return {
+    qualityId: override?.qualityId ?? qualityId,
+    badgeTone: override?.badgeTone,
+    animatedBadge: override?.animatedBadge ?? false,
+  };
 }
 
 export function getMatrixCharacterMaxUses(character: TrackedCharacter) {
@@ -341,24 +408,24 @@ export function characterRoleToneClasses(role: Role, complete: boolean) {
   const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
     DPS: {
       complete: "border-role-dps-border border-l-4 bg-role-dps-bg/72",
-      incomplete: "border-role-dps-border/70 border-l-4 bg-role-dps-bg/38",
+      incomplete: "border-role-dps-border/40 border-l-4 bg-role-dps-bg/18",
       status: complete
         ? "border border-role-dps-border bg-role-dps-active text-role-dps-text"
-        : "border border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text",
+        : "border border-role-dps-border/40 bg-role-dps-bg/20 text-app-muted-subtle",
     },
     Hybrid: {
       complete: "border-role-hybrid-border border-l-4 bg-role-hybrid-bg/72",
-      incomplete: "border-role-hybrid-border/70 border-l-4 bg-role-hybrid-bg/38",
+      incomplete: "border-role-hybrid-border/40 border-l-4 bg-role-hybrid-bg/18",
       status: complete
         ? "border border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text"
-        : "border border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text",
+        : "border border-role-hybrid-border/40 bg-role-hybrid-bg/20 text-app-muted-subtle",
     },
     Support: {
       complete: "border-role-support-border border-l-4 bg-role-support-bg/72",
-      incomplete: "border-role-support-border/70 border-l-4 bg-role-support-bg/38",
+      incomplete: "border-role-support-border/40 border-l-4 bg-role-support-bg/18",
       status: complete
         ? "border border-role-support-border bg-role-support-active text-role-support-text"
-        : "border border-role-support-border/65 bg-role-support-bg/45 text-role-support-text",
+        : "border border-role-support-border/40 bg-role-support-bg/20 text-app-muted-subtle",
     },
   };
 

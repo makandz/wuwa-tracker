@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { FOUR_COST_OPTIONS, ROLES, emptyChecklist } from "../constants";
-import { getWeaponRarityTone } from "../domain";
+import { getCharacterRarityDisplay, getWeaponRarityTone } from "../domain";
 import type { ApiCharacter, Catalog, FourCostMain, Role, TrackedCharacter, WeaponInventoryItem } from "../types";
 import { CharacterPickerModal, PickerSummary, WeaponPickerModal } from "../components/pickers";
 import { RoleToggle, TextButton } from "../components/ui";
@@ -29,6 +29,10 @@ export function AddScreen({
   const [characterId, setCharacterId] = useState(firstCharacter?.Id ?? 0);
   const selectedCharacter =
     catalog.characters.find((character) => character.Id === characterId) ?? firstCharacter;
+  const selectedCharacterRarity = getCharacterRarityDisplay({
+    name: selectedCharacter?.Name,
+    qualityId: selectedCharacter?.QualityId,
+  });
   const inventoryCounts = useMemo(
     () =>
       weaponInventory.reduce<Record<number, number>>((counts, item) => {
@@ -89,7 +93,7 @@ export function AddScreen({
       characterId: selectedCharacter.Id,
       characterName: selectedCharacter.Name,
       characterIcon: selectedCharacter.RoleHeadIcon ?? "",
-      qualityId: selectedCharacter.QualityId,
+      qualityId: selectedCharacterRarity.qualityId ?? selectedCharacter.QualityId,
       elementName: selectedCharacter.Element?.Name ?? "Unknown",
       weaponTypeId: selectedCharacter.WeaponType?.Id ?? 0,
       weaponTypeName: selectedCharacter.WeaponType?.Name ?? "Unknown",
@@ -141,7 +145,9 @@ export function AddScreen({
                   selectedCharacter.WeaponType?.Name ?? "Unknown"
                 }`}
                 onClick={() => setCharacterPickerOpen(true)}
-                quality={selectedCharacter.QualityId}
+                quality={selectedCharacterRarity.qualityId}
+                characterBadgeTone={selectedCharacterRarity.badgeTone}
+                animatedBadge={selectedCharacterRarity.animatedBadge}
                 title={selectedCharacter.Name}
               />
             ) : null}

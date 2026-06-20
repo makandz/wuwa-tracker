@@ -358,6 +358,8 @@ export function Dashboard({
                     qualityId: character.weaponQualityId,
                   });
                   const weaponToneClasses = getWeaponToneClasses(weaponTone);
+                  const erBelowTarget =
+                    character.expectedEr > 0 && character.actualEr < character.expectedEr;
 
                   return (
                     <button
@@ -451,9 +453,19 @@ export function Dashboard({
                             </span>
                           </div>
                         )}
-                        <div className="flex justify-between gap-3">
+                        <div
+                          className={`flex justify-between gap-3 rounded px-1.5 py-1 ${
+                            erBelowTarget
+                              ? "border border-status-warn-border bg-status-warn-bg text-status-warn-text"
+                              : ""
+                          }`}
+                        >
                           <span className="text-app-muted-dim">ER</span>
-                          <span className="font-medium text-app-fg">
+                          <span
+                            className={`font-medium ${
+                              erBelowTarget ? "text-status-warn-text" : "text-app-fg"
+                            }`}
+                          >
                             {character.actualEr || 0}% / {character.expectedEr || 0}%
                           </span>
                         </div>

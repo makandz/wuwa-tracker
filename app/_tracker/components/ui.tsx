@@ -13,7 +13,14 @@ import {
   roleButtonClasses,
   sanitizeDecimalInput,
 } from "../domain";
-import type { Checklist, RatingValue, Role, TrackedCharacter, WeaponRarityTone } from "../types";
+import type {
+  CharacterBadgeTone,
+  Checklist,
+  RatingValue,
+  Role,
+  TrackedCharacter,
+  WeaponRarityTone,
+} from "../types";
 
 export function StatBlock({
   label,
@@ -202,25 +209,36 @@ export function NumberInput({
 export function StarBadge({
   quality,
   tone,
+  characterTone,
+  animated = false,
 }: {
   quality: number | null | undefined;
   tone?: WeaponRarityTone;
+  characterTone?: CharacterBadgeTone;
+  animated?: boolean;
 }) {
   if (!quality) {
     return null;
   }
 
   const toneClass =
-    tone === undefined
-      ? quality >= 5
-        ? "bg-weapon-gold-text text-app-bg"
-        : quality === 4
-          ? "bg-weapon-purple-strong text-white"
-          : "bg-weapon-blue-strong text-white"
-      : getWeaponToneClasses(tone).badge;
+    characterTone === "blue"
+      ? "bg-weapon-blue-strong text-white"
+      : tone === undefined
+        ? quality >= 5
+          ? "bg-weapon-gold-text text-app-bg"
+          : quality === 4
+            ? "bg-weapon-purple-strong text-white"
+            : "bg-weapon-blue-strong text-white"
+        : getWeaponToneClasses(tone).badge;
+  const animationClass = animated
+    ? "motion-safe:animate-pulse shadow-[0_0_0_1px_rgb(255_214_102_/_0.42),0_0_16px_rgb(255_214_102_/_0.45)]"
+    : "";
 
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass}`}>
+    <span
+      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass} ${animationClass}`}
+    >
       {quality} star
     </span>
   );
@@ -459,7 +477,9 @@ export function CharacterAvatar({
         className={`absolute bottom-0 right-0 px-1 text-[10px] font-bold ${
           character.qualityId >= 5
             ? "bg-weapon-gold-text text-app-bg"
-            : "bg-weapon-purple-strong text-white"
+            : character.qualityId === 4
+              ? "bg-weapon-purple-strong text-white"
+              : "bg-weapon-blue-strong text-white"
         }`}
       >
         {character.qualityId}

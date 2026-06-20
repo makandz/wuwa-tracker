@@ -5,15 +5,23 @@ import { useMemo, useState } from "react";
 import { FOUR_COST_OPTIONS, ROLES } from "../constants";
 import {
   characterRoleToneClasses,
-  formatRatingValue,
+  getRatingGrade,
   getPrimaryRole,
   getPrydwenCharacterUrl,
   getRatings,
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   isComplete,
+  ratingGradeClasses,
 } from "../domain";
-import type { ApiWeapon, Checklist, Role, TrackedCharacter, WeaponInventoryItem } from "../types";
+import type {
+  ApiWeapon,
+  Checklist,
+  RatingValue,
+  Role,
+  TrackedCharacter,
+  WeaponInventoryItem,
+} from "../types";
 import { PickerSummary, WeaponPickerModal } from "../components/pickers";
 import {
   CharacterAvatar,
@@ -21,7 +29,6 @@ import {
   Field,
   NumberInput,
   RoleToggle,
-  StatBlock,
   TextButton,
   TextLink,
   WeaponStatusBadge,
@@ -39,6 +46,54 @@ const ECHO_CHECKLIST_ITEMS = [
   { key: "oneCostA", label: "Echo 4" },
   { key: "oneCostB", label: "Echo 5" },
 ] satisfies { key: keyof Checklist; label: string }[];
+
+function RatingSummaryBlock({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: RatingValue;
+  tone?: "neutral" | "good" | "warn";
+}) {
+  const toneClass =
+    tone === "good"
+      ? "border-status-good-border bg-status-good-bg text-status-good-text"
+      : tone === "warn"
+        ? "border-status-warn-border bg-status-warn-bg text-status-warn-text"
+        : "border-app-border/80 bg-app-surface text-app-fg";
+
+  if (value === null) {
+    return (
+      <div className={`rounded-md border p-3 ${toneClass}`}>
+        <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+          {label}
+        </div>
+        <div className="mt-1 text-lg font-semibold leading-none">Check stats</div>
+      </div>
+    );
+  }
+
+  const grade = getRatingGrade(value);
+
+  return (
+    <div className={`rounded-md border p-3 ${toneClass}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+        {label}
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span
+          className={`rounded px-2 py-1 text-base font-bold leading-none ${ratingGradeClasses(
+            grade,
+          )}`}
+        >
+          {grade}
+        </span>
+        <span className="text-lg font-semibold leading-none">{value.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
 
 export function DetailScreen({
   character,
@@ -155,12 +210,20 @@ export function DetailScreen({
         </section>
       ) : (
         <section className="grid gap-3 sm:grid-cols-3">
-          <StatBlock label="CR Rating" tone={ratings.crRating === null ? "warn" : "neutral"} value={formatRatingValue(ratings.crRating)} />
-          <StatBlock label="CD Rating" tone={ratings.cdRating === null ? "warn" : "neutral"} value={formatRatingValue(ratings.cdRating)} />
-          <StatBlock
+          <RatingSummaryBlock
+            label="CR Rating"
+            tone={ratings.crRating === null ? "warn" : "neutral"}
+            value={ratings.crRating}
+          />
+          <RatingSummaryBlock
+            label="CD Rating"
+            tone={ratings.cdRating === null ? "warn" : "neutral"}
+            value={ratings.cdRating}
+          />
+          <RatingSummaryBlock
             label="Weighted"
             tone={ratings.weighted === null ? "warn" : ratings.weighted >= 1 ? "good" : "neutral"}
-            value={formatRatingValue(ratings.weighted)}
+            value={ratings.weighted}
           />
         </section>
       )}
@@ -255,14 +318,39 @@ export function DetailScreen({
             </div>
           </div>
 
+          <div className="max-w-md">
+            <Field label="Expected Minimum ER">
+              <ErInput
+                onChange={(value) => patchCharacter({ expectedEr: value })}
+                placeholder="120"
+                value={character.expectedEr}
+              />
+            </Field>
+            <p className="mt-2 text-xs leading-5 text-app-muted-dim">
+              This depends on the team and rotation.
+            </p>
+          </div>
+        </section>
+
+        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div>
-            <div className="mb-2 text-sm font-medium text-app-muted">Echo Crit</div>
+            <div className="mb-2 text-sm font-medium text-app-muted">Character Stats</div>
             {character.noCrit ? (
-              <div className="rounded-md border border-app-border/80 bg-app-surface px-3 py-2 text-sm font-medium text-app-muted">
-                No crit
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-md border border-app-border/80 bg-app-surface px-3 py-2 text-sm font-medium text-app-muted">
+                  No crit
+                </div>
+                <Field label="Actual ER">
+                  <ErInput
+                    onChange={(value) => patchCharacter({ actualEr: value })}
+                    placeholder="125"
+                    value={character.actualEr}
+                  />
+                </Field>
               </div>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="Echo Crit Rate">
                   <NumberInput
                     onChange={(value) => patchCharacter({ critRate: value })}
@@ -277,35 +365,25 @@ export function DetailScreen({
                     value={character.critDmg}
                   />
                 </Field>
+                <Field label="Actual ER">
+                  <ErInput
+                    onChange={(value) => patchCharacter({ actualEr: value })}
+                    placeholder="125"
+                    value={character.actualEr}
+                  />
+                </Field>
               </div>
             )}
+            <p className="mt-2 text-xs leading-5 text-app-muted-dim">
+              Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main
+              character screen.
+            </p>
           </div>
           {ratings.issue ? (
             <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-sm font-medium text-status-warn-text">
               {ratings.issue}
             </div>
           ) : null}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Expected Minimum ER">
-              <ErInput
-                onChange={(value) => patchCharacter({ expectedEr: value })}
-                placeholder="120"
-                value={character.expectedEr}
-              />
-            </Field>
-            <Field label="Actual ER">
-              <ErInput
-                onChange={(value) => patchCharacter({ actualEr: value })}
-                placeholder="125"
-                value={character.actualEr}
-              />
-            </Field>
-          </div>
-        </section>
-
-        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div className="grid gap-3">
             <label className="flex items-center justify-between gap-4 rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3 text-sm font-medium text-app-muted">
               {FORTE_CHECKLIST_ITEM.label}

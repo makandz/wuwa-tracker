@@ -1,7 +1,20 @@
 export type Role = "DPS" | "Hybrid" | "Support";
 export type FourCostMain = "CR" | "CD" | "BOTH";
 export type WeaponRarityTone = "blue" | "purple" | "standardGold" | "limitedGold" | "neutral";
-export type RatingGrade = "S+" | "S" | "A" | "B" | "C" | "D" | "F";
+export type CharacterBadgeTone = "blue";
+export type RatingGrade =
+  | "S+"
+  | "S"
+  | "S-"
+  | "A+"
+  | "A"
+  | "A-"
+  | "B+"
+  | "B"
+  | "B-"
+  | "C"
+  | "D"
+  | "F";
 export type DashboardSortKey =
   | "updated"
   | "name"

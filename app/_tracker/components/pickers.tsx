@@ -3,8 +3,12 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import { getWeaponRarityTone, getWeaponToneClasses } from "../domain";
-import type { ApiCharacter, ApiWeapon, WeaponRarityTone } from "../types";
+import {
+  getCharacterRarityDisplay,
+  getWeaponRarityTone,
+  getWeaponToneClasses,
+} from "../domain";
+import type { ApiCharacter, ApiWeapon, CharacterBadgeTone, WeaponRarityTone } from "../types";
 import { ImageFallback, Modal, SearchInput, StarBadge, TextButton } from "./ui";
 
 export function CharacterPickerModal({
@@ -23,11 +27,15 @@ export function CharacterPickerModal({
   const [query, setQuery] = useState("");
   const normalizedQuery = query.trim().toLowerCase();
   const filteredCharacters = characters.filter((character) => {
+    const rarityDisplay = getCharacterRarityDisplay({
+      name: character.Name,
+      qualityId: character.QualityId,
+    });
     const haystack = [
       character.Name,
       character.Element?.Name,
       character.WeaponType?.Name,
-      String(character.QualityId),
+      String(rarityDisplay.qualityId),
     ]
       .filter(Boolean)
       .join(" ")
@@ -52,6 +60,10 @@ export function CharacterPickerModal({
           {filteredCharacters.map((character) => {
             const alreadyTracked = trackedIds.has(character.Id);
             const selected = selectedId === character.Id;
+            const rarityDisplay = getCharacterRarityDisplay({
+              name: character.Name,
+              qualityId: character.QualityId,
+            });
 
             return (
               <button
@@ -78,7 +90,11 @@ export function CharacterPickerModal({
                     <ImageFallback label={character.Name} />
                   )}
                   <div className="absolute left-1.5 top-1.5 flex flex-wrap gap-1">
-                    <StarBadge quality={character.QualityId} />
+                    <StarBadge
+                      animated={rarityDisplay.animatedBadge}
+                      characterTone={rarityDisplay.badgeTone}
+                      quality={rarityDisplay.qualityId}
+                    />
                     {alreadyTracked ? (
                       <span className="rounded bg-app-bg px-1.5 py-0.5 text-[10px] font-bold text-white">
                         tracked
@@ -241,6 +257,8 @@ export function PickerSummary({
   meta,
   image,
   quality,
+  characterBadgeTone,
+  animatedBadge = false,
   rarityTone,
   actionLabel,
   onClick,
@@ -250,6 +268,8 @@ export function PickerSummary({
   meta: string;
   image?: string;
   quality?: number | null;
+  characterBadgeTone?: CharacterBadgeTone;
+  animatedBadge?: boolean;
   rarityTone?: WeaponRarityTone;
   actionLabel: string;
   onClick: () => void;
@@ -286,7 +306,12 @@ export function PickerSummary({
         <div className="min-w-0 self-center">
           <div className="flex flex-wrap items-center gap-2">
             <div className="truncate text-lg font-semibold text-app-fg">{title}</div>
-            <StarBadge quality={quality} tone={rarityTone} />
+            <StarBadge
+              animated={animatedBadge}
+              characterTone={characterBadgeTone}
+              quality={quality}
+              tone={rarityTone}
+            />
           </div>
           <div className="mt-1 text-sm text-app-muted-subtle">{meta}</div>
         </div>
