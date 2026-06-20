@@ -133,6 +133,14 @@ const emptyChecklist: Checklist = {
   oneCostA: false,
   oneCostB: false,
 };
+const CHECKLIST_SEGMENTS: { key: keyof Checklist; label: string; shortLabel: string }[] = [
+  { key: "skills", label: "Skills", shortLabel: "Sk" },
+  { key: "fourCost", label: "4 cost echo", shortLabel: "E1" },
+  { key: "threeCostA", label: "3 cost echo 1", shortLabel: "E2" },
+  { key: "threeCostB", label: "3 cost echo 2", shortLabel: "E3" },
+  { key: "oneCostA", label: "1 cost echo 1", shortLabel: "E4" },
+  { key: "oneCostB", label: "1 cost echo 2", shortLabel: "E5" },
+];
 const CHECKLIST_ITEM_COUNT = Object.keys(emptyChecklist).length;
 const DEFAULT_SCREEN: Screen = { name: "dashboard" };
 
@@ -335,6 +343,37 @@ function formatPercent(value: number) {
 
 function formatRatingValue(value: RatingValue) {
   return value === null ? "Check stats" : value.toFixed(2);
+}
+
+function averageRatingValues(values: RatingValue[]) {
+  const validValues = values.filter((value): value is number => value !== null);
+
+  if (validValues.length === 0) {
+    return null;
+  }
+
+  return roundRating(validValues.reduce((sum, value) => sum + value, 0) / validValues.length);
+}
+
+function getRoleSummary(characters: TrackedCharacter[]) {
+  const ratings = characters.map(getRatings);
+  const critCharacterCount = characters.filter((character) => !character.noCrit).length;
+
+  return {
+    count: characters.length,
+    critCharacterCount,
+    averageCr: averageRatingValues(ratings.map((rating) => rating.crRating)),
+    averageCd: averageRatingValues(ratings.map((rating) => rating.cdRating)),
+    averageWeighted: averageRatingValues(ratings.map((rating) => rating.weighted)),
+  };
+}
+
+function formatRoleSummaryValue(value: RatingValue, critCharacterCount: number) {
+  if (value !== null) {
+    return formatRatingValue(value);
+  }
+
+  return critCharacterCount === 0 ? "No crit" : "Check";
 }
 
 function getPrydwenCharacterUrl(characterName: string) {
@@ -1425,19 +1464,30 @@ function CharacterAvatar({
   );
 }
 
-function ProgressBar({
-  value,
-  compact = false,
-}: {
-  value: number;
-  compact?: boolean;
-}) {
+function ChecklistProgressSegments({ checklist }: { checklist: Checklist }) {
   return (
-    <div className={`${compact ? "h-1.5" : "h-2"} overflow-hidden rounded-full bg-app-raised`}>
-      <div
-        className="h-full rounded-full bg-app-accent-strong transition-all"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
+    <div
+      aria-label="Checklist progress"
+      className="grid h-5 grid-cols-6 gap-0.5 overflow-hidden rounded-full bg-app-raised p-0.5"
+    >
+      {CHECKLIST_SEGMENTS.map((segment) => {
+        const complete = checklist[segment.key];
+
+        return (
+          <span
+            aria-label={`${segment.label}: ${complete ? "done" : "not done"}`}
+            className={`grid min-w-0 place-items-center rounded-full text-[9px] font-bold leading-none transition ${
+              complete
+                ? "bg-app-accent-strong text-app-bg"
+                : "bg-app-surface text-app-muted-dim"
+            }`}
+            key={segment.key}
+            title={`${segment.label}: ${complete ? "done" : "not done"}`}
+          >
+            {segment.shortLabel}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -1547,13 +1597,18 @@ function Dashboard({
   ]);
   const groupedCharacters = useMemo(
     () =>
-      ROLES.map((role) => ({
-        role,
-        characters: sortDashboardCharacters(
+      ROLES.map((role) => {
+        const characters = sortDashboardCharacters(
           visibleCharacters.filter((character) => getPrimaryRole(character.roles) === role),
           sortKey,
-        ),
-      })).filter((group) => group.characters.length > 0),
+        );
+
+        return {
+          role,
+          characters,
+          summary: getRoleSummary(characters),
+        };
+      }).filter((group) => group.characters.length > 0),
     [sortKey, visibleCharacters],
   );
 
@@ -1583,8 +1638,8 @@ function Dashboard({
                 Add Character
               </TextButton>
               <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
-              <TextButton onClick={onExport}>Export JSON</TextButton>
-              <TextButton onClick={() => importRef.current?.click()}>Import JSON</TextButton>
+              <TextButton onClick={onExport}>Export</TextButton>
+              <TextButton onClick={() => importRef.current?.click()}>Import</TextButton>
               <TextButton onClick={onClear} variant="danger">
                 Clear
               </TextButton>
@@ -1718,12 +1773,29 @@ function Dashboard({
             {groupedCharacters.map((group) => (
               <section className="grid gap-2" key={group.role}>
                 <div
-                  className={`flex items-center justify-between rounded-md border px-3 py-2 ${roleSectionClasses(
+                  className={`flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${roleSectionClasses(
                     group.role,
                   )}`}
                 >
                   <h2 className="text-sm font-bold uppercase tracking-normal">{group.role}</h2>
-                  <span className="text-xs font-semibold">{group.characters.length}</span>
+                  <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs font-semibold">
+                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                      {group.summary.count} {group.summary.count === 1 ? "char" : "chars"}
+                    </span>
+                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                      CR {formatRoleSummaryValue(group.summary.averageCr, group.summary.critCharacterCount)}
+                    </span>
+                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                      CD {formatRoleSummaryValue(group.summary.averageCd, group.summary.critCharacterCount)}
+                    </span>
+                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                      Wt{" "}
+                      {formatRoleSummaryValue(
+                        group.summary.averageWeighted,
+                        group.summary.critCharacterCount,
+                      )}
+                    </span>
+                  </div>
                 </div>
 
                 {group.characters.map((character) => {
@@ -1731,7 +1803,6 @@ function Dashboard({
                   const primaryRole = getPrimaryRole(character.roles);
                   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
                   const checklistCount = checklistTotal(character.checklist);
-                  const progress = checklistProgress(character);
                   const ratings = getRatings(character);
                   const weaponStatus = getWeaponInventoryStatus({
                     weaponId: character.weaponId,
@@ -1791,7 +1862,7 @@ function Dashboard({
                             <span className="text-app-muted-dim">{checklistCount}/6</span>
                           </div>
                           <div className="mt-1.5">
-                            <ProgressBar compact value={progress} />
+                            <ChecklistProgressSegments checklist={character.checklist} />
                           </div>
                         </div>
                         {character.noCrit ? (
