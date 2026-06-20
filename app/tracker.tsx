@@ -276,18 +276,56 @@ function getPrydwenCharacterUrl(characterName: string) {
   return `${PRYDWEN_CHARACTER_BASE_URL}/${slug}`;
 }
 
-function sanitizeWholePercent(value: string) {
+function sanitizeWholeNumberInput(value: string) {
   return value.replace(/\D/g, "");
 }
 
-function parseWholePercent(value: string) {
-  const parsed = Number(sanitizeWholePercent(value));
+function sanitizeDecimalInput(value: string) {
+  const normalized = value.replace(",", ".");
+  let sanitized = "";
+  let hasDecimal = false;
+
+  for (const character of normalized) {
+    if (/\d/.test(character)) {
+      sanitized += character;
+      continue;
+    }
+
+    if (character === "." && !hasDecimal) {
+      sanitized += character;
+      hasDecimal = true;
+    }
+  }
+
+  return sanitized;
+}
+
+function parseWholeNumberInput(value: string) {
+  const parsed = Number(sanitizeWholeNumberInput(value));
 
   if (!Number.isFinite(parsed) || parsed < 0) {
     return 0;
   }
 
   return parsed;
+}
+
+function parseDecimalInput(value: string) {
+  const parsed = Number(sanitizeDecimalInput(value));
+
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return 0;
+  }
+
+  return parsed;
+}
+
+function formatDecimalInputValue(value: number) {
+  if (!value) {
+    return "";
+  }
+
+  return String(Math.round(value * 1000) / 1000);
 }
 
 function roleButtonClasses(role: Role, active: boolean) {
@@ -672,17 +710,29 @@ function NumberInput({
   onChange: (value: number) => void;
   placeholder?: string;
 }) {
-  const percentValue = value ? String(Math.round(value * 100)) : "";
+  const [draftValue, setDraftValue] = useState(() => formatDecimalInputValue(value * 100));
+  const [focused, setFocused] = useState(false);
+  const displayValue = focused ? draftValue : formatDecimalInputValue(value * 100);
 
   return (
     <div className="relative">
       <input
         className="h-11 w-full rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
-        inputMode="numeric"
-        onChange={(event) => onChange(parseWholePercent(event.target.value) / 100)}
+        inputMode="decimal"
+        onBlur={() => setFocused(false)}
+        onChange={(event) => {
+          const nextValue = sanitizeDecimalInput(event.target.value);
+
+          setDraftValue(nextValue);
+          onChange(parseDecimalInput(nextValue) / 100);
+        }}
+        onFocus={() => {
+          setDraftValue(formatDecimalInputValue(value * 100));
+          setFocused(true);
+        }}
         placeholder={placeholder}
         type="text"
-        value={percentValue}
+        value={displayValue}
       />
       <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-app-muted-dim">
         %
@@ -1149,15 +1199,29 @@ function ErInput({
   onChange: (value: number) => void;
   placeholder?: string;
 }) {
+  const [draftValue, setDraftValue] = useState(() => formatDecimalInputValue(value));
+  const [focused, setFocused] = useState(false);
+  const displayValue = focused ? draftValue : formatDecimalInputValue(value);
+
   return (
     <div className="relative">
       <input
         className="h-11 w-full rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
-        inputMode="numeric"
-        onChange={(event) => onChange(parseWholePercent(event.target.value))}
+        inputMode="decimal"
+        onBlur={() => setFocused(false)}
+        onChange={(event) => {
+          const nextValue = sanitizeDecimalInput(event.target.value);
+
+          setDraftValue(nextValue);
+          onChange(parseDecimalInput(nextValue));
+        }}
+        onFocus={() => {
+          setDraftValue(formatDecimalInputValue(value));
+          setFocused(true);
+        }}
         placeholder={placeholder}
         type="text"
-        value={value ? String(Math.round(value)) : ""}
+        value={displayValue}
       />
       <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-app-muted-dim">
         %
@@ -1764,7 +1828,7 @@ function WeaponInventoryScreen({
               className="h-8 min-w-0 rounded-md border border-app-border bg-app-surface text-center text-sm font-semibold text-app-fg outline-none focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
               inputMode="numeric"
               onChange={(event) =>
-                setWeaponCount(weapon.Id, parseWholePercent(event.target.value))
+                setWeaponCount(weapon.Id, parseWholeNumberInput(event.target.value))
               }
               type="text"
               value={count ? String(count) : ""}
