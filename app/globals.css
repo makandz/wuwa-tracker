@@ -112,6 +112,53 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@property --matrix-border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.matrix-planner-button {
+  --matrix-border-angle: 0deg;
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  border-width: 2px;
+  background:
+    linear-gradient(var(--surface), var(--surface)) padding-box,
+    conic-gradient(
+        from var(--matrix-border-angle),
+        #ff123a 0deg,
+        #ff123a 165deg,
+        #8f1028 245deg,
+        #8f1028 315deg,
+        #ff123a 360deg
+      )
+      border-box;
+  color: #ffd7dd;
+  animation: matrix-border-spin 14s linear infinite;
+}
+
+.matrix-planner-button:hover {
+  background:
+    linear-gradient(var(--surface-raised), var(--surface-raised)) padding-box,
+    conic-gradient(
+        from var(--matrix-border-angle),
+        #ff123a 0deg,
+        #ff123a 165deg,
+        #8f1028 245deg,
+        #8f1028 315deg,
+        #ff123a 360deg
+      )
+      border-box;
+}
+
+@keyframes matrix-border-spin {
+  to {
+    --matrix-border-angle: 360deg;
+  }
+}
+
 .rating-s-plus {
   animation: s-plus-glow 7.5s ease-in-out infinite;
   background:
@@ -135,6 +182,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .matrix-planner-button {
+    animation: none;
+  }
+
   .rating-s-plus {
     animation: none;
     background-size: 100% 100%;

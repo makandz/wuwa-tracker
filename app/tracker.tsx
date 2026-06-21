@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { BACKUP_NOTICE_INTERVAL_MS } from "./_tracker/constants";
 import { getAssignmentCounts } from "./_tracker/domain";
 import { exportTrackerData, parseImportedTrackerData } from "./_tracker/storage";
 import { useTrackerData } from "./_tracker/tracker-provider";
@@ -13,6 +14,7 @@ import { AddScreen } from "./_tracker/screens/add-screen";
 import { DetailScreen } from "./_tracker/screens/detail";
 import { MatrixScreen } from "./_tracker/screens/matrix";
 import { SettingsScreen } from "./_tracker/screens/settings";
+import { WelcomeScreen } from "./_tracker/screens/welcome";
 
 function getCharacterHref(id: string) {
   return `/characters/${encodeURIComponent(id)}`;
@@ -20,8 +22,43 @@ function getCharacterHref(id: string) {
 
 export function DashboardRoute() {
   const router = useRouter();
-  const { characters, weaponInventory } = useTrackerData();
+  const {
+    characters,
+    backupNoticeAcknowledgedAt,
+    matrixTeams,
+    setBackupNoticeAcknowledgedAt,
+    setWelcomeSeen,
+    storageLoaded,
+    welcomeSeen,
+    weaponInventory,
+  } = useTrackerData();
+  const [backupNoticeCheckedAt, setBackupNoticeCheckedAt] = useState<number | null>(null);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
+
+  useEffect(() => {
+    if (!storageLoaded) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setBackupNoticeCheckedAt(Date.now());
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [backupNoticeAcknowledgedAt, storageLoaded]);
+
+  if (!storageLoaded) {
+    return <div className="min-h-screen bg-app-bg text-app-fg" />;
+  }
+
+  if (!welcomeSeen) {
+    return <WelcomeScreen onStart={() => setWelcomeSeen(true)} />;
+  }
+
+  function exportBackupFromNotice() {
+    exportTrackerData(characters, weaponInventory, matrixTeams);
+    setBackupNoticeAcknowledgedAt(Date.now());
+  }
 
   return (
     <div className="min-h-screen bg-app-bg text-app-fg">
@@ -29,10 +66,15 @@ export function DashboardRoute() {
         assignmentCounts={assignmentCounts}
         characters={characters}
         onAdd={() => router.push("/add")}
+        onExportBackup={exportBackupFromNotice}
         onInventory={() => router.push("/inventory")}
         onMatrix={() => router.push("/matrix")}
         onOpen={(id) => router.push(getCharacterHref(id))}
         onSettings={() => router.push("/settings")}
+        showBackupNotice={
+          backupNoticeCheckedAt !== null &&
+          backupNoticeCheckedAt - backupNoticeAcknowledgedAt >= BACKUP_NOTICE_INTERVAL_MS
+        }
         weaponInventory={weaponInventory}
       />
     </div>
@@ -48,6 +90,7 @@ export function SettingsRoute() {
     setWeaponInventory,
     matrixTeams,
     setMatrixTeams,
+    setBackupNoticeAcknowledgedAt,
   } = useTrackerData();
   const importRef = useRef<HTMLInputElement | null>(null);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
@@ -86,6 +129,11 @@ export function SettingsRoute() {
     }
   }
 
+  function exportSettingsBackup() {
+    exportTrackerData(characters, weaponInventory, matrixTeams);
+    setBackupNoticeAcknowledgedAt(Date.now());
+  }
+
   return (
     <div className="min-h-screen bg-app-bg text-app-fg">
       <SettingsScreen
@@ -95,7 +143,7 @@ export function SettingsRoute() {
         matrixTeams={matrixTeams}
         onBack={() => router.push("/")}
         onClear={clearData}
-        onExport={() => exportTrackerData(characters, weaponInventory, matrixTeams)}
+        onExport={exportSettingsBackup}
         onImport={importCharacters}
         weaponInventory={weaponInventory}
       />

@@ -20,6 +20,10 @@ type TrackerContextValue = {
   setWeaponInventory: Dispatch<SetStateAction<WeaponInventoryItem[]>>;
   matrixTeams: MatrixTeam[];
   setMatrixTeams: Dispatch<SetStateAction<MatrixTeam[]>>;
+  welcomeSeen: boolean;
+  setWelcomeSeen: Dispatch<SetStateAction<boolean>>;
+  backupNoticeAcknowledgedAt: number;
+  setBackupNoticeAcknowledgedAt: Dispatch<SetStateAction<number>>;
   storageLoaded: boolean;
 };
 
@@ -34,6 +38,10 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     setWeaponInventory,
     matrixTeams,
     setMatrixTeams,
+    welcomeSeen,
+    setWelcomeSeen,
+    backupNoticeAcknowledgedAt,
+    setBackupNoticeAcknowledgedAt,
     storageLoaded,
   } = usePersistedTrackerState();
 
@@ -47,6 +55,10 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
         setWeaponInventory,
         matrixTeams,
         setMatrixTeams,
+        welcomeSeen,
+        setWelcomeSeen,
+        backupNoticeAcknowledgedAt,
+        setBackupNoticeAcknowledgedAt,
         storageLoaded,
       }}
     >

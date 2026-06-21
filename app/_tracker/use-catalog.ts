@@ -64,7 +64,7 @@ const CHARACTER_RELEASE_ORDER = [
   1403, // Aalto
 ] as const;
 
-const characterReleaseRank = new Map(
+const characterReleaseRank = new Map<number, number>(
   CHARACTER_RELEASE_ORDER.map((characterId, index) => [characterId, index]),
 );
 

@@ -38,19 +38,23 @@ export function Dashboard({
   weaponInventory,
   assignmentCounts,
   onAdd,
+  onExportBackup,
   onOpen,
   onInventory,
   onMatrix,
   onSettings,
+  showBackupNotice,
 }: {
   characters: TrackedCharacter[];
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
   onAdd: () => void;
+  onExportBackup: () => void;
   onOpen: (id: string) => void;
   onInventory: () => void;
   onMatrix: () => void;
   onSettings: () => void;
+  showBackupNotice: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -75,6 +79,7 @@ export function Dashboard({
           ? "No crit"
           : formatRatingValue(null);
   const totalWeaponCopies = weaponInventory.reduce((sum, item) => sum + item.count, 0);
+  const hasWeaponCopies = totalWeaponCopies > 0;
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCharacters = useMemo(() => {
     const filtered = characters.filter((character) => {
@@ -171,10 +176,18 @@ export function Dashboard({
               </h1>
             </div>
             <div className="flex flex-wrap gap-2">
-              <TextButton onClick={onAdd} variant="primary">
-                Add Character
+              {hasWeaponCopies ? (
+                <TextButton onClick={onAdd} variant="primary">
+                  Add Character
+                </TextButton>
+              ) : (
+                <TextButton onClick={onInventory} variant="primary">
+                  Add Weapons First
+                </TextButton>
+              )}
+              <TextButton className="matrix-planner-button" onClick={onMatrix}>
+                Matrix Planner
               </TextButton>
-              <TextButton onClick={onMatrix}>Matrix Planner</TextButton>
               <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
               <TextButton onClick={onSettings}>Settings</TextButton>
             </div>
@@ -196,17 +209,38 @@ export function Dashboard({
       </section>
 
       <main className="mx-auto grid w-full max-w-7xl gap-3 px-4 py-5 sm:px-6 lg:px-8">
+        {showBackupNotice ? (
+          <section className="flex flex-col gap-3 rounded-md border border-weapon-blue-strong/80 bg-weapon-blue-bg/70 px-4 py-3 text-weapon-blue-text shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium leading-6">
+              This website is a work in progress. Please export and back up your tracker data.
+            </p>
+            <TextButton
+              className="border-weapon-blue-strong/80 bg-weapon-blue-strong/20 text-weapon-blue-text hover:bg-weapon-blue-strong/35"
+              onClick={onExportBackup}
+            >
+              Export Backup
+            </TextButton>
+          </section>
+        ) : null}
+
         {characters.length === 0 ? (
           <div className="rounded-md border border-dashed border-app-border bg-app-surface p-8 text-center">
             <h2 className="text-xl font-semibold text-app-fg">No tracked characters yet</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-app-muted-subtle">
-              Add a character from the live catalog, assign roles and a weapon, then track echo
-              pieces, skill completion, ER targets, and ratings locally in this browser.
+              {hasWeaponCopies
+                ? "Add a character from the live catalog, assign roles and a weapon, then track echo pieces, skill completion, ER targets, and ratings locally in this browser."
+                : "Add weapons to your inventory first, then you can add characters and assign their weapons from your owned copies."}
             </p>
             <div className="mt-5">
-              <TextButton onClick={onAdd} variant="primary">
-                Add Character
-              </TextButton>
+              {hasWeaponCopies ? (
+                <TextButton onClick={onAdd} variant="primary">
+                  Add Character
+                </TextButton>
+              ) : (
+                <TextButton onClick={onInventory} variant="primary">
+                  Add Weapons First
+                </TextButton>
+              )}
             </div>
           </div>
         ) : (

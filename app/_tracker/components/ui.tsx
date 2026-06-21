@@ -97,12 +97,14 @@ export function RatingBlock({ label, value }: { label: string; value: RatingValu
 
 export function TextButton({
   children,
+  className = "",
   onClick,
   variant = "secondary",
   type = "button",
   compact = false,
 }: {
   children: React.ReactNode;
+  className?: string;
   onClick?: () => void;
   variant?: "primary" | "secondary" | "danger";
   type?: "button" | "submit";
@@ -119,7 +121,7 @@ export function TextButton({
     <button
       className={`rounded-md border font-semibold transition ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
-      } ${classes}`}
+      } ${classes} ${className}`}
       onClick={onClick}
       type={type}
     >

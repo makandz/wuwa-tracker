@@ -1,10 +1,12 @@
 import {
+  BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
   DASHBOARD_SORT_KEYS,
   DASHBOARD_SORT_STORAGE_KEY,
   DEFAULT_DASHBOARD_SORT_KEY,
   INVENTORY_STORAGE_KEY,
   MATRIX_STORAGE_KEY,
   STORAGE_KEY,
+  WELCOME_SEEN_STORAGE_KEY,
 } from "./constants";
 import type { DashboardSortKey, MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "./types";
 
@@ -184,6 +186,45 @@ export function readStoredDashboardSortKey() {
 
 export function writeStoredDashboardSortKey(sortKey: DashboardSortKey) {
   localStorage.setItem(DASHBOARD_SORT_STORAGE_KEY, sortKey);
+}
+
+export function readStoredWelcomeSeen() {
+  try {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return localStorage.getItem(WELCOME_SEEN_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function writeStoredWelcomeSeen(welcomeSeen: boolean) {
+  localStorage.setItem(WELCOME_SEEN_STORAGE_KEY, String(welcomeSeen));
+}
+
+export function readStoredBackupNoticeAcknowledgedAt() {
+  try {
+    if (typeof window === "undefined") {
+      return 0;
+    }
+
+    const storedValue = Number(
+      localStorage.getItem(BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY),
+    );
+
+    return Number.isFinite(storedValue) && storedValue > 0 ? storedValue : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function writeStoredBackupNoticeAcknowledgedAt(acknowledgedAt: number) {
+  localStorage.setItem(
+    BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
+    String(acknowledgedAt),
+  );
 }
 
 export function parseImportedTrackerData(text: string) {
