@@ -9,6 +9,7 @@ export const MATRIX_STORAGE_KEY = "wuwa-tracker.matrix-teams.v1";
 export const WELCOME_SEEN_STORAGE_KEY = "wuwa-tracker.welcome-seen.v1";
 export const BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY =
   "wuwa-tracker.backup-notice-acknowledged-at.v1";
+export const BACKUP_NOTICE_FIRST_VISIT_DELAY_MS = 24 * 60 * 60 * 1000;
 export const BACKUP_NOTICE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const PRYDWEN_CHARACTER_BASE_URL =
   "https://www.prydwen.gg/wuthering-waves/characters";

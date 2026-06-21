@@ -3,11 +3,14 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { BACKUP_NOTICE_INTERVAL_MS } from "./_tracker/constants";
+import {
+  BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
+  BACKUP_NOTICE_INTERVAL_MS,
+} from "./_tracker/constants";
 import { getAssignmentCounts } from "./_tracker/domain";
 import { exportTrackerData, parseImportedTrackerData } from "./_tracker/storage";
 import { useTrackerData } from "./_tracker/tracker-provider";
-import type { TrackedCharacter } from "./_tracker/types";
+import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "./_tracker/types";
 import { Dashboard } from "./_tracker/screens/dashboard";
 import { WeaponInventoryScreen } from "./_tracker/screens/inventory";
 import { AddScreen } from "./_tracker/screens/add-screen";
@@ -18,6 +21,18 @@ import { WelcomeScreen } from "./_tracker/screens/welcome";
 
 function getCharacterHref(id: string) {
   return `/characters/${encodeURIComponent(id)}`;
+}
+
+function hasTrackerData(
+  characters: TrackedCharacter[],
+  weaponInventory: WeaponInventoryItem[],
+  matrixTeams: MatrixTeam[],
+) {
+  return (
+    characters.length > 0 ||
+    weaponInventory.length > 0 ||
+    matrixTeams.some((team) => team.slots.some(Boolean))
+  );
 }
 
 export function DashboardRoute() {
@@ -52,7 +67,22 @@ export function DashboardRoute() {
   }
 
   if (!welcomeSeen) {
-    return <WelcomeScreen onStart={() => setWelcomeSeen(true)} />;
+    return (
+      <WelcomeScreen
+        onStart={() => {
+          if (
+            backupNoticeAcknowledgedAt === 0 &&
+            !hasTrackerData(characters, weaponInventory, matrixTeams)
+          ) {
+            setBackupNoticeAcknowledgedAt(
+              Date.now() - BACKUP_NOTICE_INTERVAL_MS + BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
+            );
+          }
+
+          setWelcomeSeen(true);
+        }}
+      />
+    );
   }
 
   function exportBackupFromNotice() {
