@@ -47,6 +47,12 @@
   --weapon-limited-bg: #47251f;
   --weapon-limited-strong: #c97764;
   --weapon-limited-text: #ffd8cf;
+  --element-fusion: #9f3a28;
+  --element-glacio: #337da8;
+  --element-aero: #2f8c62;
+  --element-electro: #744ca8;
+  --element-spectro: #9a7d2b;
+  --element-havoc: #803a9b;
 }
 
 @theme inline {
@@ -98,6 +104,12 @@
   --color-weapon-limited-bg: var(--weapon-limited-bg);
   --color-weapon-limited-strong: var(--weapon-limited-strong);
   --color-weapon-limited-text: var(--weapon-limited-text);
+  --color-element-fusion: var(--element-fusion);
+  --color-element-glacio: var(--element-glacio);
+  --color-element-aero: var(--element-aero);
+  --color-element-electro: var(--element-electro);
+  --color-element-spectro: var(--element-spectro);
+  --color-element-havoc: var(--element-havoc);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

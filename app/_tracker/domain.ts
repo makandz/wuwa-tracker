@@ -251,6 +251,19 @@ export function ratingGradeClasses(grade: RatingGrade) {
   return classes[grade];
 }
 
+export function characterElementBorderClasses(elementName: string | null | undefined) {
+  const classes: Record<string, string> = {
+    fusion: "border-element-fusion shadow-[0_0_0_1px_rgb(240_109_79_/_0.24)]",
+    glacio: "border-element-glacio shadow-[0_0_0_1px_rgb(116_200_243_/_0.24)]",
+    aero: "border-element-aero shadow-[0_0_0_1px_rgb(105_216_168_/_0.24)]",
+    electro: "border-element-electro shadow-[0_0_0_1px_rgb(193_140_255_/_0.24)]",
+    spectro: "border-element-spectro shadow-[0_0_0_1px_rgb(243_214_107_/_0.24)]",
+    havoc: "border-element-havoc shadow-[0_0_0_1px_rgb(208_106_238_/_0.24)]",
+  };
+
+  return classes[normalizeCharacterName(elementName)] ?? "border-app-border/80";
+}
+
 export function formatPercent(value: number) {
   if (!Number.isFinite(value)) {
     return "0%";

@@ -6,6 +6,7 @@ import {
   getMatrixCharacterMaxUses,
   getRatingGrade,
   getRatings,
+  normalizeCharacterName,
   ratingGradeClasses,
   rolePillClasses,
   sortDashboardCharacters,
@@ -46,6 +47,28 @@ function getUsageCounts(teams: MatrixTeam[]) {
   });
 
   return counts;
+}
+
+function getTeamElementDiversity(
+  team: MatrixTeam,
+  characterById: Map<string, TrackedCharacter>,
+) {
+  const seenElements = new Set<string>();
+  const elements: string[] = [];
+
+  team.slots.forEach((characterId) => {
+    const elementName = characterId ? characterById.get(characterId)?.elementName : null;
+    const normalizedElementName = normalizeCharacterName(elementName);
+
+    if (!elementName || !normalizedElementName || seenElements.has(normalizedElementName)) {
+      return;
+    }
+
+    seenElements.add(normalizedElementName);
+    elements.push(elementName);
+  });
+
+  return elements;
 }
 
 function getRoleSortIndex(character: TrackedCharacter) {
@@ -487,6 +510,7 @@ export function MatrixScreen({
             const activeInTeam = resolvedActiveSlot?.teamId === team.id;
             const isDragging = draggedTeamId === team.id;
             const isDragTarget = dragOverTeamId === team.id && draggedTeamId !== team.id;
+            const elementDiversity = getTeamElementDiversity(team, characterById);
 
             return (
               <div
@@ -526,7 +550,14 @@ export function MatrixScreen({
                       }
                       type="button"
                     >
-                      Team {teamIndex + 1}
+                      <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1">
+                        <span>Team {teamIndex + 1}</span>
+                        {elementDiversity.length > 0 ? (
+                          <span className="text-sm font-medium text-app-muted-subtle">
+                            ({elementDiversity.join(" / ")})
+                          </span>
+                        ) : null}
+                      </span>
                     </button>
                   </div>
                   <TextButton compact onClick={() => removeTeam(team.id)} variant="danger">

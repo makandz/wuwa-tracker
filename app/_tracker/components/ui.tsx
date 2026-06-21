@@ -5,6 +5,7 @@ import Image from "next/image";
 
 import { CHECKLIST_SEGMENTS } from "../constants";
 import {
+  characterElementBorderClasses,
   formatDecimalInputValue,
   getRatingGrade,
   getWeaponToneClasses,
@@ -470,12 +471,16 @@ export function CharacterAvatar({
 }) {
   const sizeClass = dense ? "h-10 w-10" : compact ? "h-12 w-12" : "h-14 w-14";
   const imageSize = dense ? "40px" : compact ? "48px" : "56px";
+  const elementBorderClasses = characterElementBorderClasses(character.elementName);
 
   return (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-md border border-app-border/80 bg-app-raised ${
+      className={`relative shrink-0 overflow-hidden rounded-md border-2 bg-app-raised ${
+        elementBorderClasses
+      } ${
         sizeClass
       }`}
+      title={character.elementName}
     >
       {character.characterIcon ? (
         <Image
