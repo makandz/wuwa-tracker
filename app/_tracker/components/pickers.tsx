@@ -11,6 +11,8 @@ import {
 import type { ApiCharacter, ApiWeapon, CharacterBadgeTone, WeaponRarityTone } from "../types";
 import { ImageFallback, Modal, SearchInput, StarBadge, TextButton } from "./ui";
 
+const catalogThumbnailSizes = "128px";
+
 export function CharacterPickerModal({
   characters,
   trackedIds,
@@ -83,7 +85,7 @@ export function CharacterPickerModal({
                       alt=""
                       className="object-cover"
                       fill
-                      sizes="(min-width: 1024px) 120px, (min-width: 640px) 20vw, 33vw"
+                      sizes={catalogThumbnailSizes}
                       src={character.RoleHeadIcon}
                     />
                   ) : (
@@ -214,7 +216,7 @@ export function WeaponPickerModal({
                           alt=""
                           className="object-contain p-2"
                           fill
-                          sizes="(min-width: 1024px) 120px, (min-width: 640px) 20vw, 33vw"
+                          sizes={catalogThumbnailSizes}
                           src={weapon.Icon}
                         />
                       ) : (

@@ -374,10 +374,22 @@ export function SelectInput<TValue extends string>({
         </select>
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute top-1/2 h-2.5 w-2.5 -translate-y-1/2 rotate-45 border-b-2 border-r-2 border-app-fg ${
-            compact ? "right-3" : "right-4"
+          className={`pointer-events-none absolute inset-y-0 grid w-4 place-items-center text-app-fg ${
+            compact ? "right-2.5" : "right-4"
           }`}
-        />
+        >
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2.4"
+            viewBox="0 0 24 24"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </span>
       </span>
     </label>
   );

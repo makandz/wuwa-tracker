@@ -14,6 +14,8 @@ import {
   WeaponStatusBadge,
 } from "../components/ui";
 
+const catalogThumbnailSizes = "128px";
+
 export function WeaponInventoryScreen({
   catalog,
   inventory,
@@ -103,7 +105,7 @@ export function WeaponInventoryScreen({
               alt=""
               className="object-contain p-2"
               fill
-              sizes="(min-width: 1024px) 120px, (min-width: 640px) 20vw, 33vw"
+              sizes={catalogThumbnailSizes}
               src={weapon.Icon}
             />
           ) : (
