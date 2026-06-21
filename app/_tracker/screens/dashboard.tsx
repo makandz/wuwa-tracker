@@ -387,8 +387,8 @@ export function Dashboard({
                       onClick={() => onOpen(character.id)}
                       type="button"
                     >
-                      <div className="flex min-w-0 gap-2">
-                        <CharacterAvatar compact dense character={character} />
+                      <div className="flex min-w-0 gap-3">
+                        <CharacterAvatar character={character} />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <h2 className="truncate text-sm font-semibold text-app-fg">
