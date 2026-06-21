@@ -142,6 +142,14 @@ export function MatrixScreen({
         .includes(normalizedQuery),
     );
   }, [characters, normalizedQuery]);
+  const availableCharacters = useMemo(
+    () =>
+      visibleCharacters.filter(
+        (character) =>
+          (usageCounts.get(character.id) ?? 0) < getMatrixCharacterMaxUses(character),
+      ),
+    [usageCounts, visibleCharacters],
+  );
   const filledSlots = cleanedTeams.reduce(
     (sum, team) => sum + team.slots.filter(Boolean).length,
     0,
@@ -333,9 +341,13 @@ export function MatrixScreen({
             <div className="rounded-md border border-dashed border-app-border bg-app-subtle p-6 text-center text-sm text-app-muted-subtle">
               No tracked characters yet.
             </div>
+          ) : availableCharacters.length === 0 ? (
+            <div className="rounded-md border border-dashed border-app-border bg-app-subtle p-6 text-center text-sm text-app-muted-subtle">
+              No available characters match that search.
+            </div>
           ) : (
             <div className="grid max-h-[360px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {visibleCharacters.map((character) => {
+              {availableCharacters.map((character) => {
                 const letterScore = getLetterScore(character);
                 const maxUses = getMatrixCharacterMaxUses(character);
                 const usedCount = usageCounts.get(character.id) ?? 0;

@@ -363,33 +363,33 @@ export function Dashboard({
 
                   return (
                     <button
-                      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(240px,1.15fr)_minmax(230px,0.9fr)_minmax(210px,0.8fr)] ${
+                      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(180px,0.65fr)_minmax(250px,1fr)_minmax(210px,0.85fr)] ${
                         characterToneClasses.card
                       }`}
                       key={character.id}
                       onClick={() => onOpen(character.id)}
                       type="button"
                     >
-                      <div className="flex min-w-0 gap-2.5">
-                        <CharacterAvatar compact character={character} />
+                      <div className="flex min-w-0 gap-2">
+                        <CharacterAvatar compact dense character={character} />
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <h2 className="truncate text-base font-semibold text-app-fg">
+                            <h2 className="truncate text-sm font-semibold text-app-fg">
                               {character.characterName}
                             </h2>
                             <span
-                              className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${characterToneClasses.status}`}
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
                             >
                               {complete ? "Done" : "In progress"}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-xs text-app-muted-subtle">
+                          <p className="mt-0.5 text-[11px] text-app-muted-subtle">
                             {character.elementName} / {character.weaponTypeName}
                           </p>
                           <div className="mt-1.5 flex flex-wrap gap-1">
                             {character.roles.map((role) => (
                               <span
-                                className={`rounded border px-1.5 py-0.5 text-[11px] font-medium ${rolePillClasses(
+                                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
                                   role,
                                 )}`}
                                 key={role}

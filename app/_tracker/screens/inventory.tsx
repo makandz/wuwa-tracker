@@ -16,6 +16,14 @@ import {
 
 const catalogThumbnailSizes = "128px";
 
+function compareWeaponsByType(a: ApiWeapon, b: ApiWeapon) {
+  return (
+    a.Type - b.Type ||
+    a.TypeName.localeCompare(b.TypeName) ||
+    a.Name.localeCompare(b.Name)
+  );
+}
+
 export function WeaponInventoryScreen({
   catalog,
   inventory,
@@ -48,9 +56,24 @@ export function WeaponInventoryScreen({
     return haystack.includes(normalizedQuery);
   });
   const weaponGroups = [
-    { title: "5 Star", weapons: filteredWeapons.filter((weapon) => weapon.QualityId === 5) },
-    { title: "4 Star", weapons: filteredWeapons.filter((weapon) => weapon.QualityId === 4) },
-    { title: "Other", weapons: filteredWeapons.filter((weapon) => weapon.QualityId < 4) },
+    {
+      title: "5 Star",
+      weapons: filteredWeapons
+        .filter((weapon) => weapon.QualityId === 5)
+        .sort(compareWeaponsByType),
+    },
+    {
+      title: "4 Star",
+      weapons: filteredWeapons
+        .filter((weapon) => weapon.QualityId === 4)
+        .sort(compareWeaponsByType),
+    },
+    {
+      title: "Other",
+      weapons: filteredWeapons
+        .filter((weapon) => weapon.QualityId < 4)
+        .sort(compareWeaponsByType),
+    },
   ].filter((group) => group.weapons.length > 0);
   const overSharedCount = inventory.filter(
     (item) => (assignmentCounts[item.weaponId] ?? 0) > item.count,

@@ -221,8 +221,9 @@ export function StarBadge({
     return null;
   }
 
-  const toneClass =
-    characterTone === "blue"
+  const toneClass = animated
+    ? "rating-s-plus border border-weapon-gold-text text-app-bg"
+    : characterTone === "blue"
       ? "bg-weapon-blue-strong text-white"
       : tone === undefined
         ? quality >= 5
@@ -231,13 +232,10 @@ export function StarBadge({
             ? "bg-weapon-purple-strong text-white"
             : "bg-weapon-blue-strong text-white"
         : getWeaponToneClasses(tone).badge;
-  const animationClass = animated
-    ? "motion-safe:animate-pulse shadow-[0_0_0_1px_rgb(255_214_102_/_0.42),0_0_16px_rgb(255_214_102_/_0.45)]"
-    : "";
 
   return (
     <span
-      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass} ${animationClass}`}
+      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass}`}
     >
       {quality} star
     </span>
@@ -462,14 +460,19 @@ export function RoleToggle({
 export function CharacterAvatar({
   character,
   compact = false,
+  dense = false,
 }: {
   character: TrackedCharacter;
   compact?: boolean;
+  dense?: boolean;
 }) {
+  const sizeClass = dense ? "h-10 w-10" : compact ? "h-12 w-12" : "h-14 w-14";
+  const imageSize = dense ? "40px" : compact ? "48px" : "56px";
+
   return (
     <div
       className={`relative shrink-0 overflow-hidden rounded-md border border-app-border/80 bg-app-raised ${
-        compact ? "h-12 w-12" : "h-14 w-14"
+        sizeClass
       }`}
     >
       {character.characterIcon ? (
@@ -477,7 +480,7 @@ export function CharacterAvatar({
           alt=""
           className="h-full w-full object-cover"
           fill
-          sizes={compact ? "48px" : "56px"}
+          sizes={imageSize}
           src={character.characterIcon}
         />
       ) : (
