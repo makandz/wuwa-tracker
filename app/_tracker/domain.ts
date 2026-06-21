@@ -11,6 +11,7 @@ import type {
   Checklist,
   CharacterBadgeTone,
   DashboardSortKey,
+  FourCostMain,
   RatingGrade,
   RatingValue,
   Role,
@@ -39,6 +40,11 @@ const CHARACTER_RARITY_OVERRIDES: Record<
     badgeTone: "blue",
   },
 };
+
+const ECHO_CRIT_RATE_BASE = 0.375;
+const ECHO_CRIT_DMG_BASE = 0.75;
+const FOUR_COST_CRIT_RATE_BONUS = 0.22;
+const FOUR_COST_CRIT_DMG_BONUS = 0.44;
 
 export function checklistTotal(checklist: Checklist) {
   return Object.values(checklist).filter(Boolean).length;
@@ -131,6 +137,24 @@ export function roundRating(value: number) {
   return Math.round(value * 100) / 100;
 }
 
+export function getFourCostCritBases(fourCostMain: FourCostMain) {
+  return {
+    critRateBase:
+      fourCostMain === "CR" || fourCostMain === "BOTH" ? FOUR_COST_CRIT_RATE_BONUS : 0,
+    critDmgBase:
+      fourCostMain === "CD" || fourCostMain === "BOTH" ? FOUR_COST_CRIT_DMG_BONUS : 0,
+  };
+}
+
+export function getEchoCritPlaceholders(fourCostMain: FourCostMain) {
+  const { critRateBase, critDmgBase } = getFourCostCritBases(fourCostMain);
+
+  return {
+    critRate: formatPercentInput(ECHO_CRIT_RATE_BASE + critRateBase),
+    critDmg: formatPercentInput(ECHO_CRIT_DMG_BASE + critDmgBase),
+  };
+}
+
 export function getRatings(character: TrackedCharacter) {
   if (character.noCrit) {
     return {
@@ -141,10 +165,7 @@ export function getRatings(character: TrackedCharacter) {
     };
   }
 
-  const critRateBase =
-    character.fourCostMain === "CR" || character.fourCostMain === "BOTH" ? 0.22 : 0;
-  const critDmgBase =
-    character.fourCostMain === "CD" || character.fourCostMain === "BOTH" ? 0.44 : 0;
+  const { critRateBase, critDmgBase } = getFourCostCritBases(character.fourCostMain);
   const crRating = (character.critRate - critRateBase) / (0.075 * 5);
   const cdRating = (character.critDmg - critDmgBase) / (0.15 * 5);
   const crRatingValid = crRating >= 0;
@@ -236,6 +257,14 @@ export function formatPercent(value: number) {
   }
 
   return `${Math.round(value * 1000) / 10}%`;
+}
+
+export function formatPercentInput(value: number) {
+  if (!Number.isFinite(value)) {
+    return "0";
+  }
+
+  return `${Math.round(value * 1000) / 10}`;
 }
 
 export function formatRatingValue(value: RatingValue) {
@@ -437,9 +466,9 @@ export function characterRoleToneClasses(role: Role, complete: boolean) {
 
 export function roleSectionClasses(role: Role) {
   const classes: Record<Role, string> = {
-    DPS: "border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text",
-    Hybrid: "border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text",
-    Support: "border-role-support-border/65 bg-role-support-bg/45 text-role-support-text",
+    DPS: "border-app-border/80 bg-app-surface text-app-fg",
+    Hybrid: "border-app-border/80 bg-app-surface text-app-fg",
+    Support: "border-app-border/80 bg-app-surface text-app-fg",
   };
 
   return classes[role];

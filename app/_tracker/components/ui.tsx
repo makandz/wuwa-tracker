@@ -139,7 +139,7 @@ export function TextLink({
 }) {
   return (
     <a
-      className={`inline-flex items-center rounded-md border border-app-border bg-app-surface font-semibold text-app-muted transition hover:bg-app-raised ${
+      className={`inline-flex items-center rounded-md border border-weapon-blue-strong/70 bg-weapon-blue-bg/70 font-semibold text-weapon-blue-text transition hover:border-weapon-blue-strong hover:bg-weapon-blue-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-weapon-blue-strong/35 ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
       }`}
       href={href}
@@ -516,9 +516,13 @@ export function ChecklistProgressSegments({ checklist }: { checklist: Checklist 
           <span
             aria-label={`${segment.label}: ${complete ? "done" : "not done"}`}
             className={`grid min-w-0 place-items-center rounded-full text-[9px] font-bold leading-none transition ${
-              complete
-                ? "bg-app-accent-strong text-app-bg"
-                : "bg-app-surface text-app-muted-dim"
+              segment.key === "skills"
+                ? complete
+                  ? "bg-weapon-gold-strong text-app-bg"
+                  : "bg-weapon-gold-bg/70 text-weapon-gold-text/70"
+                : complete
+                  ? "bg-app-accent-strong text-app-bg"
+                  : "bg-app-surface text-app-muted-dim"
             }`}
             key={segment.key}
             title={`${segment.label}: ${complete ? "done" : "not done"}`}

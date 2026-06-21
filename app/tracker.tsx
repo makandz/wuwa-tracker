@@ -12,12 +12,34 @@ import { WeaponInventoryScreen } from "./_tracker/screens/inventory";
 import { AddScreen } from "./_tracker/screens/add-screen";
 import { DetailScreen } from "./_tracker/screens/detail";
 import { MatrixScreen } from "./_tracker/screens/matrix";
+import { SettingsScreen } from "./_tracker/screens/settings";
 
 function getCharacterHref(id: string) {
   return `/characters/${encodeURIComponent(id)}`;
 }
 
 export function DashboardRoute() {
+  const router = useRouter();
+  const { characters, weaponInventory } = useTrackerData();
+  const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
+
+  return (
+    <div className="min-h-screen bg-app-bg text-app-fg">
+      <Dashboard
+        assignmentCounts={assignmentCounts}
+        characters={characters}
+        onAdd={() => router.push("/add")}
+        onInventory={() => router.push("/inventory")}
+        onMatrix={() => router.push("/matrix")}
+        onOpen={(id) => router.push(getCharacterHref(id))}
+        onSettings={() => router.push("/settings")}
+        weaponInventory={weaponInventory}
+      />
+    </div>
+  );
+}
+
+export function SettingsRoute() {
   const router = useRouter();
   const {
     characters,
@@ -32,15 +54,15 @@ export function DashboardRoute() {
 
   function clearData() {
     if (
-      (!characters.length && !weaponInventory.length) ||
-      !confirm("Clear all tracked characters and weapon inventory from this browser?")
+      (!characters.length && !weaponInventory.length && !matrixTeams.length) ||
+      !confirm("Clear all tracker data from this browser?")
     ) {
       return;
     }
 
     setCharacters([]);
     setWeaponInventory([]);
-    router.replace("/");
+    setMatrixTeams([]);
   }
 
   async function importCharacters(event: ChangeEvent<HTMLInputElement>) {
@@ -66,17 +88,15 @@ export function DashboardRoute() {
 
   return (
     <div className="min-h-screen bg-app-bg text-app-fg">
-      <Dashboard
+      <SettingsScreen
         assignmentCounts={assignmentCounts}
         characters={characters}
         importRef={importRef}
-        onAdd={() => router.push("/add")}
+        matrixTeams={matrixTeams}
+        onBack={() => router.push("/")}
         onClear={clearData}
         onExport={() => exportTrackerData(characters, weaponInventory, matrixTeams)}
         onImport={importCharacters}
-        onInventory={() => router.push("/inventory")}
-        onMatrix={() => router.push("/matrix")}
-        onOpen={(id) => router.push(getCharacterHref(id))}
         weaponInventory={weaponInventory}
       />
     </div>

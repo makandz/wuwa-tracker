@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type DragEvent } from "react";
 
 import {
   getMatrixCharacterMaxUses,
   getRatingGrade,
   getRatings,
   ratingGradeClasses,
+  rolePillClasses,
   sortDashboardCharacters,
 } from "../domain";
+import { ROLES } from "../constants";
 import type { MatrixTeam, TrackedCharacter } from "../types";
 import { CharacterAvatar, SearchInput, StatBlock, TextButton } from "../components/ui";
 
@@ -44,6 +46,13 @@ function getUsageCounts(teams: MatrixTeam[]) {
   });
 
   return counts;
+}
+
+function getRoleSortIndex(character: TrackedCharacter) {
+  const firstRole = character.roles[0];
+  const roleIndex = firstRole ? ROLES.indexOf(firstRole) : -1;
+
+  return roleIndex === -1 ? ROLES.length : roleIndex;
 }
 
 function getNextOpenSlot(
@@ -102,6 +111,8 @@ export function MatrixScreen({
     teamId: string;
     slotIndex: number;
   } | null>(null);
+  const [draggedTeamId, setDraggedTeamId] = useState<string | null>(null);
+  const [dragOverTeamId, setDragOverTeamId] = useState<string | null>(null);
   const characterIds = useMemo(
     () => new Set(characters.map((character) => character.id)),
     [characters],
@@ -123,7 +134,9 @@ export function MatrixScreen({
   const usageCounts = useMemo(() => getUsageCounts(cleanedTeams), [cleanedTeams]);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCharacters = useMemo(() => {
-    const sorted = sortDashboardCharacters(characters, "weightDesc");
+    const sorted = sortDashboardCharacters(characters, "weightDesc").sort(
+      (a, b) => getRoleSortIndex(a) - getRoleSortIndex(b),
+    );
 
     if (!normalizedQuery) {
       return sorted;
@@ -193,6 +206,56 @@ export function MatrixScreen({
     const nextTeams = cleanedTeams.filter((candidate) => candidate.id !== teamId);
 
     onUpdateTeams(nextTeams.length > 0 ? nextTeams : [createTeam()]);
+  }
+
+  function reorderTeam(draggedId: string, targetId: string) {
+    if (draggedId === targetId) {
+      return;
+    }
+
+    const fromIndex = cleanedTeams.findIndex((team) => team.id === draggedId);
+    const toIndex = cleanedTeams.findIndex((team) => team.id === targetId);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      return;
+    }
+
+    const nextTeams = [...cleanedTeams];
+    const [movedTeam] = nextTeams.splice(fromIndex, 1);
+
+    nextTeams.splice(toIndex, 0, movedTeam);
+    onUpdateTeams(nextTeams);
+  }
+
+  function handleTeamDragStart(event: DragEvent<HTMLElement>, teamId: string) {
+    setDraggedTeamId(teamId);
+    setDragOverTeamId(null);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", teamId);
+  }
+
+  function handleTeamDragOver(event: DragEvent<HTMLDivElement>, teamId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDragOverTeamId(teamId);
+  }
+
+  function handleTeamDrop(event: DragEvent<HTMLDivElement>, targetTeamId: string) {
+    event.preventDefault();
+
+    const sourceTeamId = event.dataTransfer.getData("text/plain") || draggedTeamId;
+
+    if (sourceTeamId) {
+      reorderTeam(sourceTeamId, targetTeamId);
+    }
+
+    setDraggedTeamId(null);
+    setDragOverTeamId(null);
+  }
+
+  function handleTeamDragEnd() {
+    setDraggedTeamId(null);
+    setDragOverTeamId(null);
   }
 
   function clearTeams() {
@@ -381,6 +444,15 @@ export function MatrixScreen({
                         <span className="rounded bg-app-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-app-muted">
                           {usedCount}/{maxUses}
                         </span>
+                        {character.roles[0] ? (
+                          <span
+                            className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${rolePillClasses(
+                              character.roles[0],
+                            )}`}
+                          >
+                            {character.roles[0]}
+                          </span>
+                        ) : null}
                         {maxUses > 1 ? (
                           <span className="rounded bg-status-good-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-good-text">
                             2 vigor
@@ -404,30 +476,59 @@ export function MatrixScreen({
           )}
         </section>
 
-        <section className="grid gap-3">
+        <section className="grid gap-3 border-t border-app-border/80 pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-app-fg">Teams</h2>
+            </div>
+          </div>
+
           {cleanedTeams.map((team, teamIndex) => {
             const activeInTeam = resolvedActiveSlot?.teamId === team.id;
+            const isDragging = draggedTeamId === team.id;
+            const isDragTarget = dragOverTeamId === team.id && draggedTeamId !== team.id;
 
             return (
               <div
-                className={`grid gap-3 rounded-md border bg-app-surface p-3 shadow-sm ${
+                className={`grid gap-3 rounded-md border bg-app-surface p-3 shadow-sm transition ${
                   activeInTeam ? "border-app-accent" : "border-app-border/80"
+                } ${isDragTarget ? "ring-2 ring-app-accent/45" : ""} ${
+                  isDragging ? "opacity-60" : ""
                 }`}
+                draggable
+                onDragEnd={handleTeamDragEnd}
+                onDragOver={(event) => handleTeamDragOver(event, team.id)}
+                onDragStart={(event) => handleTeamDragStart(event, team.id)}
+                onDrop={(event) => handleTeamDrop(event, team.id)}
                 key={team.id}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <button
-                    className="text-left text-base font-semibold text-app-fg"
-                    onClick={() =>
-                      setActiveSlot({
-                        teamId: team.id,
-                        slotIndex: Math.max(0, team.slots.findIndex((slot) => !slot)),
-                      })
-                    }
-                    type="button"
-                  >
-                    Team {teamIndex + 1}
-                  </button>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      aria-hidden="true"
+                      className="grid h-7 w-6 translate-y-px cursor-grab content-center gap-1 text-app-muted active:cursor-grabbing"
+                      title="Drag to reorder"
+                    >
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <span
+                          className="block h-0.5 w-5 rounded-full bg-current"
+                          key={index}
+                        />
+                      ))}
+                    </span>
+                    <button
+                      className="min-w-0 text-left text-base font-semibold text-app-fg"
+                      onClick={() =>
+                        setActiveSlot({
+                          teamId: team.id,
+                          slotIndex: Math.max(0, team.slots.findIndex((slot) => !slot)),
+                        })
+                      }
+                      type="button"
+                    >
+                      Team {teamIndex + 1}
+                    </button>
+                  </div>
                   <TextButton compact onClick={() => removeTeam(team.id)} variant="danger">
                     Remove
                   </TextButton>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type RefObject } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { ROLES } from "../constants";
 import {
@@ -41,10 +41,7 @@ export function Dashboard({
   onOpen,
   onInventory,
   onMatrix,
-  onExport,
-  onImport,
-  onClear,
-  importRef,
+  onSettings,
 }: {
   characters: TrackedCharacter[];
   weaponInventory: WeaponInventoryItem[];
@@ -53,10 +50,7 @@ export function Dashboard({
   onOpen: (id: string) => void;
   onInventory: () => void;
   onMatrix: () => void;
-  onExport: () => void;
-  onImport: (event: ChangeEvent<HTMLInputElement>) => void;
-  onClear: () => void;
-  importRef: RefObject<HTMLInputElement | null>;
+  onSettings: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
@@ -182,18 +176,7 @@ export function Dashboard({
               </TextButton>
               <TextButton onClick={onMatrix}>Matrix Planner</TextButton>
               <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
-              <TextButton onClick={onExport}>Export</TextButton>
-              <TextButton onClick={() => importRef.current?.click()}>Import</TextButton>
-              <TextButton onClick={onClear} variant="danger">
-                Clear
-              </TextButton>
-              <input
-                accept="application/json"
-                className="hidden"
-                onChange={onImport}
-                ref={importRef}
-                type="file"
-              />
+              <TextButton onClick={onSettings}>Settings</TextButton>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-4">

@@ -50,6 +50,7 @@ export function AddScreen({
     : [];
   const [weaponId, setWeaponId] = useState<number | null>(availableWeapons[0]?.Id ?? null);
   const [roles, setRoles] = useState<Role[]>(["DPS"]);
+  const [multipleRoles, setMultipleRoles] = useState(false);
   const [fourCostMain, setFourCostMain] = useState<FourCostMain>("CR");
   const [noCrit, setNoCrit] = useState(false);
   const [characterPickerOpen, setCharacterPickerOpen] = useState(false);
@@ -61,11 +62,23 @@ export function AddScreen({
   const selectedWeapon = availableWeapons.find((weapon) => weapon.Id === weaponId) ?? null;
 
   function toggleRole(role: Role) {
-    setRoles((current) =>
-      current.includes(role)
+    setRoles((current) => {
+      if (!multipleRoles) {
+        return [role];
+      }
+
+      return current.includes(role)
         ? current.filter((item) => item !== role)
-        : [...current, role],
-    );
+        : [...current, role];
+    });
+  }
+
+  function updateMultipleRoles(checked: boolean) {
+    setMultipleRoles(checked);
+
+    if (!checked) {
+      setRoles((current) => [current[0] ?? "DPS"]);
+    }
   }
 
   function updateSelectedCharacter(nextCharacter: ApiCharacter) {
@@ -173,7 +186,18 @@ export function AddScreen({
             />
 
             <div>
-              <div className="mb-2 text-sm font-medium text-app-muted">Roles</div>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                <div className="text-sm font-medium text-app-muted">Roles</div>
+                <label className="flex items-center gap-2 text-sm font-medium text-app-muted-subtle">
+                  <input
+                    checked={multipleRoles}
+                    className="h-4 w-4 accent-app-accent"
+                    onChange={(event) => updateMultipleRoles(event.target.checked)}
+                    type="checkbox"
+                  />
+                  Multiple roles?
+                </label>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {ROLES.map((role) => (
                   <RoleToggle

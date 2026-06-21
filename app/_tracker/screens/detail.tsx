@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { FOUR_COST_OPTIONS, ROLES } from "../constants";
 import {
   characterRoleToneClasses,
+  getEchoCritPlaceholders,
   getRatingGrade,
   getPrimaryRole,
   getPrydwenCharacterUrl,
@@ -124,10 +125,12 @@ export function DetailScreen({
     (weapon) => weapon.Type === character.weaponTypeId && (inventoryCounts[weapon.Id] ?? 0) > 0,
   );
   const ratings = getRatings(character);
+  const echoCritPlaceholders = getEchoCritPlaceholders(character.fourCostMain);
   const complete = isComplete(character);
   const primaryRole = getPrimaryRole(character.roles);
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
+  const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
   const selectedWeapon = weapons.find((weapon) => weapon.Id === character.weaponId) ?? null;
   const weaponStatus = getWeaponInventoryStatus({
     weaponId: character.weaponId,
@@ -154,6 +157,11 @@ export function DetailScreen({
   }
 
   function toggleRole(role: Role) {
+    if (!multipleRoles) {
+      patchCharacter({ roles: [role] });
+      return;
+    }
+
     const nextRoles = character.roles.includes(role)
       ? character.roles.filter((item) => item !== role)
       : [...character.roles, role];
@@ -163,6 +171,14 @@ export function DetailScreen({
     }
 
     patchCharacter({ roles: nextRoles });
+  }
+
+  function updateMultipleRoles(checked: boolean) {
+    setMultipleRoles(checked);
+
+    if (!checked) {
+      patchCharacter({ roles: [character.roles[0] ?? "DPS"] });
+    }
   }
 
   function updateWeapon(selectedWeapon: ApiWeapon | null) {
@@ -272,7 +288,18 @@ export function DetailScreen({
           ) : null}
 
           <div>
-            <div className="mb-2 text-sm font-medium text-app-muted">Roles</div>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm font-medium text-app-muted">Roles</div>
+              <label className="flex items-center gap-2 text-sm font-medium text-app-muted-subtle">
+                <input
+                  checked={multipleRoles}
+                  className="h-4 w-4 accent-app-accent"
+                  onChange={(event) => updateMultipleRoles(event.target.checked)}
+                  type="checkbox"
+                />
+                Multiple roles?
+              </label>
+            </div>
             <div className="flex flex-wrap gap-2">
               {ROLES.map((role) => (
                 <RoleToggle
@@ -337,10 +364,7 @@ export function DetailScreen({
           <div>
             <div className="mb-2 text-sm font-medium text-app-muted">Character Stats</div>
             {character.noCrit ? (
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-md border border-app-border/80 bg-app-surface px-3 py-2 text-sm font-medium text-app-muted">
-                  No crit
-                </div>
+              <div className="max-w-sm">
                 <Field label="Actual ER">
                   <ErInput
                     onChange={(value) => patchCharacter({ actualEr: value })}
@@ -354,14 +378,14 @@ export function DetailScreen({
                 <Field label="Echo Crit Rate">
                   <NumberInput
                     onChange={(value) => patchCharacter({ critRate: value })}
-                    placeholder="37.5"
+                    placeholder={echoCritPlaceholders.critRate}
                     value={character.critRate}
                   />
                 </Field>
                 <Field label="Echo Crit DMG">
                   <NumberInput
                     onChange={(value) => patchCharacter({ critDmg: value })}
-                    placeholder="75"
+                    placeholder={echoCritPlaceholders.critDmg}
                     value={character.critDmg}
                   />
                 </Field>
@@ -375,8 +399,9 @@ export function DetailScreen({
               </div>
             )}
             <p className="mt-2 text-xs leading-5 text-app-muted-dim">
-              Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main
-              character screen.
+              {character.noCrit
+                ? "Use ER from the main character screen."
+                : "Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main character screen."}
             </p>
           </div>
           {ratings.issue ? (
