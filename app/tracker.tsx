@@ -48,7 +48,7 @@ export function DashboardRoute() {
   }, [backupNoticeAcknowledgedAt, storageLoaded]);
 
   if (!storageLoaded) {
-    return <div className="min-h-screen bg-app-bg text-app-fg" />;
+    return <div className="min-h-full bg-app-bg text-app-fg" />;
   }
 
   if (!welcomeSeen) {
@@ -61,7 +61,7 @@ export function DashboardRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-full bg-app-bg text-app-fg">
       <Dashboard
         assignmentCounts={assignmentCounts}
         characters={characters}
@@ -135,7 +135,7 @@ export function SettingsRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-full bg-app-bg text-app-fg">
       <SettingsScreen
         assignmentCounts={assignmentCounts}
         characters={characters}
@@ -157,7 +157,7 @@ export function WeaponInventoryRoute() {
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-full bg-app-bg text-app-fg">
       <WeaponInventoryScreen
         assignmentCounts={assignmentCounts}
         catalog={catalog}
@@ -185,7 +185,7 @@ export function AddCharacterRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-full bg-app-bg text-app-fg">
       <AddScreen
         assignmentCounts={assignmentCounts}
         catalog={catalog}
@@ -203,7 +203,7 @@ export function MatrixRoute() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-full bg-app-bg text-app-fg">
       <MatrixScreen
         characters={characters}
         onBack={() => router.push("/")}
@@ -254,11 +254,11 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
   }
 
   if (!selectedCharacter) {
-    return <div className="min-h-screen bg-app-bg text-app-fg" />;
+    return <div className="min-h-full bg-app-bg text-app-fg" />;
   }
 
   return (
-    <div className="min-h-screen bg-app-bg text-app-fg">
+    <div className="min-h-full bg-app-bg text-app-fg">
       <DetailScreen
         assignmentCounts={assignmentCounts}
         character={selectedCharacter}

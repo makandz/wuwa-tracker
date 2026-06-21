@@ -1,3 +1,3 @@
 export default function CharacterLoading() {
-  return <div className="min-h-screen bg-app-bg text-app-fg" />;
+  return <div className="min-h-full bg-app-bg text-app-fg" />;
 }

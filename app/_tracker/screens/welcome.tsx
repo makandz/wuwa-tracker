@@ -23,7 +23,7 @@ const workflowSteps = [
 
 export function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-app-bg px-4 py-8 text-app-fg sm:px-6 lg:px-8">
+    <main className="grid min-h-full place-items-center bg-app-bg px-4 py-8 text-app-fg sm:px-6 lg:px-8">
       <section className="grid w-full max-w-2xl gap-7">
         <div className="grid gap-3">
           <p className="text-sm font-semibold text-app-accent">Wuthering Waves Tracker</p>
