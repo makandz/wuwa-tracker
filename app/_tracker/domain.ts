@@ -436,21 +436,21 @@ export function rolePillClasses(role: Role) {
 export function characterRoleToneClasses(role: Role, complete: boolean) {
   const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
     DPS: {
-      complete: "border-role-dps-border border-l-4 bg-role-dps-bg/72",
+      complete: "border-app-border/80 bg-role-dps-bg/72",
       incomplete: "border-role-dps-border/40 border-l-4 bg-role-dps-bg/18",
       status: complete
         ? "border border-role-dps-border bg-role-dps-active text-role-dps-text"
         : "border border-role-dps-border/40 bg-role-dps-bg/20 text-app-muted-subtle",
     },
     Hybrid: {
-      complete: "border-role-hybrid-border border-l-4 bg-role-hybrid-bg/72",
+      complete: "border-app-border/80 bg-role-hybrid-bg/72",
       incomplete: "border-role-hybrid-border/40 border-l-4 bg-role-hybrid-bg/18",
       status: complete
         ? "border border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text"
         : "border border-role-hybrid-border/40 bg-role-hybrid-bg/20 text-app-muted-subtle",
     },
     Support: {
-      complete: "border-role-support-border border-l-4 bg-role-support-bg/72",
+      complete: "border-app-border/80 bg-role-support-bg/72",
       incomplete: "border-role-support-border/40 border-l-4 bg-role-support-bg/18",
       status: complete
         ? "border border-role-support-border bg-role-support-active text-role-support-text"
