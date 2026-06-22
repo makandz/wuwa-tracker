@@ -13,7 +13,7 @@ import {
 } from "../domain";
 import { ROLES } from "../constants";
 import type { MatrixTeam, TrackedCharacter } from "../types";
-import { CharacterAvatar, SearchInput, StatBlock, TextButton } from "../components/ui";
+import { CharacterAvatar, SearchInput, TextButton } from "../components/ui";
 
 const EMPTY_SLOTS: MatrixTeam["slots"] = [null, null, null];
 
@@ -190,7 +190,6 @@ export function MatrixScreen({
     (sum, team) => sum + team.slots.filter(Boolean).length,
     0,
   );
-  const fullTeams = cleanedTeams.filter((team) => team.slots.every(Boolean)).length;
   const resolvedActiveSlot =
     activeSlot && cleanedTeams.some((team) => team.id === activeSlot.teamId)
       ? activeSlot
@@ -396,12 +395,6 @@ export function MatrixScreen({
                 Clear Teams
               </TextButton>
             </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-4">
-            <StatBlock label="Teams" value={String(cleanedTeams.length)} />
-            <StatBlock label="Complete" value={`${fullTeams}/${cleanedTeams.length}`} />
-            <StatBlock label="Slots Filled" value={`${filledSlots}/${cleanedTeams.length * 3}`} />
-            <StatBlock label="Roster" value={String(characters.length)} />
           </div>
         </div>
       </section>
