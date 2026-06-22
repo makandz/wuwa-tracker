@@ -15,6 +15,7 @@ import {
   isComplete,
   ratingGradeClasses,
 } from "../domain";
+import { getCharacterRotations } from "../rotations";
 import type {
   ApiWeapon,
   Checklist,
@@ -24,6 +25,7 @@ import type {
   WeaponInventoryItem,
 } from "../types";
 import { PickerSummary, WeaponPickerModal } from "../components/pickers";
+import { CharacterRotationsSection } from "../components/rotations";
 import {
   CharacterAvatar,
   ErInput,
@@ -132,6 +134,7 @@ export function DetailScreen({
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
   const selectedWeapon = weapons.find((weapon) => weapon.Id === character.weaponId) ?? null;
+  const rotations = getCharacterRotations(character.characterName);
   const weaponStatus = getWeaponInventoryStatus({
     weaponId: character.weaponId,
     inventory: weaponInventory,
@@ -458,6 +461,8 @@ export function DetailScreen({
           </Field>
         </section>
       </div>
+
+      <CharacterRotationsSection rotations={rotations} />
     </main>
   );
 }
