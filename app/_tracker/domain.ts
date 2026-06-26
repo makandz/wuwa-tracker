@@ -1,5 +1,7 @@
 import {
   CHECKLIST_ITEM_COUNT,
+  ECHO_CHECKLIST_ITEMS,
+  ECHO_RELEVANT_SUBSTAT_OPTIONS,
   MATRIX_DOUBLE_USE_CHARACTER_IDS,
   MATRIX_DOUBLE_USE_CHARACTER_NAMES,
   PRYDWEN_CHARACTER_BASE_URL,
@@ -11,6 +13,9 @@ import type {
   Checklist,
   CharacterBadgeTone,
   DashboardSortKey,
+  EchoChecker,
+  EchoCheckerEcho,
+  EchoCheckerPlan,
   FourCostMain,
   RatingGrade,
   RatingValue,
@@ -45,17 +50,162 @@ const ECHO_CRIT_RATE_BASE = 0.375;
 const ECHO_CRIT_DMG_BASE = 0.75;
 const FOUR_COST_CRIT_RATE_BONUS = 0.22;
 const FOUR_COST_CRIT_DMG_BONUS = 0.44;
+const ECHO_CHECKER_DPS_TARGET_CRIT_VALUE = 30;
 
 export function checklistTotal(checklist: Checklist) {
   return Object.values(checklist).filter(Boolean).length;
 }
 
+export function getDefaultEchoCheckerPlan(roles: Role[]): EchoCheckerPlan {
+  return getPrimaryRole(roles) === "DPS" ? "DPS" : "HybridSupport";
+}
+
+export function createDefaultEchoChecker(roles: Role[]): EchoChecker {
+  return {
+    enabled: true,
+    plan: getDefaultEchoCheckerPlan(roles),
+    echoes: ECHO_CHECKLIST_ITEMS.reduce(
+      (echoes, item) => ({
+        ...echoes,
+        [item.key]: {
+          critRate: null,
+          critDmg: null,
+          hasRelevantStat: false,
+          hasSecondRelevantStat: false,
+        },
+      }),
+      {} as EchoChecker["echoes"],
+    ),
+    substatPriority: "",
+    substats: ECHO_RELEVANT_SUBSTAT_OPTIONS.map((item) => ({ ...item })),
+  };
+}
+
+export function getEchoCheckerCritValue(echo: EchoCheckerEcho) {
+  if (echo.critRate === null || echo.critDmg === null) {
+    return null;
+  }
+
+  return Math.round((echo.critRate * 2 + echo.critDmg) * 10) / 10;
+}
+
+export function getEchoCheckerCritValueRating(echo: EchoCheckerEcho) {
+  const critValue = getEchoCheckerCritValue(echo);
+
+  if (critValue === null) {
+    return null;
+  }
+
+  return roundRating(critValue / ECHO_CHECKER_DPS_TARGET_CRIT_VALUE);
+}
+
+export function isEchoCheckerEchoComplete(
+  echo: EchoCheckerEcho,
+  plan: EchoCheckerPlan,
+) {
+  const hasDoubleCrit = echo.critRate !== null && echo.critDmg !== null;
+
+  if (!hasDoubleCrit) {
+    return false;
+  }
+
+  if (plan === "HybridSupport") {
+    return true;
+  }
+
+  const critValue = getEchoCheckerCritValue(echo);
+  const hasTwoTargetStats = echo.hasRelevantStat && echo.hasSecondRelevantStat;
+
+  return (
+    hasTwoTargetStats ||
+    (critValue !== null &&
+      critValue >= ECHO_CHECKER_DPS_TARGET_CRIT_VALUE &&
+      echo.hasRelevantStat)
+  );
+}
+
+export function isEchoCheckerEnabled(character: TrackedCharacter) {
+  return !character.noCrit && character.echoChecker?.enabled === true;
+}
+
+export function getEchoCheckerEcho(
+  character: TrackedCharacter,
+  key: keyof Omit<Checklist, "skills">,
+) {
+  return (
+    character.echoChecker?.echoes?.[key] ?? {
+      critRate: null,
+      critDmg: null,
+      hasRelevantStat: false,
+      hasSecondRelevantStat: false,
+    }
+  );
+}
+
+function roundEchoCritStat(value: number) {
+  return Math.round(value * 1000) / 1000;
+}
+
+export function getEchoCheckerCalculatedCritStats(character: TrackedCharacter) {
+  const { critRateBase, critDmgBase } = getFourCostCritBases(character.fourCostMain);
+  const totals = ECHO_CHECKLIST_ITEMS.reduce(
+    (stats, item) => {
+      const echo = getEchoCheckerEcho(character, item.key);
+
+      return {
+        critRate: stats.critRate + (echo.critRate ?? 0) / 100,
+        critDmg: stats.critDmg + (echo.critDmg ?? 0) / 100,
+      };
+    },
+    {
+      critRate: critRateBase,
+      critDmg: critDmgBase,
+    },
+  );
+
+  return {
+    critRate: roundEchoCritStat(totals.critRate),
+    critDmg: roundEchoCritStat(totals.critDmg),
+  };
+}
+
+export function getEffectiveEchoCritStats(character: TrackedCharacter) {
+  if (isEchoCheckerEnabled(character)) {
+    return getEchoCheckerCalculatedCritStats(character);
+  }
+
+  return {
+    critRate: character.critRate,
+    critDmg: character.critDmg,
+  };
+}
+
+export function getEffectiveChecklist(character: TrackedCharacter): Checklist {
+  if (!isEchoCheckerEnabled(character)) {
+    return character.checklist;
+  }
+
+  const plan = character.echoChecker?.plan ?? getDefaultEchoCheckerPlan(character.roles);
+  const echoChecklist = ECHO_CHECKLIST_ITEMS.reduce(
+    (checklist, item) => ({
+      ...checklist,
+      [item.key]: isEchoCheckerEchoComplete(getEchoCheckerEcho(character, item.key), plan),
+    }),
+    {} as Pick<Checklist, keyof Omit<Checklist, "skills">>,
+  );
+
+  return {
+    ...character.checklist,
+    ...echoChecklist,
+  };
+}
+
 export function checklistProgress(character: TrackedCharacter) {
-  return (checklistTotal(character.checklist) / CHECKLIST_ITEM_COUNT) * 100;
+  return (checklistTotal(getEffectiveChecklist(character)) / CHECKLIST_ITEM_COUNT) * 100;
 }
 
 export function isComplete(character: TrackedCharacter) {
-  return checklistTotal(character.checklist) === CHECKLIST_ITEM_COUNT;
+  return checklistTotal(getEffectiveChecklist(character)) === CHECKLIST_ITEM_COUNT;
 }
 
 export function getPrimaryRole(roles: Role[]) {
@@ -166,8 +316,9 @@ export function getRatings(character: TrackedCharacter) {
   }
 
   const { critRateBase, critDmgBase } = getFourCostCritBases(character.fourCostMain);
-  const crRating = (character.critRate - critRateBase) / (0.075 * 5);
-  const cdRating = (character.critDmg - critDmgBase) / (0.15 * 5);
+  const { critRate, critDmg } = getEffectiveEchoCritStats(character);
+  const crRating = (critRate - critRateBase) / (0.075 * 5);
+  const cdRating = (critDmg - critDmgBase) / (0.15 * 5);
   const crRatingValid = crRating >= 0;
   const cdRatingValid = cdRating >= 0;
   const weighted = crRatingValid && cdRatingValid ? (crRating + cdRating) / 2 : null;

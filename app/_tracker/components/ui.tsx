@@ -96,6 +96,54 @@ export function RatingBlock({ label, value }: { label: string; value: RatingValu
   );
 }
 
+export function RatingSummaryBlock({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: RatingValue;
+  tone?: "neutral" | "good" | "warn";
+}) {
+  const toneClass =
+    tone === "good"
+      ? "border-status-good-border bg-status-good-bg text-status-good-text"
+      : tone === "warn"
+        ? "border-status-warn-border bg-status-warn-bg text-status-warn-text"
+        : "border-app-border/80 bg-app-surface text-app-fg";
+
+  if (value === null) {
+    return (
+      <div className={`rounded-md border p-3 ${toneClass}`}>
+        <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+          {label}
+        </div>
+        <div className="mt-1 text-lg font-semibold leading-none">Check stats</div>
+      </div>
+    );
+  }
+
+  const grade = getRatingGrade(value);
+
+  return (
+    <div className={`rounded-md border p-3 ${toneClass}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+        {label}
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span
+          className={`rounded px-2 py-1 text-base font-bold leading-none ${ratingGradeClasses(
+            grade,
+          )}`}
+        >
+          {grade}
+        </span>
+        <span className="text-lg font-semibold leading-none">{value.toFixed(2)}</span>
+      </div>
+    </div>
+  );
+}
+
 export function TextButton({
   children,
   className = "",
@@ -173,19 +221,30 @@ export function NumberInput({
   value,
   onChange,
   placeholder,
+  disabled = false,
 }: {
   value: number;
   onChange: (value: number) => void;
   placeholder?: string;
+  disabled?: boolean;
 }) {
   const [draftValue, setDraftValue] = useState(() => formatDecimalInputValue(value * 100));
   const [focused, setFocused] = useState(false);
-  const displayValue = focused ? draftValue : formatDecimalInputValue(value * 100);
+  const displayValue = focused
+    ? draftValue
+    : disabled && value === 0
+      ? "0"
+      : formatDecimalInputValue(value * 100);
 
   return (
     <div className="relative">
       <input
-        className="h-11 w-full rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
+        className={`h-11 w-full rounded-md border border-app-border px-3 pr-9 text-sm outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
+          disabled
+            ? "cursor-not-allowed bg-app-raised text-app-muted-subtle"
+            : "bg-app-surface text-app-fg"
+        }`}
+        disabled={disabled}
         inputMode="decimal"
         onBlur={() => setFocused(false)}
         onChange={(event) => {
@@ -343,6 +402,7 @@ export function SelectInput<TValue extends string>({
   onChange,
   compact = false,
   showLabel = true,
+  selectClassName = "",
 }: {
   label: string;
   value: TValue;
@@ -350,6 +410,7 @@ export function SelectInput<TValue extends string>({
   onChange: (value: TValue) => void;
   compact?: boolean;
   showLabel?: boolean;
+  selectClassName?: string;
 }) {
   return (
     <label
@@ -363,7 +424,7 @@ export function SelectInput<TValue extends string>({
           aria-label={label}
           className={`w-full appearance-none rounded-md border border-app-border bg-app-surface font-semibold text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
             compact ? "h-9 pl-2.5 pr-8 text-xs" : "h-11 pl-3 pr-11 text-sm"
-          }`}
+          } ${selectClassName}`}
           onChange={(event) => onChange(event.target.value as TValue)}
           value={value}
         >

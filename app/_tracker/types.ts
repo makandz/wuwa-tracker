@@ -1,5 +1,6 @@
 export type Role = "DPS" | "Hybrid" | "Support";
 export type FourCostMain = "CR" | "CD" | "BOTH";
+export type EchoCheckerPlan = "DPS" | "HybridSupport";
 export type WeaponRarityTone = "blue" | "purple" | "standardGold" | "limitedGold" | "neutral";
 export type CharacterBadgeTone = "blue";
 export type RatingGrade =
@@ -65,6 +66,29 @@ export type Checklist = {
   oneCostB: boolean;
 };
 
+export type EchoChecklistKey = Exclude<keyof Checklist, "skills">;
+
+export type EchoCheckerEcho = {
+  critRate: number | null;
+  critDmg: number | null;
+  hasRelevantStat: boolean;
+  hasSecondRelevantStat: boolean;
+};
+
+export type EchoCheckerSubstat = {
+  id: string;
+  label: string;
+  checked: boolean;
+};
+
+export type EchoChecker = {
+  enabled: boolean;
+  plan: EchoCheckerPlan;
+  echoes: Record<EchoChecklistKey, EchoCheckerEcho>;
+  substatPriority: string;
+  substats: EchoCheckerSubstat[];
+};
+
 export type TrackedCharacter = {
   id: string;
   characterId: number;
@@ -83,6 +107,7 @@ export type TrackedCharacter = {
   critRate: number;
   critDmg: number;
   checklist: Checklist;
+  echoChecker?: EchoChecker;
   expectedEr: number;
   actualEr: number;
   notes: string;

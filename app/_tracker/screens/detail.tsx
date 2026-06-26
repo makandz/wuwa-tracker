@@ -2,24 +2,29 @@
 
 import { useMemo, useState } from "react";
 
-import { FOUR_COST_OPTIONS, ROLES } from "../constants";
+import {
+  ECHO_CHECKLIST_ITEMS,
+  FOUR_COST_OPTIONS,
+  ROLES,
+} from "../constants";
 import {
   characterRoleToneClasses,
+  createDefaultEchoChecker,
   getEchoCritPlaceholders,
-  getRatingGrade,
+  getEffectiveEchoCritStats,
+  getEffectiveChecklist,
   getPrimaryRole,
   getPrydwenCharacterUrl,
   getRatings,
   getWeaponInventoryStatus,
   getWeaponRarityTone,
+  isEchoCheckerEnabled,
   isComplete,
-  ratingGradeClasses,
 } from "../domain";
 import { getCharacterRotations } from "../rotations";
 import type {
   ApiWeapon,
   Checklist,
-  RatingValue,
   Role,
   TrackedCharacter,
   WeaponInventoryItem,
@@ -31,6 +36,7 @@ import {
   ErInput,
   Field,
   NumberInput,
+  RatingSummaryBlock,
   RoleToggle,
   TextButton,
   TextLink,
@@ -42,62 +48,6 @@ const FORTE_CHECKLIST_ITEM = {
   label: "Skills / Forte level ups",
 } satisfies { key: keyof Checklist; label: string };
 
-const ECHO_CHECKLIST_ITEMS = [
-  { key: "fourCost", label: "Echo 1" },
-  { key: "threeCostA", label: "Echo 2" },
-  { key: "threeCostB", label: "Echo 3" },
-  { key: "oneCostA", label: "Echo 4" },
-  { key: "oneCostB", label: "Echo 5" },
-] satisfies { key: keyof Checklist; label: string }[];
-
-function RatingSummaryBlock({
-  label,
-  value,
-  tone = "neutral",
-}: {
-  label: string;
-  value: RatingValue;
-  tone?: "neutral" | "good" | "warn";
-}) {
-  const toneClass =
-    tone === "good"
-      ? "border-status-good-border bg-status-good-bg text-status-good-text"
-      : tone === "warn"
-        ? "border-status-warn-border bg-status-warn-bg text-status-warn-text"
-        : "border-app-border/80 bg-app-surface text-app-fg";
-
-  if (value === null) {
-    return (
-      <div className={`rounded-md border p-3 ${toneClass}`}>
-        <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
-          {label}
-        </div>
-        <div className="mt-1 text-lg font-semibold leading-none">Check stats</div>
-      </div>
-    );
-  }
-
-  const grade = getRatingGrade(value);
-
-  return (
-    <div className={`rounded-md border p-3 ${toneClass}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
-        {label}
-      </div>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span
-          className={`rounded px-2 py-1 text-base font-bold leading-none ${ratingGradeClasses(
-            grade,
-          )}`}
-        >
-          {grade}
-        </span>
-        <span className="text-lg font-semibold leading-none">{value.toFixed(2)}</span>
-      </div>
-    </div>
-  );
-}
-
 export function DetailScreen({
   character,
   weapons,
@@ -105,6 +55,7 @@ export function DetailScreen({
   assignmentCounts,
   onBack,
   onDelete,
+  onOpenEchoChecker,
   onUpdate,
 }: {
   character: TrackedCharacter;
@@ -113,6 +64,7 @@ export function DetailScreen({
   assignmentCounts: Record<number, number>;
   onBack: () => void;
   onDelete: () => void;
+  onOpenEchoChecker: () => void;
   onUpdate: (character: TrackedCharacter) => void;
 }) {
   const inventoryCounts = useMemo(
@@ -128,6 +80,9 @@ export function DetailScreen({
   );
   const ratings = getRatings(character);
   const echoCritPlaceholders = getEchoCritPlaceholders(character.fourCostMain);
+  const effectiveChecklist = getEffectiveChecklist(character);
+  const echoCheckerActive = isEchoCheckerEnabled(character);
+  const effectiveEchoCritStats = getEffectiveEchoCritStats(character);
   const complete = isComplete(character);
   const primaryRole = getPrimaryRole(character.roles);
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
@@ -157,6 +112,43 @@ export function DetailScreen({
         [key]: value,
       },
     });
+  }
+
+  function disableEchoChecker() {
+    if (!character.echoChecker) {
+      return;
+    }
+
+    patchCharacter({
+      echoChecker: {
+        ...character.echoChecker,
+        enabled: false,
+      },
+    });
+  }
+
+  function enableEchoChecker() {
+    if (character.noCrit) {
+      return;
+    }
+
+    patchCharacter({
+      echoChecker: character.echoChecker
+        ? {
+            ...character.echoChecker,
+            enabled: true,
+          }
+        : createDefaultEchoChecker(character.roles),
+    });
+  }
+
+  function toggleEchoMode() {
+    if (echoCheckerActive) {
+      disableEchoChecker();
+      return;
+    }
+
+    enableEchoChecker();
   }
 
   function toggleRole(role: Role) {
@@ -365,7 +357,14 @@ export function DetailScreen({
         <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
           <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div>
-            <div className="mb-2 text-sm font-medium text-app-muted">Character Stats</div>
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <div className="text-sm font-medium text-app-muted">Character Stats</div>
+              {echoCheckerActive && !character.noCrit ? (
+                <span className="rounded border border-app-accent/55 bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-fg">
+                  Echo Tracker
+                </span>
+              ) : null}
+            </div>
             {character.noCrit ? (
               <div className="max-w-sm">
                 <Field label="Actual ER">
@@ -380,16 +379,18 @@ export function DetailScreen({
               <div className="grid gap-3 sm:grid-cols-3">
                 <Field label="Echo Crit Rate">
                   <NumberInput
+                    disabled={echoCheckerActive}
                     onChange={(value) => patchCharacter({ critRate: value })}
                     placeholder={echoCritPlaceholders.critRate}
-                    value={character.critRate}
+                    value={effectiveEchoCritStats.critRate}
                   />
                 </Field>
                 <Field label="Echo Crit DMG">
                   <NumberInput
+                    disabled={echoCheckerActive}
                     onChange={(value) => patchCharacter({ critDmg: value })}
                     placeholder={echoCritPlaceholders.critDmg}
-                    value={character.critDmg}
+                    value={effectiveEchoCritStats.critDmg}
                   />
                 </Field>
                 <Field label="Actual ER">
@@ -404,7 +405,9 @@ export function DetailScreen({
             <p className="mt-2 text-xs leading-5 text-app-muted-dim">
               {character.noCrit
                 ? "Use ER from the main character screen."
-                : "Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main character screen."}
+                : echoCheckerActive
+                  ? "Crit Rate and Crit DMG are calculated from Echo Tracker rolls plus the selected 4 cost main stat."
+                  : "Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main character screen."}
             </p>
           </div>
           {ratings.issue ? (
@@ -435,18 +438,66 @@ export function DetailScreen({
                 <div className="grid flex-1 grid-cols-5 gap-2 min-[520px]:flex min-[520px]:justify-end">
                   {ECHO_CHECKLIST_ITEMS.map((item) => (
                     <label
-                      className="flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-app-border bg-app-surface px-2 py-2 text-xs font-semibold text-app-muted"
+                      className={`flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border px-2 py-2 text-xs font-semibold ${
+                        echoCheckerActive
+                          ? effectiveChecklist[item.key]
+                            ? "border-status-good-border bg-status-good-bg text-status-good-text"
+                            : "border-status-warn-border bg-status-warn-bg text-status-warn-text"
+                          : "border-app-border bg-app-surface text-app-muted"
+                      }`}
                       key={item.key}
                     >
                       <span>{item.label}</span>
                       <input
-                        checked={character.checklist[item.key]}
-                        className="h-4 w-4 shrink-0 accent-app-accent"
+                        checked={effectiveChecklist[item.key]}
+                        className="h-4 w-4 shrink-0 accent-app-accent disabled:opacity-70"
+                        disabled={echoCheckerActive}
                         onChange={(event) => patchChecklist(item.key, event.target.checked)}
                         type="checkbox"
                       />
                     </label>
                   ))}
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-app-border/70 pt-3">
+                {character.noCrit ? (
+                  <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs font-medium text-status-warn-text">
+                    Echo Checker needs a crit-focused 4 cost setup.
+                  </div>
+                ) : (
+                  <div className="text-xs font-medium text-app-muted-dim">
+                    {echoCheckerActive
+                      ? "Echo slots are controlled by the checker."
+                      : "Manual echo tracking is active."}
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {character.noCrit ? (
+                    <button
+                      className="h-8 cursor-not-allowed rounded-md border border-app-border bg-app-surface px-3 text-xs font-semibold text-app-muted-dim opacity-70"
+                      disabled
+                      type="button"
+                    >
+                      Echo Mode
+                    </button>
+                  ) : (
+                    <TextButton compact onClick={toggleEchoMode}>
+                      {echoCheckerActive ? "Manual Mode" : "Echo Mode"}
+                    </TextButton>
+                  )}
+                  {echoCheckerActive ? (
+                    <TextButton compact onClick={onOpenEchoChecker} variant="primary">
+                      Echo Tracker
+                    </TextButton>
+                  ) : (
+                    <button
+                      className="h-8 cursor-not-allowed rounded-md border border-app-border bg-app-surface px-3 text-xs font-semibold text-app-muted-dim opacity-70"
+                      disabled
+                      type="button"
+                    >
+                      Echo Tracker
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

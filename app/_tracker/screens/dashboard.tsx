@@ -9,6 +9,7 @@ import {
   formatPercent,
   formatRatingValue,
   formatRoleSummaryValue,
+  getEffectiveChecklist,
   getPrimaryRole,
   getRatings,
   getRoleSummary,
@@ -363,7 +364,8 @@ export function Dashboard({
                   const complete = isComplete(character);
                   const primaryRole = getPrimaryRole(character.roles);
                   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
-                  const checklistCount = checklistTotal(character.checklist);
+                  const effectiveChecklist = getEffectiveChecklist(character);
+                  const checklistCount = checklistTotal(effectiveChecklist);
                   const ratings = getRatings(character);
                   const weaponStatus = getWeaponInventoryStatus({
                     weaponId: character.weaponId,
@@ -425,7 +427,7 @@ export function Dashboard({
                             <span className="text-app-muted-dim">{checklistCount}/6</span>
                           </div>
                           <div className="mt-1.5">
-                            <ChecklistProgressSegments checklist={character.checklist} />
+                            <ChecklistProgressSegments checklist={effectiveChecklist} />
                           </div>
                         </div>
                         {character.noCrit ? (
