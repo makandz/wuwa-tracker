@@ -2,13 +2,22 @@ import {
   BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
   DASHBOARD_SORT_KEYS,
   DASHBOARD_SORT_STORAGE_KEY,
+  DASHBOARD_VIEW_MODES,
+  DASHBOARD_VIEW_STORAGE_KEY,
   DEFAULT_DASHBOARD_SORT_KEY,
+  DEFAULT_DASHBOARD_VIEW_MODE,
   INVENTORY_STORAGE_KEY,
   MATRIX_STORAGE_KEY,
   STORAGE_KEY,
   WELCOME_SEEN_STORAGE_KEY,
 } from "./constants";
-import type { DashboardSortKey, MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "./types";
+import type {
+  DashboardSortKey,
+  DashboardViewMode,
+  MatrixTeam,
+  TrackedCharacter,
+  WeaponInventoryItem,
+} from "./types";
 
 function createEmptyMatrixTeam(id = "team-1"): MatrixTeam {
   return {
@@ -186,6 +195,30 @@ export function readStoredDashboardSortKey() {
 
 export function writeStoredDashboardSortKey(sortKey: DashboardSortKey) {
   localStorage.setItem(DASHBOARD_SORT_STORAGE_KEY, sortKey);
+}
+
+export function isDashboardViewMode(value: unknown): value is DashboardViewMode {
+  return DASHBOARD_VIEW_MODES.includes(value as DashboardViewMode);
+}
+
+export function readStoredDashboardViewMode() {
+  try {
+    if (typeof window === "undefined") {
+      return DEFAULT_DASHBOARD_VIEW_MODE;
+    }
+
+    const storedViewMode = localStorage.getItem(DASHBOARD_VIEW_STORAGE_KEY);
+
+    return isDashboardViewMode(storedViewMode)
+      ? storedViewMode
+      : DEFAULT_DASHBOARD_VIEW_MODE;
+  } catch {
+    return DEFAULT_DASHBOARD_VIEW_MODE;
+  }
+}
+
+export function writeStoredDashboardViewMode(viewMode: DashboardViewMode) {
+  localStorage.setItem(DASHBOARD_VIEW_STORAGE_KEY, viewMode);
 }
 
 export function readStoredWelcomeSeen() {

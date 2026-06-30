@@ -1,6 +1,7 @@
 import type {
   Checklist,
   DashboardSortKey,
+  DashboardViewMode,
   EchoChecklistKey,
   EchoCheckerPlan,
   Role,
@@ -11,6 +12,7 @@ export const WEAPON_API = "https://api-v2.encore.moe/api/en/weapon";
 export const STORAGE_KEY = "wuwa-tracker.characters.v1";
 export const INVENTORY_STORAGE_KEY = "wuwa-tracker.weapon-inventory.v1";
 export const DASHBOARD_SORT_STORAGE_KEY = "wuwa-tracker.dashboard-sort.v1";
+export const DASHBOARD_VIEW_STORAGE_KEY = "wuwa-tracker.dashboard-view.v1";
 export const MATRIX_STORAGE_KEY = "wuwa-tracker.matrix-teams.v1";
 export const WELCOME_SEEN_STORAGE_KEY = "wuwa-tracker.welcome-seen.v1";
 export const BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY =
@@ -40,6 +42,8 @@ export const DASHBOARD_SORT_KEYS: DashboardSortKey[] = [
   "weightAsc",
 ];
 export const DEFAULT_DASHBOARD_SORT_KEY: DashboardSortKey = "weightDesc";
+export const DASHBOARD_VIEW_MODES: DashboardViewMode[] = ["list", "grid"];
+export const DEFAULT_DASHBOARD_VIEW_MODE: DashboardViewMode = "list";
 
 export const STANDARD_FIVE_STAR_WEAPONS = new Set([
   "abyss surges",

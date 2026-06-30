@@ -23,6 +23,7 @@ export type DashboardSortKey =
   | "completionAsc"
   | "weightDesc"
   | "weightAsc";
+export type DashboardViewMode = "list" | "grid";
 export type RoleFilter = "all" | Role;
 export type WeaponFilter = "all" | "selected" | "missing" | "attention";
 export type RatingValue = number | null;

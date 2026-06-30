@@ -21,8 +21,20 @@ import {
   roleSectionClasses,
   sortDashboardCharacters,
 } from "../domain";
-import { readStoredDashboardSortKey, writeStoredDashboardSortKey } from "../storage";
-import type { DashboardSortKey, RoleFilter, TrackedCharacter, WeaponFilter, WeaponInventoryItem } from "../types";
+import {
+  readStoredDashboardSortKey,
+  readStoredDashboardViewMode,
+  writeStoredDashboardSortKey,
+  writeStoredDashboardViewMode,
+} from "../storage";
+import type {
+  DashboardSortKey,
+  DashboardViewMode,
+  RoleFilter,
+  TrackedCharacter,
+  WeaponFilter,
+  WeaponInventoryItem,
+} from "../types";
 import {
   CharacterAvatar,
   ChecklistProgressSegments,
@@ -62,6 +74,9 @@ export function Dashboard({
   const [weaponFilter, setWeaponFilter] = useState<WeaponFilter>("all");
   const [hideComplete, setHideComplete] = useState(false);
   const [sortKey, setSortKey] = useState<DashboardSortKey>(readStoredDashboardSortKey);
+  const [dashboardView, setDashboardView] = useState<DashboardViewMode>(
+    readStoredDashboardViewMode,
+  );
   const completeCount = characters.filter(isComplete).length;
   const critWeightedCharacters = characters.filter((character) => !character.noCrit);
   const validWeights = critWeightedCharacters
@@ -158,6 +173,10 @@ export function Dashboard({
   useEffect(() => {
     writeStoredDashboardSortKey(sortKey);
   }, [sortKey]);
+
+  useEffect(() => {
+    writeStoredDashboardViewMode(dashboardView);
+  }, [dashboardView]);
 
   const filtersActive =
     normalizedQuery ||
@@ -306,6 +325,27 @@ export function Dashboard({
                 />
                 Hide completed
               </label>
+              <div
+                aria-label="Dashboard view"
+                className="flex h-9 rounded-md border border-app-border bg-app-bg p-0.5"
+                role="group"
+              >
+                {(["list", "grid"] as const).map((viewMode) => (
+                  <button
+                    aria-pressed={dashboardView === viewMode}
+                    className={`rounded px-2.5 text-xs font-semibold capitalize transition ${
+                      dashboardView === viewMode
+                        ? "bg-app-accent text-app-bg"
+                        : "text-app-muted hover:bg-app-raised hover:text-app-fg"
+                    }`}
+                    key={viewMode}
+                    onClick={() => setDashboardView(viewMode)}
+                    type="button"
+                  >
+                    {viewMode}
+                  </button>
+                ))}
+              </div>
               <div className="ml-auto flex min-h-9 items-center gap-2">
                 <span className="whitespace-nowrap text-xs font-medium text-app-muted-dim">
                   {visibleCharacters.length}/{characters.length}
@@ -360,154 +400,346 @@ export function Dashboard({
                   </div>
                 </div>
 
-                {group.characters.map((character) => {
-                  const complete = isComplete(character);
-                  const primaryRole = getPrimaryRole(character.roles);
-                  const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
-                  const effectiveChecklist = getEffectiveChecklist(character);
-                  const checklistCount = checklistTotal(effectiveChecklist);
-                  const ratings = getRatings(character);
-                  const weaponStatus = getWeaponInventoryStatus({
-                    weaponId: character.weaponId,
-                    inventory: weaponInventory,
-                    assignmentCounts,
-                  });
-                  const weaponTone = getWeaponRarityTone({
-                    name: character.weaponName,
-                    qualityId: character.weaponQualityId,
-                  });
-                  const weaponToneClasses = getWeaponToneClasses(weaponTone);
-                  const erBelowTarget =
-                    character.expectedEr > 0 && character.actualEr < character.expectedEr;
-
-                  return (
-                    <button
-                      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(180px,0.65fr)_minmax(250px,1fr)_minmax(210px,0.85fr)] ${
-                        characterToneClasses.card
-                      }`}
-                      key={character.id}
-                      onClick={() => onOpen(character.id)}
-                      type="button"
-                    >
-                      <div className="flex min-w-0 gap-3">
-                        <CharacterAvatar character={character} />
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <h2 className="truncate text-sm font-semibold text-app-fg">
-                              {character.characterName}
-                            </h2>
-                            <span
-                              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
-                            >
-                              {complete ? "Done" : "In progress"}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 text-[11px] text-app-muted-subtle">
-                            {character.elementName} / {character.weaponTypeName}
-                          </p>
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {character.roles.map((role) => (
-                              <span
-                                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
-                                  role,
-                                )}`}
-                                key={role}
-                              >
-                                {role}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-medium text-app-muted">Checklist</span>
-                            <span className="text-app-muted-dim">{checklistCount}/6</span>
-                          </div>
-                          <div className="mt-1.5">
-                            <ChecklistProgressSegments checklist={effectiveChecklist} />
-                          </div>
-                        </div>
-                        {character.noCrit ? (
-                          <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
-                            <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
-                              Rating
-                            </div>
-                            <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
-                              No crit
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="grid grid-cols-3 gap-1.5">
-                            <RatingBlock label="CR" value={ratings.crRating} />
-                            <RatingBlock label="CD" value={ratings.cdRating} />
-                            <RatingBlock label="Weight" value={ratings.weighted} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid content-start gap-1.5 text-xs text-app-muted">
-                        <div className="flex justify-between gap-3">
-                          <span className="text-app-muted-dim">Weapon</span>
-                          <span className="flex min-w-0 flex-wrap justify-end gap-1">
-                            <span
-                              className={`truncate rounded px-1.5 py-0.5 font-semibold ${
-                                character.weaponName
-                                  ? `${weaponToneClasses.badge}`
-                                  : "bg-app-raised text-app-muted-subtle"
-                              }`}
-                            >
-                              {character.weaponName || "Not selected"}
-                            </span>
-                            <WeaponStatusBadge status={weaponStatus} />
-                          </span>
-                        </div>
-                        {character.noCrit ? null : (
-                          <div className="flex justify-between gap-3">
-                            <span className="text-app-muted-dim">Echo Crit</span>
-                            <span className="font-medium text-app-fg">
-                              {formatPercent(character.critRate)} / {formatPercent(character.critDmg)}
-                            </span>
-                          </div>
-                        )}
-                        <div
-                          className={`flex justify-between gap-3 rounded px-1.5 py-1 ${
-                            erBelowTarget
-                              ? "border border-status-warn-border bg-status-warn-bg text-status-warn-text"
-                              : ""
-                          }`}
-                        >
-                          <span className="text-app-muted-dim">ER</span>
-                          <span
-                            className={`font-medium ${
-                              erBelowTarget ? "text-status-warn-text" : "text-app-fg"
-                            }`}
-                          >
-                            {character.actualEr || 0}% / {character.expectedEr || 0}%
-                          </span>
-                        </div>
-                        {character.notes.trim() ? (
-                          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-                            <span className="text-app-muted-dim">Notes</span>
-                            <span
-                              className="block min-w-0 truncate rounded bg-app-surface/70 px-1.5 py-1 text-right font-medium text-app-fg"
-                              title={character.notes}
-                            >
-                              {character.notes}
-                            </span>
-                          </div>
-                        ) : null}
-                      </div>
-                    </button>
-                  );
-                })}
+                <div
+                  className={
+                    dashboardView === "grid"
+                      ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                      : "grid gap-2"
+                  }
+                >
+                  {group.characters.map((character) =>
+                    dashboardView === "grid" ? (
+                      <DashboardGridCard
+                        assignmentCounts={assignmentCounts}
+                        character={character}
+                        key={character.id}
+                        onOpen={onOpen}
+                        weaponInventory={weaponInventory}
+                      />
+                    ) : (
+                      <DashboardListCard
+                        assignmentCounts={assignmentCounts}
+                        character={character}
+                        key={character.id}
+                        onOpen={onOpen}
+                        weaponInventory={weaponInventory}
+                      />
+                    ),
+                  )}
+                </div>
               </section>
             ))}
           </div>
         )}
       </main>
     </>
+  );
+}
+
+type DashboardCharacterCardProps = {
+  character: TrackedCharacter;
+  weaponInventory: WeaponInventoryItem[];
+  assignmentCounts: Record<number, number>;
+  onOpen: (id: string) => void;
+};
+
+function getDashboardCharacterCardState({
+  assignmentCounts,
+  character,
+  weaponInventory,
+}: Pick<
+  DashboardCharacterCardProps,
+  "assignmentCounts" | "character" | "weaponInventory"
+>) {
+  const complete = isComplete(character);
+  const primaryRole = getPrimaryRole(character.roles);
+  const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
+  const effectiveChecklist = getEffectiveChecklist(character);
+  const checklistCount = checklistTotal(effectiveChecklist);
+  const ratings = getRatings(character);
+  const weaponStatus = getWeaponInventoryStatus({
+    weaponId: character.weaponId,
+    inventory: weaponInventory,
+    assignmentCounts,
+  });
+  const weaponTone = getWeaponRarityTone({
+    name: character.weaponName,
+    qualityId: character.weaponQualityId,
+  });
+  const weaponToneClasses = getWeaponToneClasses(weaponTone);
+  const erBelowTarget =
+    character.expectedEr > 0 && character.actualEr < character.expectedEr;
+
+  return {
+    characterToneClasses,
+    checklistCount,
+    complete,
+    effectiveChecklist,
+    erBelowTarget,
+    ratings,
+    weaponStatus,
+    weaponToneClasses,
+  };
+}
+
+function DashboardListCard({
+  assignmentCounts,
+  character,
+  onOpen,
+  weaponInventory,
+}: DashboardCharacterCardProps) {
+  const {
+    characterToneClasses,
+    checklistCount,
+    complete,
+    effectiveChecklist,
+    erBelowTarget,
+    ratings,
+    weaponStatus,
+    weaponToneClasses,
+  } = getDashboardCharacterCardState({
+    assignmentCounts,
+    character,
+    weaponInventory,
+  });
+
+  return (
+    <button
+      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(180px,0.65fr)_minmax(250px,1fr)_minmax(210px,0.85fr)] ${
+        characterToneClasses.card
+      }`}
+      onClick={() => onOpen(character.id)}
+      type="button"
+    >
+      <div className="flex min-w-0 gap-3">
+        <CharacterAvatar character={character} />
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h2 className="truncate text-sm font-semibold text-app-fg">
+              {character.characterName}
+            </h2>
+            <span
+              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
+            >
+              {complete ? "Done" : "In progress"}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[11px] text-app-muted-subtle">
+            {character.elementName} / {character.weaponTypeName}
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {character.roles.map((role) => (
+              <span
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
+                  role,
+                )}`}
+                key={role}
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-2">
+        <div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-medium text-app-muted">Checklist</span>
+            <span className="text-app-muted-dim">{checklistCount}/6</span>
+          </div>
+          <div className="mt-1.5">
+            <ChecklistProgressSegments checklist={effectiveChecklist} />
+          </div>
+        </div>
+        {character.noCrit ? (
+          <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
+            <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+              Rating
+            </div>
+            <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
+              No crit
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-1.5">
+            <RatingBlock label="CR" value={ratings.crRating} />
+            <RatingBlock label="CD" value={ratings.cdRating} />
+            <RatingBlock label="Weight" value={ratings.weighted} />
+          </div>
+        )}
+      </div>
+
+      <div className="grid content-start gap-1.5 text-xs text-app-muted">
+        <div className="flex justify-between gap-3">
+          <span className="text-app-muted-dim">Weapon</span>
+          <span className="flex min-w-0 flex-wrap justify-end gap-1">
+            <span
+              className={`truncate rounded px-1.5 py-0.5 font-semibold ${
+                character.weaponName
+                  ? `${weaponToneClasses.badge}`
+                  : "bg-app-raised text-app-muted-subtle"
+              }`}
+            >
+              {character.weaponName || "Not selected"}
+            </span>
+            <WeaponStatusBadge status={weaponStatus} />
+          </span>
+        </div>
+        {character.noCrit ? null : (
+          <div className="flex justify-between gap-3">
+            <span className="text-app-muted-dim">Echo Crit</span>
+            <span className="font-medium text-app-fg">
+              {formatPercent(character.critRate)} / {formatPercent(character.critDmg)}
+            </span>
+          </div>
+        )}
+        <div
+          className={`flex justify-between gap-3 rounded px-1.5 py-1 ${
+            erBelowTarget
+              ? "border border-status-warn-border bg-status-warn-bg text-status-warn-text"
+              : ""
+          }`}
+        >
+          <span className="text-app-muted-dim">ER</span>
+          <span
+            className={`font-medium ${
+              erBelowTarget ? "text-status-warn-text" : "text-app-fg"
+            }`}
+          >
+            {character.actualEr || 0}% / {character.expectedEr || 0}%
+          </span>
+        </div>
+        {character.notes.trim() ? (
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+            <span className="text-app-muted-dim">Notes</span>
+            <span
+              className="block min-w-0 truncate rounded bg-app-surface/70 px-1.5 py-1 text-right font-medium text-app-fg"
+              title={character.notes}
+            >
+              {character.notes}
+            </span>
+          </div>
+        ) : null}
+      </div>
+    </button>
+  );
+}
+
+function DashboardGridCard({
+  assignmentCounts,
+  character,
+  onOpen,
+  weaponInventory,
+}: DashboardCharacterCardProps) {
+  const {
+    characterToneClasses,
+    checklistCount,
+    complete,
+    effectiveChecklist,
+    erBelowTarget,
+    ratings,
+    weaponStatus,
+    weaponToneClasses,
+  } = getDashboardCharacterCardState({
+    assignmentCounts,
+    character,
+    weaponInventory,
+  });
+
+  return (
+    <button
+      className={`grid min-h-[170px] content-start gap-2 rounded-md border px-2.5 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md ${
+        characterToneClasses.card
+      }`}
+      onClick={() => onOpen(character.id)}
+      type="button"
+    >
+      <div className="flex min-w-0 gap-2">
+        <CharacterAvatar character={character} dense />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-1.5">
+            <h2 className="min-w-0 truncate text-sm font-semibold text-app-fg">
+              {character.characterName}
+            </h2>
+            <span
+              className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                characterToneClasses.status
+              }`}
+            >
+              {complete ? "Done" : "WIP"}
+            </span>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {character.roles.map((role) => (
+              <span
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
+                  role,
+                )}`}
+                key={role}
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-app-muted">Checklist</span>
+          <span className="text-app-muted-dim">{checklistCount}/6</span>
+        </div>
+        <div className="mt-1.5">
+          <ChecklistProgressSegments checklist={effectiveChecklist} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1.5">
+        {character.noCrit ? (
+          <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
+            <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+              Rating
+            </div>
+            <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
+              No crit
+            </div>
+          </div>
+        ) : (
+          <RatingBlock label="Weight" value={ratings.weighted} />
+        )}
+        <div
+          className={`rounded-md border p-2 ${
+            erBelowTarget
+              ? "border-status-warn-border bg-status-warn-bg text-status-warn-text"
+              : "border-app-border/80 bg-app-surface text-app-fg"
+          }`}
+        >
+          <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+            ER
+          </div>
+          <div
+            className={`mt-0.5 text-sm font-bold leading-none ${
+              erBelowTarget ? "text-status-warn-text" : "text-app-muted"
+            }`}
+          >
+            {character.actualEr || 0}% / {character.expectedEr || 0}%
+          </div>
+        </div>
+      </div>
+
+      <div className="flex min-w-0 flex-wrap items-center gap-1 text-[11px] font-semibold">
+        <span
+          className={`max-w-full truncate rounded px-1.5 py-0.5 ${
+            character.weaponName
+              ? `${weaponToneClasses.badge}`
+              : "bg-app-raised text-app-muted-subtle"
+          }`}
+        >
+          {character.weaponName || "No weapon"}
+        </span>
+        <WeaponStatusBadge status={weaponStatus} />
+      </div>
+    </button>
   );
 }
