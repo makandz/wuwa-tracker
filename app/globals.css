@@ -1,58 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0d1218;
-  --foreground: #f1f5f6;
-  --surface: #151b23;
-  --surface-raised: #1d2630;
-  --surface-subtle: #111821;
-  --border: #334252;
-  --muted: #c7d0d8;
-  --muted-subtle: #9ba8b3;
-  --muted-dim: #74818c;
-  --accent: #65dfd0;
-  --accent-hover: #8af1e5;
-  --accent-strong: #30c7b9;
-  --accent-soft: #123f40;
-  --status-good-bg: #143a32;
-  --status-good-border: #47b79e;
-  --status-good-text: #c9f5e9;
-  --status-warn-bg: #433416;
-  --status-warn-border: #cfa34a;
-  --status-warn-text: #f3dda8;
-  --status-danger-bg: #421f2b;
-  --status-danger-border: #cf6d84;
-  --status-danger-text: #ffd2dc;
-  --role-dps-bg: #3e202c;
-  --role-dps-active: #622d40;
-  --role-dps-border: #d36c85;
-  --role-dps-text: #ffd5dd;
-  --role-hybrid-bg: #202d46;
-  --role-hybrid-active: #2d3f68;
-  --role-hybrid-border: #7ea0e8;
-  --role-hybrid-text: #dce7ff;
-  --role-support-bg: #1d3b32;
-  --role-support-active: #285b4a;
-  --role-support-border: #67c49e;
-  --role-support-text: #d6f6e6;
-  --weapon-blue-bg: #19394a;
-  --weapon-blue-strong: #5aa8ca;
-  --weapon-blue-text: #d0effa;
-  --weapon-purple-bg: #35274d;
-  --weapon-purple-strong: #9a7ada;
-  --weapon-purple-text: #eadfff;
-  --weapon-gold-bg: #423216;
-  --weapon-gold-strong: #d0a24c;
-  --weapon-gold-text: #f3d98a;
-  --weapon-limited-bg: #47251f;
-  --weapon-limited-strong: #c97764;
-  --weapon-limited-text: #ffd8cf;
-  --element-fusion: #9f3a28;
-  --element-glacio: #337da8;
-  --element-aero: #2f8c62;
-  --element-electro: #744ca8;
-  --element-spectro: #9a7d2b;
-  --element-havoc: #803a9b;
+  --background: #0f1114;
+  --foreground: #f2f4f2;
+  --surface: #171a1f;
+  --surface-raised: #1e2228;
+  --surface-subtle: #12151a;
+  --border: #2b3138;
+  --muted: #ccd2d0;
+  --muted-subtle: #9da6a5;
+  --muted-dim: #737d7d;
+  --accent: #7bd8c9;
+  --accent-hover: #8ee1d5;
+  --accent-strong: #52bfae;
+  --accent-soft: #163431;
+  --status-good-bg: #142e26;
+  --status-good-border: #56b48e;
+  --status-good-text: #c7f2df;
+  --status-warn-bg: #362d17;
+  --status-warn-border: #bd9344;
+  --status-warn-text: #ecd59d;
+  --status-danger-bg: #361c24;
+  --status-danger-border: #c36779;
+  --status-danger-text: #f6cbd3;
+  --role-dps-bg: #341e27;
+  --role-dps-active: #4c2735;
+  --role-dps-border: #b85d74;
+  --role-dps-text: #f4c4cf;
+  --role-hybrid-bg: #242738;
+  --role-hybrid-active: #30354d;
+  --role-hybrid-border: #8a8fb8;
+  --role-hybrid-text: #d7dcf4;
+  --role-support-bg: #1b3029;
+  --role-support-active: #24463a;
+  --role-support-border: #64b58f;
+  --role-support-text: #cdf0df;
+  --weapon-blue-bg: #1d2c33;
+  --weapon-blue-strong: #6e9cac;
+  --weapon-blue-text: #d4e7ec;
+  --weapon-purple-bg: #30263c;
+  --weapon-purple-strong: #9a7fc6;
+  --weapon-purple-text: #eadff9;
+  --weapon-gold-bg: #362b17;
+  --weapon-gold-strong: #bf9546;
+  --weapon-gold-text: #efd28a;
+  --weapon-limited-bg: #3a241f;
+  --weapon-limited-strong: #c47a66;
+  --weapon-limited-text: #f4d0c8;
+  --element-fusion: #b65c48;
+  --element-glacio: #6e9cac;
+  --element-aero: #64b58f;
+  --element-electro: #9a7fc6;
+  --element-spectro: #bf9546;
+  --element-havoc: #b46ac8;
 }
 
 @theme inline {
@@ -121,6 +121,18 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  font-feature-settings: "liga" 1, "calt" 1;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
   font-family: Arial, Helvetica, sans-serif;
 }
 
@@ -172,34 +184,18 @@ body {
 }
 
 .rating-s-plus {
-  animation: s-plus-glow 7.5s ease-in-out infinite;
-  background:
-    linear-gradient(110deg, #b98d32 0%, #f0cc68 44%, #fff0b6 50%, #f0cc68 56%, #a77b2d 100%);
-  background-size: 220% 100%;
-  box-shadow: 0 0 9px rgb(240 204 104 / 0.24);
-}
-
-@keyframes s-plus-glow {
-  0%,
-  62%,
-  100% {
-    background-position: 0% 50%;
-    box-shadow: 0 0 9px rgb(240 204 104 / 0.24);
-  }
-
-  72% {
-    background-position: 100% 50%;
-    box-shadow: 0 0 14px rgb(255 240 182 / 0.34);
-  }
+  background: var(--weapon-gold-text);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .matrix-planner-button {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 
-  .rating-s-plus {
+  .matrix-planner-button {
     animation: none;
-    background-size: 100% 100%;
   }
 }

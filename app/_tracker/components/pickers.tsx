@@ -71,8 +71,8 @@ export function CharacterPickerModal({
               <button
                 className={`grid overflow-hidden rounded-md border text-left transition ${
                   selected
-                    ? "border-app-accent bg-app-accent-soft/55 shadow-md"
-                    : "border-app-border/80 bg-app-surface hover:border-app-accent hover:shadow-md"
+                    ? "border-app-accent bg-app-accent-soft/55"
+                    : "border-app-border/80 bg-app-surface hover:border-app-muted-dim hover:bg-app-raised"
                 } ${alreadyTracked ? "cursor-not-allowed opacity-45" : ""}`}
                 disabled={alreadyTracked}
                 key={character.Id}
@@ -98,7 +98,7 @@ export function CharacterPickerModal({
                       quality={rarityDisplay.qualityId}
                     />
                     {alreadyTracked ? (
-                      <span className="rounded bg-app-bg px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="rounded-sm bg-app-bg px-1.5 py-0.5 text-[10px] font-bold text-app-muted">
                         tracked
                       </span>
                     ) : null}
@@ -182,7 +182,7 @@ export function WeaponPickerModal({
         {weaponGroups.map((group) => (
           <section className="grid gap-3" key={group.title}>
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-sm font-bold uppercase tracking-normal text-app-muted-subtle">
+              <h3 className="text-sm font-semibold text-app-muted">
                 {group.title}
               </h3>
               <div className="h-px flex-1 bg-app-border/60" />
@@ -203,8 +203,8 @@ export function WeaponPickerModal({
                   <button
                     className={`grid overflow-hidden rounded-md border text-left transition ${
                       selected
-                        ? "border-app-accent bg-app-accent-soft/55 shadow-md"
-                        : `${toneClasses.card} hover:border-app-accent hover:bg-app-raised/80 hover:shadow-md`
+                        ? "border-app-accent bg-app-accent-soft/55"
+                        : `${toneClasses.card} hover:border-app-muted-dim hover:bg-app-raised`
                     }`}
                     key={weapon.Id}
                     onClick={() => onSelect(weapon)}
@@ -282,7 +282,7 @@ export function PickerSummary({
     <div className="grid gap-3">
       <div className="text-sm font-medium text-app-muted">{label}</div>
       <button
-        className={`grid gap-4 rounded-md border p-3 text-left transition hover:border-app-accent hover:bg-app-raised/80 sm:grid-cols-[auto_1fr_auto] ${
+        className={`grid gap-4 rounded-md border p-3 text-left transition-colors hover:border-app-muted-dim hover:bg-app-raised sm:grid-cols-[auto_1fr_auto] ${
           toneClasses ? toneClasses.card : "border-app-border/80 bg-app-surface/70"
         }`}
         onClick={onClick}
@@ -317,7 +317,7 @@ export function PickerSummary({
           </div>
           <div className="mt-1 text-sm text-app-muted-subtle">{meta}</div>
         </div>
-        <div className="self-center rounded-md border border-app-border bg-app-surface px-3 py-2 text-sm font-semibold text-app-muted">
+        <div className="self-center rounded-md border border-app-border bg-app-bg px-3 py-2 text-sm font-semibold text-app-muted">
           {actionLabel}
         </div>
       </button>

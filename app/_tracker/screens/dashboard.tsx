@@ -41,7 +41,6 @@ import {
   RatingBlock,
   SearchInput,
   SelectInput,
-  StatBlock,
   TextButton,
   WeaponStatusBadge,
 } from "../components/ui";
@@ -183,59 +182,57 @@ export function Dashboard({
     roleFilter !== "all" ||
     weaponFilter !== "all" ||
     hideComplete;
+  const dashboardStats = [
+    { label: "Tracked", value: String(characters.length) },
+    { label: "Complete", value: `${completeCount}/${characters.length}` },
+    { label: "Avg weighted", value: averageWeightedValue },
+    { label: "Weapon copies", value: String(totalWeaponCopies) },
+  ];
 
   return (
     <>
-      <section className="border-b border-app-border/80 bg-app-surface">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-normal text-app-fg">
-                Build Tracker
-              </h1>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {hasWeaponCopies ? (
-                <TextButton onClick={onAdd} variant="primary">
-                  Add Character
-                </TextButton>
-              ) : (
-                <TextButton onClick={onInventory} variant="primary">
-                  Add Weapons First
-                </TextButton>
-              )}
-              <TextButton className="matrix-planner-button" onClick={onMatrix}>
-                Matrix Planner
-              </TextButton>
-              <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
-              <TextButton onClick={onSettings}>Settings</TextButton>
-            </div>
+      <section className="border-b border-app-border/80 bg-app-subtle">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-normal text-app-fg">
+              Build Tracker
+            </h1>
+            <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+              {dashboardStats.map((stat) => (
+                <div className="flex items-center gap-1.5" key={stat.label}>
+                  <dt className="text-app-muted-dim">{stat.label}</dt>
+                  <dd className="font-semibold text-app-muted">{stat.value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
-          <div className="grid gap-3 sm:grid-cols-4">
-            <StatBlock label="Tracked" value={String(characters.length)} />
-            <StatBlock
-              label="Complete"
-              tone={completeCount === characters.length && characters.length > 0 ? "good" : "neutral"}
-              value={`${completeCount}/${characters.length}`}
-            />
-            <StatBlock
-              label="Avg Weighted"
-              value={averageWeightedValue}
-            />
-            <StatBlock label="Weapon Copies" value={String(totalWeaponCopies)} />
+          <div className="flex flex-wrap gap-2">
+            {hasWeaponCopies ? (
+              <TextButton onClick={onAdd} variant="primary">
+                Add Character
+              </TextButton>
+            ) : (
+              <TextButton onClick={onInventory} variant="primary">
+                Add Weapons First
+              </TextButton>
+            )}
+            <TextButton className="matrix-planner-button" onClick={onMatrix}>
+              Matrix Planner
+            </TextButton>
+            <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
+            <TextButton onClick={onSettings}>Settings</TextButton>
           </div>
         </div>
       </section>
 
       <main className="mx-auto grid w-full max-w-7xl gap-3 px-4 py-5 sm:px-6 lg:px-8">
         {showBackupNotice ? (
-          <section className="flex flex-col gap-3 rounded-md border border-weapon-blue-strong/80 bg-weapon-blue-bg/70 px-4 py-3 text-weapon-blue-text shadow-sm sm:flex-row sm:items-center sm:justify-between">
+          <section className="flex flex-col gap-3 rounded-md border border-app-border bg-app-surface px-4 py-3 text-app-muted sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium leading-6">
               This website is a work in progress. Please export and back up your tracker data.
             </p>
             <TextButton
-              className="border-weapon-blue-strong/80 bg-weapon-blue-strong/20 text-weapon-blue-text hover:bg-weapon-blue-strong/35"
+              className="border-app-muted-dim bg-app-raised text-app-fg hover:bg-app-surface"
               onClick={onExportBackup}
             >
               Export Backup
@@ -248,8 +245,8 @@ export function Dashboard({
             <h2 className="text-xl font-semibold text-app-fg">No tracked characters yet</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-app-muted-subtle">
               {hasWeaponCopies
-                ? "Add a character from the live catalog, assign roles and a weapon, then track echo pieces, skill completion, ER targets, and ratings locally in this browser."
-                : "Add weapons to your inventory first, then you can add characters and assign their weapons from your owned copies."}
+                ? "Add a character, assign a weapon, and track the build from one row."
+                : "Add owned weapons first so characters can be assigned real inventory copies."}
             </p>
             <div className="mt-5">
               {hasWeaponCopies ? (
@@ -265,7 +262,7 @@ export function Dashboard({
           </div>
         ) : (
           <div className="grid gap-2.5">
-            <section className="flex flex-wrap items-center gap-2 rounded-md border border-app-border/80 bg-app-surface px-3 py-2 shadow-sm">
+            <section className="flex flex-wrap items-center gap-2 rounded-md border border-app-border/80 bg-app-surface px-3 py-2">
               <div className="min-w-[220px] flex-1">
                 <SearchInput
                   ariaLabel="Search"
@@ -333,10 +330,10 @@ export function Dashboard({
                 {(["list", "grid"] as const).map((viewMode) => (
                   <button
                     aria-pressed={dashboardView === viewMode}
-                    className={`rounded px-2.5 text-xs font-semibold capitalize transition ${
+                    className={`rounded-sm px-2.5 text-xs font-semibold capitalize transition-colors ${
                       dashboardView === viewMode
-                        ? "bg-app-accent text-app-bg"
-                        : "text-app-muted hover:bg-app-raised hover:text-app-fg"
+                        ? "bg-app-raised text-app-fg"
+                        : "text-app-muted hover:bg-app-surface hover:text-app-fg"
                     }`}
                     key={viewMode}
                     onClick={() => setDashboardView(viewMode)}
@@ -375,22 +372,22 @@ export function Dashboard({
             {groupedCharacters.map((group) => (
               <section className="grid gap-2" key={group.role}>
                 <div
-                  className={`flex flex-col gap-2 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between ${roleSectionClasses(
+                  className={`flex flex-col gap-1 border-b px-1 pb-2 pt-2 sm:flex-row sm:items-center sm:justify-between ${roleSectionClasses(
                     group.role,
                   )}`}
                 >
-                  <h2 className="text-sm font-bold uppercase tracking-normal">{group.role}</h2>
-                  <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs font-semibold">
-                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                  <h2 className="text-sm font-semibold">{group.role}</h2>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-app-muted-subtle sm:justify-end">
+                    <span>
                       {group.summary.count} {group.summary.count === 1 ? "char" : "chars"}
                     </span>
-                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                    <span>
                       CR {formatRoleSummaryValue(group.summary.averageCr, group.summary.critCharacterCount)}
                     </span>
-                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                    <span>
                       CD {formatRoleSummaryValue(group.summary.averageCd, group.summary.critCharacterCount)}
                     </span>
-                    <span className="rounded bg-app-bg/30 px-2 py-1">
+                    <span>
                       Wt{" "}
                       {formatRoleSummaryValue(
                         group.summary.averageWeighted,
@@ -505,7 +502,7 @@ function DashboardListCard({
 
   return (
     <button
-      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md lg:grid-cols-[minmax(180px,0.65fr)_minmax(250px,1fr)_minmax(210px,0.85fr)] ${
+      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left transition-colors hover:border-app-muted-dim hover:bg-app-raised lg:grid-cols-[minmax(180px,0.65fr)_minmax(250px,1fr)_minmax(210px,0.85fr)] ${
         characterToneClasses.card
       }`}
       onClick={() => onOpen(character.id)}
@@ -519,7 +516,7 @@ function DashboardListCard({
               {character.characterName}
             </h2>
             <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
+              className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
             >
               {complete ? "Done" : "In progress"}
             </span>
@@ -530,7 +527,7 @@ function DashboardListCard({
           <div className="mt-1.5 flex flex-wrap gap-1">
             {character.roles.map((role) => (
               <span
-                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
+                className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
                   role,
                 )}`}
                 key={role}
@@ -554,7 +551,7 @@ function DashboardListCard({
         </div>
         {character.noCrit ? (
           <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
-            <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+            <div className="text-[10px] font-medium text-app-muted-subtle">
               Rating
             </div>
             <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
@@ -575,7 +572,7 @@ function DashboardListCard({
           <span className="text-app-muted-dim">Weapon</span>
           <span className="flex min-w-0 flex-wrap justify-end gap-1">
             <span
-              className={`truncate rounded px-1.5 py-0.5 font-semibold ${
+              className={`truncate rounded-sm px-1.5 py-0.5 font-semibold ${
                 character.weaponName
                   ? `${weaponToneClasses.badge}`
                   : "bg-app-raised text-app-muted-subtle"
@@ -595,7 +592,7 @@ function DashboardListCard({
           </div>
         )}
         <div
-          className={`flex justify-between gap-3 rounded px-1.5 py-1 ${
+          className={`flex justify-between gap-3 rounded-sm px-1.5 py-1 ${
             erBelowTarget
               ? "border border-status-warn-border bg-status-warn-bg text-status-warn-text"
               : ""
@@ -614,7 +611,7 @@ function DashboardListCard({
           <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
             <span className="text-app-muted-dim">Notes</span>
             <span
-              className="block min-w-0 truncate rounded bg-app-surface/70 px-1.5 py-1 text-right font-medium text-app-fg"
+              className="block min-w-0 truncate rounded-sm bg-app-bg px-1.5 py-1 text-right font-medium text-app-fg"
               title={character.notes}
             >
               {character.notes}
@@ -649,7 +646,7 @@ function DashboardGridCard({
 
   return (
     <button
-      className={`grid min-h-[170px] content-start gap-2 rounded-md border px-2.5 py-2.5 text-left shadow-sm shadow-black/20 transition hover:border-app-accent hover:shadow-md ${
+      className={`grid min-h-[170px] content-start gap-2 rounded-md border px-2.5 py-2.5 text-left transition-colors hover:border-app-muted-dim hover:bg-app-raised ${
         characterToneClasses.card
       }`}
       onClick={() => onOpen(character.id)}
@@ -663,7 +660,7 @@ function DashboardGridCard({
               {character.characterName}
             </h2>
             <span
-              className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+              className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
                 characterToneClasses.status
               }`}
             >
@@ -673,7 +670,7 @@ function DashboardGridCard({
           <div className="mt-1 flex flex-wrap gap-1">
             {character.roles.map((role) => (
               <span
-                className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
+                className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
                   role,
                 )}`}
                 key={role}
@@ -698,7 +695,7 @@ function DashboardGridCard({
       <div className="grid grid-cols-2 gap-1.5">
         {character.noCrit ? (
           <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
-            <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+            <div className="text-[10px] font-medium text-app-muted-subtle">
               Rating
             </div>
             <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
@@ -715,7 +712,7 @@ function DashboardGridCard({
               : "border-app-border/80 bg-app-surface text-app-fg"
           }`}
         >
-          <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+          <div className="text-[10px] font-medium text-app-muted-subtle">
             ER
           </div>
           <div
@@ -730,7 +727,7 @@ function DashboardGridCard({
 
       <div className="flex min-w-0 flex-wrap items-center gap-1 text-[11px] font-semibold">
         <span
-          className={`max-w-full truncate rounded px-1.5 py-0.5 ${
+          className={`max-w-full truncate rounded-sm px-1.5 py-0.5 ${
             character.weaponName
               ? `${weaponToneClasses.badge}`
               : "bg-app-raised text-app-muted-subtle"

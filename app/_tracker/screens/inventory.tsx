@@ -9,7 +9,6 @@ import {
   ImageFallback,
   SearchInput,
   StarBadge,
-  StatBlock,
   TextButton,
   WeaponStatusBadge,
 } from "../components/ui";
@@ -79,6 +78,11 @@ export function WeaponInventoryScreen({
     (item) => (assignmentCounts[item.weaponId] ?? 0) > item.count,
   ).length;
   const totalCopies = inventory.reduce((sum, item) => sum + item.count, 0);
+  const inventoryStats = [
+    { label: "Unique weapons", value: String(inventory.length) },
+    { label: "Total copies", value: String(totalCopies) },
+    { label: "Over shared", value: String(overSharedCount), warn: overSharedCount > 0 },
+  ];
 
   function setWeaponCount(weaponId: number, count: number) {
     const nextCount = Math.max(0, Math.round(count));
@@ -118,7 +122,7 @@ export function WeaponInventoryScreen({
         className={`grid overflow-hidden rounded-md border text-left transition ${
           unowned
             ? `${toneClasses.card} opacity-55`
-            : `${toneClasses.card} shadow-sm`
+            : toneClasses.card
         }`}
         key={weapon.Id}
       >
@@ -188,23 +192,26 @@ export function WeaponInventoryScreen({
     <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
-          <h1 className="mt-1 text-2xl font-bold text-app-fg">Weapon Inventory</h1>
+          <h1 className="text-2xl font-semibold text-app-fg">Weapon Inventory</h1>
+          <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+            {inventoryStats.map((stat) => (
+              <div className="flex items-center gap-1.5" key={stat.label}>
+                <dt className="text-app-muted-dim">{stat.label}</dt>
+                <dd
+                  className={`font-semibold ${
+                    stat.warn ? "text-status-warn-text" : "text-app-muted"
+                  }`}
+                >
+                  {stat.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
         <TextButton onClick={onBack}>Dashboard</TextButton>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <StatBlock label="Unique Weapons" value={String(inventory.length)} />
-        <StatBlock label="Total Copies" value={String(totalCopies)} />
-        <StatBlock
-          label="Over Shared"
-          tone={overSharedCount > 0 ? "warn" : "neutral"}
-          value={String(overSharedCount)}
-        />
-      </section>
-
-      <section className="grid gap-4 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+      <section className="grid gap-4 rounded-md border border-app-border/80 bg-app-surface p-5">
         <SearchInput onChange={setQuery} placeholder="Search weapons" value={query} />
 
         {catalog.loading ? (
@@ -218,7 +225,7 @@ export function WeaponInventoryScreen({
             {weaponGroups.map((group) => (
               <section className="grid gap-3" key={group.title}>
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-bold uppercase tracking-normal text-app-muted-subtle">
+                  <h2 className="text-sm font-semibold text-app-muted">
                     {group.title}
                   </h2>
                   <div className="h-px flex-1 bg-app-border/60" />

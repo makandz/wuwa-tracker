@@ -3,7 +3,7 @@
 import type { ChangeEvent, RefObject } from "react";
 
 import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "../types";
-import { StatBlock, TextButton } from "../components/ui";
+import { TextButton } from "../components/ui";
 
 export function SettingsScreen({
   characters,
@@ -32,25 +32,31 @@ export function SettingsScreen({
     (sum, team) => sum + team.slots.filter(Boolean).length,
     0,
   );
+  const settingsStats = [
+    { label: "Tracked", value: String(characters.length) },
+    { label: "Weapon copies", value: String(totalWeaponCopies) },
+    { label: "Assigned weapons", value: String(assignedWeaponCount) },
+    { label: "Matrix slots", value: String(plannedMatrixSlots) },
+  ];
 
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
-          <h1 className="mt-1 text-2xl font-bold text-app-fg">Settings</h1>
+          <h1 className="text-2xl font-semibold text-app-fg">Settings</h1>
+          <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
+            {settingsStats.map((stat) => (
+              <div className="flex items-center gap-1.5" key={stat.label}>
+                <dt className="text-app-muted-dim">{stat.label}</dt>
+                <dd className="font-semibold text-app-muted">{stat.value}</dd>
+              </div>
+            ))}
+          </dl>
         </div>
         <TextButton onClick={onBack}>Dashboard</TextButton>
       </div>
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatBlock label="Tracked" value={String(characters.length)} />
-        <StatBlock label="Weapon Copies" value={String(totalWeaponCopies)} />
-        <StatBlock label="Assigned Weapons" value={String(assignedWeaponCount)} />
-        <StatBlock label="Matrix Slots" value={String(plannedMatrixSlots)} />
-      </section>
-
-      <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+      <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
         <div>
           <h2 className="text-base font-semibold text-app-fg">Data Management</h2>
           <p className="mt-1 text-sm leading-6 text-app-muted-subtle">

@@ -24,24 +24,22 @@ const workflowSteps = [
 export function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <main className="grid min-h-full place-items-center bg-app-bg px-4 py-8 text-app-fg sm:px-6 lg:px-8">
-      <section className="grid w-full max-w-2xl gap-7">
-        <div className="grid gap-3">
-          <p className="text-sm font-semibold text-app-accent">Wuthering Waves Tracker</p>
-          <h1 className="text-4xl font-bold tracking-normal text-app-fg sm:text-5xl">
-            Track endgame builds without a spreadsheet
+      <section className="grid w-full max-w-xl gap-6 rounded-md border border-app-border/80 bg-app-surface p-5">
+        <div className="grid gap-2">
+          <h1 className="text-2xl font-semibold tracking-normal text-app-fg">
+            Wuthering Waves Tracker
           </h1>
-          <p className="text-base leading-7 text-app-muted">
-            Keep track of which characters are finished, which ones still need work, and
-            how your roster fits into Matrix teams.
+          <p className="text-sm leading-6 text-app-muted-subtle">
+            Set up local tracking for builds, weapons, echo stats, and Matrix teams.
           </p>
         </div>
 
         <section className="grid gap-4">
-          <h2 className="text-base font-semibold text-app-fg">How it works</h2>
+          <h2 className="text-base font-semibold text-app-fg">Setup Flow</h2>
           <div className="grid gap-3">
             {workflowSteps.map((step, index) => (
               <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3" key={step.title}>
-                <div className="grid size-9 place-items-center rounded-md border border-app-border/80 bg-app-surface text-sm font-bold text-app-accent">
+                <div className="grid size-9 place-items-center rounded-md border border-app-border bg-app-bg text-sm font-semibold text-app-muted">
                   {index + 1}
                 </div>
                 <div className="grid gap-1 border-b border-app-border/70 pb-3">
@@ -53,14 +51,9 @@ export function WelcomeScreen({ onStart }: { onStart: () => void }) {
           </div>
         </section>
 
-        <p className="text-sm leading-6 text-app-muted-subtle">
-          You can also keep notes on each character for farming goals, stat targets, or
-          reminders.
-        </p>
-
         <div className="flex flex-wrap items-center gap-3">
           <TextButton onClick={onStart} variant="primary">
-            Let&apos;s go!
+            Start Tracking
           </TextButton>
         </div>
       </section>

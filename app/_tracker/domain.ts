@@ -385,18 +385,18 @@ export function getRatingGrade(value: number): RatingGrade {
 
 export function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
-    "S+": "rating-s-plus border border-weapon-gold-text text-app-bg",
-    S: "border border-weapon-gold-strong bg-weapon-gold-text text-app-bg",
-    "S-": "border border-weapon-gold-strong bg-weapon-gold-bg text-weapon-gold-text",
-    "A+": "border border-status-good-border bg-status-good-bg text-status-good-text",
-    A: "border border-status-good-border bg-status-good-bg text-status-good-text",
-    "A-": "border border-status-good-border bg-status-good-bg text-status-good-text",
-    "B+": "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
-    B: "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
-    "B-": "border border-weapon-blue-strong bg-weapon-blue-bg text-weapon-blue-text",
-    C: "border border-status-warn-border bg-status-warn-bg text-status-warn-text",
-    D: "border border-weapon-limited-strong bg-weapon-limited-bg text-weapon-limited-text",
-    F: "border border-status-danger-border bg-status-danger-bg text-status-danger-text",
+    "S+": "rating-s-plus border border-weapon-gold-strong text-app-bg",
+    S: "border border-weapon-gold-strong bg-weapon-gold-bg text-weapon-gold-text",
+    "S-": "border border-weapon-gold-strong/80 bg-weapon-gold-bg/70 text-weapon-gold-text",
+    "A+": "border border-status-good-border/80 bg-status-good-bg text-status-good-text",
+    A: "border border-status-good-border/80 bg-status-good-bg text-status-good-text",
+    "A-": "border border-status-good-border/70 bg-status-good-bg/75 text-status-good-text",
+    "B+": "border border-app-border bg-app-raised text-app-fg",
+    B: "border border-app-border bg-app-raised text-app-fg",
+    "B-": "border border-app-border bg-app-surface text-app-muted",
+    C: "border border-status-warn-border/80 bg-status-warn-bg text-status-warn-text",
+    D: "border border-weapon-limited-strong/80 bg-weapon-limited-bg text-weapon-limited-text",
+    F: "border border-status-danger-border/80 bg-status-danger-bg text-status-danger-text",
   };
 
   return classes[grade];
@@ -404,12 +404,12 @@ export function ratingGradeClasses(grade: RatingGrade) {
 
 export function characterElementBorderClasses(elementName: string | null | undefined) {
   const classes: Record<string, string> = {
-    fusion: "border-element-fusion shadow-[0_0_0_1px_rgb(240_109_79_/_0.24)]",
-    glacio: "border-element-glacio shadow-[0_0_0_1px_rgb(116_200_243_/_0.24)]",
-    aero: "border-element-aero shadow-[0_0_0_1px_rgb(105_216_168_/_0.24)]",
-    electro: "border-element-electro shadow-[0_0_0_1px_rgb(193_140_255_/_0.24)]",
-    spectro: "border-element-spectro shadow-[0_0_0_1px_rgb(243_214_107_/_0.24)]",
-    havoc: "border-element-havoc shadow-[0_0_0_1px_rgb(208_106_238_/_0.24)]",
+    fusion: "border-element-fusion",
+    glacio: "border-element-glacio",
+    aero: "border-element-aero",
+    electro: "border-element-electro",
+    spectro: "border-element-spectro",
+    havoc: "border-element-havoc",
   };
 
   return classes[normalizeCharacterName(elementName)] ?? "border-app-border/80";
@@ -566,21 +566,21 @@ export function roleButtonClasses(role: Role, active: boolean) {
   const palette: Record<Role, { active: string; inactive: string }> = {
     DPS: {
       active:
-        "border-2 border-role-dps-border bg-role-dps-active text-role-dps-text shadow-[0_0_0_1px_rgb(211_108_133_/_0.22),0_10px_24px_rgb(211_108_133_/_0.16)]",
+        "border-role-dps-border bg-role-dps-active text-role-dps-text",
       inactive:
-        "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-role-dps-border/80 hover:bg-role-dps-bg/35 hover:text-role-dps-text hover:opacity-100",
+        "border-app-border bg-app-surface text-app-muted-subtle hover:border-role-dps-border/80 hover:bg-role-dps-bg/35 hover:text-role-dps-text",
     },
     Hybrid: {
       active:
-        "border-2 border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text shadow-[0_0_0_1px_rgb(126_160_232_/_0.22),0_10px_24px_rgb(126_160_232_/_0.16)]",
+        "border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text",
       inactive:
-        "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-role-hybrid-border/80 hover:bg-role-hybrid-bg/35 hover:text-role-hybrid-text hover:opacity-100",
+        "border-app-border bg-app-surface text-app-muted-subtle hover:border-role-hybrid-border/80 hover:bg-role-hybrid-bg/35 hover:text-role-hybrid-text",
     },
     Support: {
       active:
-        "border-2 border-role-support-border bg-role-support-active text-role-support-text shadow-[0_0_0_1px_rgb(103_196_158_/_0.22),0_10px_24px_rgb(103_196_158_/_0.16)]",
+        "border-role-support-border bg-role-support-active text-role-support-text",
       inactive:
-        "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-role-support-border/80 hover:bg-role-support-bg/35 hover:text-role-support-text hover:opacity-100",
+        "border-app-border bg-app-surface text-app-muted-subtle hover:border-role-support-border/80 hover:bg-role-support-bg/35 hover:text-role-support-text",
     },
   };
 
@@ -600,39 +600,39 @@ export function rolePillClasses(role: Role) {
 export function characterRoleToneClasses(role: Role, complete: boolean) {
   const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
     DPS: {
-      complete: "border-app-border/80 bg-role-dps-bg/72",
-      incomplete: "border-role-dps-border/40 border-l-4 bg-role-dps-bg/18",
+      complete: "border-app-border/80 bg-app-surface",
+      incomplete: "border-app-border/80 border-l-role-dps-border bg-app-surface",
       status: complete
-        ? "border border-role-dps-border bg-role-dps-active text-role-dps-text"
-        : "border border-role-dps-border/40 bg-role-dps-bg/20 text-app-muted-subtle",
+        ? "border border-role-dps-border/70 bg-role-dps-bg/60 text-role-dps-text"
+        : "border border-app-border bg-app-raised text-app-muted-subtle",
     },
     Hybrid: {
-      complete: "border-app-border/80 bg-role-hybrid-bg/72",
-      incomplete: "border-role-hybrid-border/40 border-l-4 bg-role-hybrid-bg/18",
+      complete: "border-app-border/80 bg-app-surface",
+      incomplete: "border-app-border/80 border-l-role-hybrid-border bg-app-surface",
       status: complete
-        ? "border border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text"
-        : "border border-role-hybrid-border/40 bg-role-hybrid-bg/20 text-app-muted-subtle",
+        ? "border border-role-hybrid-border/70 bg-role-hybrid-bg/60 text-role-hybrid-text"
+        : "border border-app-border bg-app-raised text-app-muted-subtle",
     },
     Support: {
-      complete: "border-app-border/80 bg-role-support-bg/72",
-      incomplete: "border-role-support-border/40 border-l-4 bg-role-support-bg/18",
+      complete: "border-app-border/80 bg-app-surface",
+      incomplete: "border-app-border/80 border-l-role-support-border bg-app-surface",
       status: complete
-        ? "border border-role-support-border bg-role-support-active text-role-support-text"
-        : "border border-role-support-border/40 bg-role-support-bg/20 text-app-muted-subtle",
+        ? "border border-role-support-border/70 bg-role-support-bg/60 text-role-support-text"
+        : "border border-app-border bg-app-raised text-app-muted-subtle",
     },
   };
 
   return {
-    card: complete ? classes[role].complete : classes[role].incomplete,
+    card: `border-l-2 ${complete ? classes[role].complete : classes[role].incomplete}`,
     status: classes[role].status,
   };
 }
 
 export function roleSectionClasses(role: Role) {
   const classes: Record<Role, string> = {
-    DPS: "border-app-border/80 bg-app-surface text-app-fg",
-    Hybrid: "border-app-border/80 bg-app-surface text-app-fg",
-    Support: "border-app-border/80 bg-app-surface text-app-fg",
+    DPS: "border-app-border/80 text-app-fg",
+    Hybrid: "border-app-border/80 text-app-fg",
+    Support: "border-app-border/80 text-app-fg",
   };
 
   return classes[role];
@@ -726,32 +726,32 @@ export function getWeaponToneClasses(tone: WeaponRarityTone) {
     }
   > = {
     blue: {
-      badge: "bg-weapon-blue-strong text-white",
-      card: "border-weapon-blue-strong/70 bg-weapon-blue-bg/45",
-      image: "border-weapon-blue-strong/70 bg-weapon-blue-bg",
+      badge: "border border-weapon-blue-strong/70 bg-weapon-blue-bg text-weapon-blue-text",
+      card: "border-app-border/80 bg-app-surface",
+      image: "border-app-border/80 bg-weapon-blue-bg/55",
       text: "text-weapon-blue-text",
     },
     purple: {
-      badge: "bg-weapon-purple-strong text-white",
-      card: "border-weapon-purple-strong/70 bg-weapon-purple-bg/45",
-      image: "border-weapon-purple-strong/70 bg-weapon-purple-bg",
+      badge: "border border-weapon-purple-strong/70 bg-weapon-purple-bg text-weapon-purple-text",
+      card: "border-app-border/80 bg-app-surface",
+      image: "border-app-border/80 bg-weapon-purple-bg/55",
       text: "text-weapon-purple-text",
     },
     standardGold: {
-      badge: "bg-weapon-gold-text text-app-bg",
-      card: "border-weapon-gold-strong/70 bg-weapon-gold-bg/45",
-      image: "border-weapon-gold-strong/70 bg-weapon-gold-bg",
+      badge: "border border-weapon-gold-strong/80 bg-weapon-gold-bg text-weapon-gold-text",
+      card: "border-app-border/80 bg-app-surface",
+      image: "border-app-border/80 bg-weapon-gold-bg/60",
       text: "text-weapon-gold-text",
     },
     limitedGold: {
-      badge: "bg-weapon-limited-strong text-white",
-      card: "border-weapon-limited-strong/70 bg-weapon-limited-bg/45",
-      image: "border-weapon-limited-strong/70 bg-weapon-limited-bg",
+      badge: "border border-weapon-limited-strong/80 bg-weapon-limited-bg text-weapon-limited-text",
+      card: "border-app-border/80 bg-app-surface",
+      image: "border-app-border/80 bg-weapon-limited-bg/60",
       text: "text-weapon-limited-text",
     },
     neutral: {
-      badge: "bg-app-border text-white",
-      card: "border-app-border/80 bg-app-surface/70",
+      badge: "border border-app-border bg-app-raised text-app-muted",
+      card: "border-app-border/80 bg-app-surface",
       image: "border-app-border/80 bg-app-raised",
       text: "text-app-muted",
     },

@@ -53,7 +53,7 @@ function EchoRollSelect({
       <span>{label}</span>
       <span className="relative">
         <select
-          className="h-9 w-full appearance-none rounded-md border border-app-border bg-app-surface pl-2.5 pr-7 text-xs font-semibold text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
+          className="h-9 w-full appearance-none rounded-md border border-app-border bg-app-bg pl-2.5 pr-7 text-xs font-semibold text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
           onChange={(event) =>
             onChange(event.target.value ? Number(event.target.value) : null)
           }
@@ -100,7 +100,7 @@ function AutoGrowTextarea({
 
   return (
     <textarea
-      className="min-h-11 resize-none overflow-hidden rounded-md border border-app-border bg-app-surface px-3 py-2.5 text-sm font-medium leading-5 text-app-fg outline-none transition placeholder:text-app-muted-dim focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
+      className="min-h-11 resize-none overflow-hidden rounded-md border border-app-border bg-app-bg px-3 py-2.5 text-sm font-medium leading-5 text-app-fg outline-none transition-colors placeholder:text-app-muted-dim focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
       id={id}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
@@ -116,13 +116,13 @@ function HelpTooltip({ children }: { children: React.ReactNode }) {
     <span className="group relative inline-flex">
       <button
         aria-label="Substat priority help"
-        className="grid h-5 w-5 cursor-help place-items-center rounded-full border border-app-border bg-app-surface text-[11px] font-bold text-app-muted-subtle outline-none transition group-hover:border-app-accent group-hover:text-app-fg focus:border-app-accent focus:text-app-fg focus:ring-2 focus:ring-app-accent/25"
+        className="grid h-5 w-5 cursor-help place-items-center rounded-md border border-app-border bg-app-bg text-[11px] font-bold text-app-muted-subtle outline-none transition-colors group-hover:border-app-accent group-hover:text-app-fg focus:border-app-accent focus:text-app-fg focus:ring-2 focus:ring-app-accent/20"
         type="button"
       >
         ?
       </button>
       <span
-        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-md border border-app-border bg-app-raised px-3 py-2 text-xs font-medium leading-5 text-app-muted opacity-0 shadow-xl transition group-hover:opacity-100 group-focus-within:opacity-100"
+        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-md border border-app-border bg-app-raised px-3 py-2 text-xs font-medium leading-5 text-app-muted opacity-0 shadow-lg shadow-black/25 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
         role="tooltip"
       >
         {children}
@@ -253,7 +253,7 @@ export function EchoCheckerScreen({
 
       {character.noCrit ? (
         <section className="rounded-md border border-app-border/80 bg-app-surface p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+          <div className="text-[11px] font-medium text-app-muted-subtle">
             Crit Rating
           </div>
           <div className="mt-1 text-lg font-semibold leading-none text-app-muted">No crit</div>
@@ -303,7 +303,7 @@ export function EchoCheckerScreen({
           Echo Checker needs a crit-focused 4 cost setup.
         </section>
       ) : (
-        <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+        <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold text-app-fg">Plan</h2>
@@ -346,7 +346,7 @@ export function EchoCheckerScreen({
                   <div className="flex items-center justify-between gap-2">
                     <h3 className="text-xs font-bold text-app-fg">{item.label}</h3>
                     <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                      className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
                         complete
                           ? "bg-status-good-border text-app-bg"
                           : "bg-app-raised text-app-muted-dim"
@@ -402,17 +402,17 @@ export function EchoCheckerScreen({
                     </label>
                   </div>
                   <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
-                    <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+                    <div className="text-[10px] font-medium text-app-muted-subtle">
                       Crit Value
                     </div>
                     <div className="mt-1 flex min-h-6 items-center gap-1.5">
                       {critValueGrade === null ? (
-                        <span className="rounded bg-status-warn-bg px-1.5 py-0.5 text-xs font-bold leading-none text-status-warn-text">
+                        <span className="rounded-sm bg-status-warn-bg px-1.5 py-0.5 text-xs font-bold leading-none text-status-warn-text">
                           Check
                         </span>
                       ) : (
                         <span
-                          className={`rounded px-1.5 py-0.5 text-xs font-bold leading-none ${ratingGradeClasses(
+                          className={`rounded-sm px-1.5 py-0.5 text-xs font-bold leading-none ${ratingGradeClasses(
                             critValueGrade,
                           )}`}
                         >

@@ -377,12 +377,11 @@ export function MatrixScreen({
 
   return (
     <>
-      <section className="border-b border-app-border/80 bg-app-surface">
-        <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
+      <section className="border-b border-app-border/80 bg-app-subtle">
+        <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-normal text-app-fg">
+              <h1 className="text-2xl font-semibold tracking-normal text-app-fg">
                 Matrix Planner
               </h1>
             </div>
@@ -400,7 +399,7 @@ export function MatrixScreen({
       </section>
 
       <main className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-5 sm:px-6 lg:px-8">
-        <section className="grid gap-3 rounded-md border border-app-border/80 bg-app-surface p-3 shadow-sm">
+        <section className="grid gap-3 rounded-md border border-app-border/80 bg-app-surface p-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-app-fg">Available Characters</h2>
@@ -439,7 +438,7 @@ export function MatrixScreen({
 
                 return (
                   <button
-                    className={`grid min-h-[78px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-2.5 py-2 text-left transition ${
+                    className={`grid min-h-[78px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md border px-2.5 py-2 text-left transition-colors ${
                       selected
                         ? "border-app-accent bg-app-accent-soft"
                         : disabled
@@ -457,12 +456,12 @@ export function MatrixScreen({
                         {character.characterName}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        <span className="rounded bg-app-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-app-muted">
+                        <span className="rounded-sm bg-app-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-app-muted">
                           {usedCount}/{maxUses}
                         </span>
                         {character.roles[0] ? (
                           <span
-                            className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${rolePillClasses(
+                            className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold ${rolePillClasses(
                               character.roles[0],
                             )}`}
                           >
@@ -470,7 +469,7 @@ export function MatrixScreen({
                           </span>
                         ) : null}
                         {maxUses > 1 ? (
-                          <span className="rounded bg-status-good-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-good-text">
+                          <span className="rounded-sm bg-status-good-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-good-text">
                             2 vigor
                           </span>
                         ) : null}
@@ -478,7 +477,7 @@ export function MatrixScreen({
                     </div>
                     {letterScore ? (
                       <span
-                        className={`rounded px-2 py-1 text-sm font-bold leading-none ${ratingGradeClasses(
+                        className={`rounded-sm px-2 py-1 text-sm font-bold leading-none ${ratingGradeClasses(
                           letterScore,
                         )}`}
                       >
@@ -507,7 +506,7 @@ export function MatrixScreen({
 
             return (
               <div
-                className={`grid gap-3 rounded-md border bg-app-surface p-3 shadow-sm transition ${
+                className={`grid gap-3 rounded-md border bg-app-surface p-3 transition-colors ${
                   activeInTeam ? "border-app-accent" : "border-app-border/80"
                 } ${isDragTarget ? "ring-2 ring-app-accent/45" : ""} ${
                   isDragging ? "opacity-60" : ""
@@ -523,12 +522,12 @@ export function MatrixScreen({
                   <div className="flex min-w-0 items-center gap-2">
                     <span
                       aria-hidden="true"
-                      className="grid h-7 w-6 translate-y-px cursor-grab content-center gap-1 text-app-muted active:cursor-grabbing"
+                      className="grid h-7 w-6 cursor-grab content-center gap-1 text-app-muted active:cursor-grabbing"
                       title="Drag to reorder"
                     >
                       {Array.from({ length: 3 }).map((_, index) => (
                         <span
-                          className="block h-0.5 w-5 rounded-full bg-current"
+                          className="block h-0.5 w-5 rounded-sm bg-current"
                           key={index}
                         />
                       ))}
@@ -568,7 +567,7 @@ export function MatrixScreen({
 
                     return (
                       <button
-                        className={`grid min-h-[96px] gap-2 rounded-md border p-3 text-left transition ${
+                        className={`grid min-h-[96px] gap-2 rounded-md border p-3 text-left transition-colors ${
                           isActive
                             ? "border-app-accent bg-app-accent-soft"
                             : "border-app-border bg-app-raised hover:border-app-accent"
@@ -595,7 +594,7 @@ export function MatrixScreen({
                             <span className="grid gap-1 justify-items-end">
                               {letterScore ? (
                                 <span
-                                  className={`rounded px-2 py-1 text-sm font-bold leading-none ${ratingGradeClasses(
+                                  className={`rounded-sm px-2 py-1 text-sm font-bold leading-none ${ratingGradeClasses(
                                     letterScore,
                                   )}`}
                                 >

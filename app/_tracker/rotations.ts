@@ -38,14 +38,14 @@ export const ROTATION_ACTION_LABELS: Record<RotationAction, string> = {
 };
 
 export const ROTATION_ACTION_CLASSES: Record<RotationAction, string> = {
-  intro: "border-[#4aa3d8]/80 bg-[#173247] text-[#bfe7ff]",
-  echo: "border-[#a6e34d]/85 bg-[#263b13] text-[#dcff98]",
-  basic: "border-[#20d5d2]/85 bg-[#073f46] text-[#91fffc]",
-  heavy: "border-[#f09635]/85 bg-[#46270f] text-[#ffd19a]",
-  skill: "border-[#45d06f]/85 bg-[#123b24] text-[#b9ffc9]",
-  holdSkill: "border-[#8b96ff]/85 bg-[#252656] text-[#dee2ff]",
-  ultimate: "border-[#e56a85]/85 bg-[#461d2a] text-[#ffd3dc]",
-  outro: "border-[#ad7df0]/85 bg-[#32214e] text-[#eadbff]",
+  intro: "border-app-border bg-app-raised text-app-muted",
+  echo: "border-status-good-border/70 bg-status-good-bg/60 text-status-good-text",
+  basic: "border-app-accent-strong/70 bg-app-accent-soft text-app-fg",
+  heavy: "border-status-warn-border/70 bg-status-warn-bg/65 text-status-warn-text",
+  skill: "border-role-support-border/70 bg-role-support-bg/60 text-role-support-text",
+  holdSkill: "border-role-hybrid-border/70 bg-role-hybrid-bg/60 text-role-hybrid-text",
+  ultimate: "border-status-danger-border/70 bg-status-danger-bg/60 text-status-danger-text",
+  outro: "border-role-dps-border/70 bg-role-dps-bg/60 text-role-dps-text",
 };
 
 const CHARACTER_ROTATIONS: Record<string, CharacterRotation[]> = {

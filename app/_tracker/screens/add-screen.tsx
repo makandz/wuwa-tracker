@@ -131,8 +131,7 @@ export function AddScreen({
     <main className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-app-accent">Wuthering Waves</p>
-          <h1 className="mt-1 text-2xl font-bold text-app-fg">Add Character</h1>
+          <h1 className="text-2xl font-semibold text-app-fg">Add Character</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <TextButton onClick={onBack}>Dashboard</TextButton>
@@ -142,7 +141,7 @@ export function AddScreen({
         </div>
       </div>
 
-      <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+      <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
         {catalog.loading ? (
           <p className="text-sm text-app-muted-subtle">Loading character and weapon catalog...</p>
         ) : catalog.error ? (
@@ -217,8 +216,8 @@ export function AddScreen({
                   <button
                     className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                       !noCrit && fourCostMain === option.value
-                        ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
-                        : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
+                        ? "border-app-accent-strong bg-app-accent-strong text-app-bg"
+                        : "border-app-border bg-app-bg text-app-muted-subtle hover:border-app-muted-dim hover:bg-app-surface hover:text-app-muted"
                     }`}
                     aria-pressed={!noCrit && fourCostMain === option.value}
                     key={option.value}
@@ -234,8 +233,8 @@ export function AddScreen({
                 <button
                   className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                     noCrit
-                      ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
-                      : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
+                      ? "border-app-accent-strong bg-app-accent-strong text-app-bg"
+                      : "border-app-border bg-app-bg text-app-muted-subtle hover:border-app-muted-dim hover:bg-app-surface hover:text-app-muted"
                   }`}
                   aria-pressed={noCrit}
                   onClick={() => setNoCrit((current) => !current)}

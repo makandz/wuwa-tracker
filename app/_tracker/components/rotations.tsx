@@ -30,12 +30,12 @@ function RotationStepCard({ step }: { step: RotationStep }) {
   return (
     <li className="group relative shrink-0">
       <div
-        className={`grid min-h-10 w-fit min-w-20 max-w-44 content-center rounded-md border px-3 py-1.5 shadow-sm ${actionClasses}`}
+        className={`grid min-h-10 w-fit min-w-20 max-w-44 content-center rounded-md border px-3 py-1.5 ${actionClasses}`}
         tabIndex={step.note ? 0 : undefined}
       >
         <div>
           {eyebrowLabel ? (
-            <div className="text-[10px] font-semibold uppercase tracking-normal opacity-75">
+            <div className="text-[10px] font-medium opacity-75">
               {eyebrowLabel}
             </div>
           ) : null}
@@ -44,7 +44,7 @@ function RotationStepCard({ step }: { step: RotationStep }) {
           </div>
         </div>
         {step.note ? (
-          <div className="pointer-events-none absolute left-1/2 top-[calc(100%+0.5rem)] z-10 hidden w-48 -translate-x-1/2 rounded-md border border-app-border bg-app-raised px-3 py-2 text-xs font-medium leading-5 text-app-muted shadow-lg group-hover:block group-focus-within:block">
+          <div className="pointer-events-none absolute left-1/2 top-[calc(100%+0.5rem)] z-10 hidden w-48 -translate-x-1/2 rounded-md border border-app-border bg-app-raised px-3 py-2 text-xs font-medium leading-5 text-app-muted shadow-lg shadow-black/25 group-hover:block group-focus-within:block">
             {step.note}
           </div>
         ) : null}
@@ -71,10 +71,10 @@ function RotationConnector({ label }: { label?: string }) {
       >
         <span>&gt;</span>
         {label ? (
-          <span className="absolute h-5 w-0.5 rotate-45 rounded-full bg-status-danger-border" />
+          <span className="absolute h-5 w-0.5 rotate-45 rounded-sm bg-status-danger-border" />
         ) : null}
         {label ? (
-          <span className="pointer-events-none absolute left-1/2 top-[calc(100%+0.25rem)] z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-app-border bg-app-raised px-2 py-1 text-[10px] font-semibold uppercase tracking-normal text-app-muted shadow-lg group-hover/connector:block group-focus-within/connector:block">
+          <span className="pointer-events-none absolute left-1/2 top-[calc(100%+0.25rem)] z-20 hidden -translate-x-1/2 whitespace-nowrap rounded-md border border-app-border bg-app-raised px-2 py-1 text-[10px] font-semibold text-app-muted shadow-lg shadow-black/25 group-hover/connector:block group-focus-within/connector:block">
             {label}
           </span>
         ) : null}
@@ -120,7 +120,7 @@ export function CharacterRotationsSection({
   }
 
   return (
-    <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+    <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-app-fg">Rotations</h2>

@@ -44,7 +44,7 @@ export function StatBlock({
   return (
     <div className={`rounded-md border ${compact ? "p-2" : "p-3"} ${toneClass}`}>
       <div
-        className={`font-semibold uppercase tracking-normal text-app-muted-dim ${
+        className={`font-medium text-app-muted-subtle ${
           compact ? "text-[10px]" : "text-[11px]"
         }`}
       >
@@ -65,7 +65,7 @@ export function RatingBlock({ label, value }: { label: string; value: RatingValu
   if (value === null) {
     return (
       <div className="rounded-md border border-status-warn-border bg-status-warn-bg p-2">
-        <div className="text-[10px] font-semibold uppercase tracking-normal text-status-warn-text">
+        <div className="text-[10px] font-medium text-status-warn-text">
           {label}
         </div>
         <div className="mt-0.5 text-sm font-bold leading-none text-status-warn-text">Check</div>
@@ -77,12 +77,12 @@ export function RatingBlock({ label, value }: { label: string; value: RatingValu
 
   return (
     <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
-      <div className="text-[10px] font-semibold uppercase tracking-normal text-app-muted-dim">
+      <div className="text-[10px] font-medium text-app-muted-subtle">
         {label}
       </div>
       <div className="mt-0.5 flex items-baseline gap-1.5">
         <span
-          className={`rounded px-1.5 py-0.5 text-sm font-bold leading-none ${ratingGradeClasses(
+          className={`rounded-sm px-1.5 py-0.5 text-sm font-bold leading-none ${ratingGradeClasses(
             grade,
           )}`}
         >
@@ -115,7 +115,7 @@ export function RatingSummaryBlock({
   if (value === null) {
     return (
       <div className={`rounded-md border p-3 ${toneClass}`}>
-        <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+        <div className="text-[11px] font-medium text-app-muted-subtle">
           {label}
         </div>
         <div className="mt-1 text-lg font-semibold leading-none">Check stats</div>
@@ -127,12 +127,12 @@ export function RatingSummaryBlock({
 
   return (
     <div className={`rounded-md border p-3 ${toneClass}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+      <div className="text-[11px] font-medium text-app-muted-subtle">
         {label}
       </div>
       <div className="mt-1 flex items-baseline gap-2">
         <span
-          className={`rounded px-2 py-1 text-base font-bold leading-none ${ratingGradeClasses(
+          className={`rounded-sm px-2 py-1 text-base font-bold leading-none ${ratingGradeClasses(
             grade,
           )}`}
         >
@@ -161,14 +161,14 @@ export function TextButton({
 }) {
   const classes =
     variant === "primary"
-      ? "border-app-accent bg-app-accent text-app-bg hover:bg-app-accent-hover"
+      ? "border-app-accent-strong bg-app-accent-strong text-app-bg hover:bg-app-accent"
       : variant === "danger"
-        ? "border-status-danger-border bg-status-danger-bg/55 text-status-danger-text hover:bg-status-danger-bg"
-        : "border-app-border bg-app-surface text-app-muted hover:bg-app-raised";
+        ? "border-status-danger-border/80 bg-status-danger-bg/45 text-status-danger-text hover:bg-status-danger-bg"
+        : "border-app-border bg-app-bg text-app-muted hover:border-app-muted-dim hover:bg-app-surface hover:text-app-fg";
 
   return (
     <button
-      className={`rounded-md border font-semibold transition ${
+      className={`rounded-md border font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25 ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
       } ${classes} ${className}`}
       onClick={onClick}
@@ -190,7 +190,7 @@ export function TextLink({
 }) {
   return (
     <a
-      className={`inline-flex items-center rounded-md border border-weapon-blue-strong/70 bg-weapon-blue-bg/70 font-semibold text-weapon-blue-text transition hover:border-weapon-blue-strong hover:bg-weapon-blue-bg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-weapon-blue-strong/35 ${
+      className={`inline-flex items-center rounded-md border border-app-border bg-app-bg font-semibold text-app-muted transition-colors hover:border-app-muted-dim hover:bg-app-surface hover:text-app-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25 ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
       }`}
       href={href}
@@ -210,7 +210,7 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-medium text-app-muted">
+    <label className="grid gap-2 text-sm font-medium text-app-muted-subtle">
       {label}
       {children}
     </label>
@@ -239,7 +239,7 @@ export function NumberInput({
   return (
     <div className="relative">
       <input
-        className={`h-11 w-full rounded-md border border-app-border px-3 pr-9 text-sm outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
+        className={`h-10 w-full rounded-md border border-app-border px-3 pr-9 text-sm outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 ${
           disabled
             ? "cursor-not-allowed bg-app-raised text-app-muted-subtle"
             : "bg-app-surface text-app-fg"
@@ -297,7 +297,7 @@ export function StarBadge({
 
   return (
     <span
-      className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass}`}
+      className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${toneClass}`}
     >
       {quality} star
     </span>
@@ -311,7 +311,7 @@ export function WeaponStatusBadge({ status }: { status: string | null }) {
 
   return (
     <span
-      className={`rounded px-2 py-0.5 text-[11px] font-bold ${
+      className={`rounded-sm px-2 py-0.5 text-[11px] font-bold ${
         status === "Shared"
           ? "bg-status-warn-bg text-status-warn-text"
           : "bg-status-danger-bg text-status-danger-text"
@@ -345,7 +345,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 grid place-items-center bg-app-bg/75 p-3 sm:p-6">
       <div
         aria-modal="true"
-        className="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-2xl"
+        className="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-lg shadow-black/30"
         role="dialog"
       >
         <div className="flex items-start justify-between gap-4 border-b border-app-border/80 px-4 py-4 sm:px-5">
@@ -355,7 +355,7 @@ export function Modal({
           </div>
           <button
             aria-label="Close"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-app-border bg-app-surface text-xl leading-none text-app-muted transition hover:bg-app-raised"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-app-border bg-app-bg text-xl leading-none text-app-muted transition-colors hover:bg-app-raised hover:text-app-fg"
             onClick={onClose}
             type="button"
           >
@@ -384,7 +384,7 @@ export function SearchInput({
   return (
     <input
       aria-label={ariaLabel}
-      className={`w-full rounded-md border border-app-border bg-app-surface text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
+      className={`w-full rounded-md border border-app-border bg-app-bg text-app-fg outline-none transition-colors placeholder:text-app-muted-dim focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 ${
         compact ? "h-9 px-2.5 text-xs" : "h-11 px-3 text-sm"
       }`}
       onChange={(event) => onChange(event.target.value)}
@@ -422,7 +422,7 @@ export function SelectInput<TValue extends string>({
       <span className="relative">
         <select
           aria-label={label}
-          className={`w-full appearance-none rounded-md border border-app-border bg-app-surface font-semibold text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25 ${
+          className={`w-full appearance-none rounded-md border border-app-border bg-app-bg font-semibold text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 ${
             compact ? "h-9 pl-2.5 pr-8 text-xs" : "h-11 pl-3 pr-11 text-sm"
           } ${selectClassName}`}
           onChange={(event) => onChange(event.target.value as TValue)}
@@ -473,7 +473,7 @@ export function ErInput({
   return (
     <div className="relative">
       <input
-        className="h-11 w-full rounded-md border border-app-border bg-app-surface px-3 pr-9 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
+        className="h-10 w-full rounded-md border border-app-border bg-app-bg px-3 pr-9 text-sm text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
         inputMode="decimal"
         onBlur={() => setFocused(false)}
         onChange={(event) => {
@@ -509,7 +509,7 @@ export function RoleToggle({
   return (
     <button
       aria-pressed={active}
-      className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${roleButtonClasses(
+      className={`h-9 rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20 ${roleButtonClasses(
         role,
         active,
       )}`}
@@ -536,7 +536,7 @@ export function CharacterAvatar({
 
   return (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-md border-2 bg-app-raised ${
+      className={`relative shrink-0 overflow-hidden rounded-md border bg-app-raised ${
         elementBorderClasses
       } ${
         sizeClass
@@ -557,7 +557,7 @@ export function CharacterAvatar({
         </div>
       )}
       <span
-        className={`absolute bottom-0 right-0 px-1 text-[10px] font-bold ${
+        className={`absolute bottom-0 right-0 border-l border-t border-black/20 px-1 text-[10px] font-bold ${
           character.qualityId >= 5
             ? "bg-weapon-gold-text text-app-bg"
             : character.qualityId === 4
@@ -575,7 +575,7 @@ export function ChecklistProgressSegments({ checklist }: { checklist: Checklist 
   return (
     <div
       aria-label="Checklist progress"
-      className="grid h-5 grid-cols-6 gap-0.5 overflow-hidden rounded-full bg-app-raised p-0.5"
+      className="grid h-5 grid-cols-6 gap-0.5 overflow-hidden rounded-sm bg-app-bg p-0.5"
     >
       {CHECKLIST_SEGMENTS.map((segment) => {
         const complete = checklist[segment.key];
@@ -583,7 +583,7 @@ export function ChecklistProgressSegments({ checklist }: { checklist: Checklist 
         return (
           <span
             aria-label={`${segment.label}: ${complete ? "done" : "not done"}`}
-            className={`grid min-w-0 place-items-center rounded-full text-[9px] font-bold leading-none transition ${
+            className={`grid min-w-0 place-items-center rounded-sm text-[9px] font-bold leading-none transition-colors ${
               segment.key === "skills"
                 ? complete
                   ? "bg-weapon-gold-strong text-app-bg"

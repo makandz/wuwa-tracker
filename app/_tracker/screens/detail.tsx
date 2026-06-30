@@ -193,7 +193,7 @@ export function DetailScreen({
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold text-app-fg">{character.characterName}</h1>
               <span
-                className={`rounded px-2 py-0.5 text-xs font-semibold ${characterToneClasses.status}`}
+                className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${characterToneClasses.status}`}
               >
                 {complete ? "Done" : "In progress"}
               </span>
@@ -214,7 +214,7 @@ export function DetailScreen({
 
       {character.noCrit ? (
         <section className="rounded-md border border-app-border/80 bg-app-surface p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-normal text-app-muted-dim">
+          <div className="text-[11px] font-medium text-app-muted-subtle">
             Crit Rating
           </div>
           <div className="mt-1 text-lg font-semibold leading-none text-app-muted">No crit</div>
@@ -240,7 +240,7 @@ export function DetailScreen({
       )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
           <h2 className="text-lg font-semibold text-app-fg">Build Setup</h2>
           <PickerSummary
             actionLabel="Change"
@@ -314,8 +314,8 @@ export function DetailScreen({
                 <button
                   className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                     !character.noCrit && character.fourCostMain === option.value
-                      ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
-                      : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
+                      ? "border-app-accent-strong bg-app-accent-strong text-app-bg"
+                      : "border-app-border bg-app-bg text-app-muted-subtle hover:border-app-muted-dim hover:bg-app-surface hover:text-app-muted"
                   }`}
                   aria-pressed={!character.noCrit && character.fourCostMain === option.value}
                   key={option.value}
@@ -328,8 +328,8 @@ export function DetailScreen({
               <button
                 className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
                   character.noCrit
-                    ? "border-2 border-app-accent bg-app-accent text-app-bg shadow-[0_0_0_1px_rgb(101_223_208_/_0.26),0_10px_24px_rgb(101_223_208_/_0.16)]"
-                    : "border-app-border bg-app-surface text-app-muted-subtle opacity-75 hover:border-app-accent hover:bg-app-raised hover:text-app-muted hover:opacity-100"
+                    ? "border-app-accent-strong bg-app-accent-strong text-app-bg"
+                    : "border-app-border bg-app-bg text-app-muted-subtle hover:border-app-muted-dim hover:bg-app-surface hover:text-app-muted"
                 }`}
                 aria-pressed={character.noCrit}
                 onClick={() => patchCharacter({ noCrit: !character.noCrit })}
@@ -354,13 +354,13 @@ export function DetailScreen({
           </div>
         </section>
 
-        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5 shadow-sm">
+        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
           <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <div className="text-sm font-medium text-app-muted">Character Stats</div>
               {echoCheckerActive && !character.noCrit ? (
-                <span className="rounded border border-app-accent/55 bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-fg">
+                <span className="rounded-sm border border-app-accent/55 bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-fg">
                   Echo Tracker
                 </span>
               ) : null}
@@ -505,7 +505,7 @@ export function DetailScreen({
 
           <Field label="Notes">
             <textarea
-              className="min-h-40 rounded-md border border-app-border bg-app-surface p-3 text-sm text-app-fg outline-none transition focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
+              className="min-h-40 rounded-md border border-app-border bg-app-bg p-3 text-sm text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
               onChange={(event) => patchCharacter({ notes: event.target.value })}
               value={character.notes}
             />
