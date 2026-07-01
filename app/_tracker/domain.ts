@@ -139,17 +139,17 @@ export function isEchoCheckerEchoComplete(
   plan: EchoCheckerPlan,
 ) {
   const hasDoubleCrit = echo.critRate !== null && echo.critDmg !== null;
+  const targetStatCount = getEchoCheckerTargetStatCount(echo);
 
   if (!hasDoubleCrit) {
     return false;
   }
 
   if (plan === "HybridSupport") {
-    return true;
+    return targetStatCount >= 1;
   }
 
   const critValue = getEchoCheckerCritValue(echo);
-  const targetStatCount = getEchoCheckerTargetStatCount(echo);
 
   return (
     targetStatCount >= 2 ||
@@ -290,7 +290,7 @@ export function sortDashboardCharacters(
       case "completionAsc":
         return (
           aProgress - bProgress ||
-          compareRatingValues(aBuildScore, bBuildScore, "desc") ||
+          compareRatingValues(aBuildScore, bBuildScore, "asc") ||
           a.characterName.localeCompare(b.characterName)
         );
       case "weightDesc":
@@ -645,22 +645,22 @@ export function rolePillClasses(role: Role) {
 export function characterRoleToneClasses(role: Role, complete: boolean) {
   const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
     DPS: {
-      complete: "border-app-border/80 bg-app-surface",
-      incomplete: "border-app-border/80 border-l-role-dps-border bg-app-surface",
+      complete: "border-app-border/80 border-l-role-dps-border bg-app-surface",
+      incomplete: "border-app-border/80 bg-app-surface",
       status: complete
         ? "border border-role-dps-border/70 bg-role-dps-bg/60 text-role-dps-text"
         : "border border-app-border bg-app-raised text-app-muted-subtle",
     },
     Hybrid: {
-      complete: "border-app-border/80 bg-app-surface",
-      incomplete: "border-app-border/80 border-l-role-hybrid-border bg-app-surface",
+      complete: "border-app-border/80 border-l-role-hybrid-border bg-app-surface",
+      incomplete: "border-app-border/80 bg-app-surface",
       status: complete
         ? "border border-role-hybrid-border/70 bg-role-hybrid-bg/60 text-role-hybrid-text"
         : "border border-app-border bg-app-raised text-app-muted-subtle",
     },
     Support: {
-      complete: "border-app-border/80 bg-app-surface",
-      incomplete: "border-app-border/80 border-l-role-support-border bg-app-surface",
+      complete: "border-app-border/80 border-l-role-support-border bg-app-surface",
+      incomplete: "border-app-border/80 bg-app-surface",
       status: complete
         ? "border border-role-support-border/70 bg-role-support-bg/60 text-role-support-text"
         : "border border-app-border bg-app-raised text-app-muted-subtle",

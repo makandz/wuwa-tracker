@@ -817,7 +817,7 @@ export function DetailScreen({
               <p className="mt-1 text-sm text-app-muted-subtle">
                 {echoChecker.plan === "DPS"
                   ? "DPS: double crit, then either 30 CV plus a target stat or two target stats. Echo Score adds target stat bonuses to CV."
-                  : "Hybrid/Support: double crit on each echo. Echo Score adds target stat bonuses to CV."}
+                  : "Hybrid/Support: double crit plus one target stat on each echo. Echo Score adds target stat bonuses to CV."}
               </p>
             </div>
             <div className="w-full sm:w-80">

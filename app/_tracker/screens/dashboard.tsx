@@ -31,7 +31,6 @@ import {
 import type {
   DashboardSortKey,
   DashboardViewMode,
-  RoleFilter,
   TrackedCharacter,
   WeaponFilter,
   WeaponInventoryItem,
@@ -70,7 +69,6 @@ export function Dashboard({
   showBackupNotice: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [weaponFilter, setWeaponFilter] = useState<WeaponFilter>("all");
   const [hideComplete, setHideComplete] = useState(false);
   const [sortKey, setSortKey] = useState<DashboardSortKey>(readStoredDashboardSortKey);
@@ -100,10 +98,6 @@ export function Dashboard({
   const visibleCharacters = useMemo(() => {
     const filtered = characters.filter((character) => {
       if (hideComplete && isComplete(character)) {
-        return false;
-      }
-
-      if (roleFilter !== "all" && !character.roles.includes(roleFilter)) {
         return false;
       }
 
@@ -149,7 +143,6 @@ export function Dashboard({
     characters,
     hideComplete,
     normalizedQuery,
-    roleFilter,
     weaponFilter,
     weaponInventory,
   ]);
@@ -178,11 +171,7 @@ export function Dashboard({
     writeStoredDashboardViewMode(dashboardView);
   }, [dashboardView]);
 
-  const filtersActive =
-    normalizedQuery ||
-    roleFilter !== "all" ||
-    weaponFilter !== "all" ||
-    hideComplete;
+  const filtersActive = normalizedQuery || weaponFilter !== "all" || hideComplete;
   const dashboardStats = [
     { label: "Tracked", value: String(characters.length) },
     { label: "Complete", value: `${completeCount}/${characters.length}` },
@@ -273,18 +262,7 @@ export function Dashboard({
                   value={query}
                 />
               </div>
-              <div className="grid flex-1 gap-2 sm:flex-none sm:grid-cols-3">
-                <SelectInput
-                  compact
-                  label="Role"
-                  onChange={setRoleFilter}
-                  options={[
-                    { label: "All roles", value: "all" },
-                    ...ROLES.map((role) => ({ label: role, value: role })),
-                  ]}
-                  showLabel={false}
-                  value={roleFilter}
-                />
+              <div className="grid flex-1 gap-2 sm:flex-none sm:grid-cols-2">
                 <SelectInput
                   compact
                   label="Weapon"
@@ -353,7 +331,6 @@ export function Dashboard({
                     compact
                     onClick={() => {
                       setQuery("");
-                      setRoleFilter("all");
                       setWeaponFilter("all");
                       setHideComplete(false);
                     }}
