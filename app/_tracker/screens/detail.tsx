@@ -15,9 +15,10 @@ import {
   createDefaultEchoChecker,
   getDefaultEchoCheckerPlan,
   getEchoCheckerCritValue,
-  getEchoCheckerCritValueRating,
   getEchoCritPlaceholders,
   getEchoCheckerEcho,
+  getEchoCheckerScore,
+  getEchoCheckerTargetStatCount,
   getEffectiveEchoCritStats,
   getEffectiveChecklist,
   getPrimaryRole,
@@ -31,6 +32,11 @@ import {
   isComplete,
   ratingGradeClasses,
 } from "../domain";
+import {
+  ECHO_SUBSTAT_LABELS,
+  getMakanEchoEstimate,
+  type MakanEchoEstimate,
+} from "../echo-estimates";
 import { getCharacterRotations } from "../rotations";
 import type {
   ApiWeapon,
@@ -101,11 +107,13 @@ function EchoRollSelect({
 
 function AutoGrowTextarea({
   id,
+  parsing = false,
   onChange,
   placeholder,
   value,
 }: {
   id: string;
+  parsing?: boolean;
   onChange: (value: string) => void;
   placeholder: string;
   value: string;
@@ -125,7 +133,9 @@ function AutoGrowTextarea({
 
   return (
     <textarea
-      className="min-h-11 resize-none overflow-hidden rounded-md border border-app-border bg-app-bg px-3 py-2.5 text-sm font-medium leading-5 text-app-fg outline-none transition-colors placeholder:text-app-muted-dim focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
+      className={`substat-priority-textarea min-h-11 resize-none overflow-hidden rounded-md px-3 py-2.5 text-sm font-medium leading-5 text-app-fg outline-none transition-colors placeholder:text-app-muted-dim focus:ring-2 focus:ring-app-accent/20 ${
+        parsing ? "substat-priority-parsing" : ""
+      }`}
       id={id}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
@@ -153,6 +163,109 @@ function HelpTooltip({ children }: { children: React.ReactNode }) {
         {children}
       </span>
     </span>
+  );
+}
+
+function useDebouncedValue<T>(value: T, delayMs: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, delayMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [delayMs, value]);
+
+  return {
+    debouncedValue,
+    isDebouncing: !Object.is(value, debouncedValue),
+  };
+}
+
+const echoEstimateNumberFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 1,
+});
+const echoEstimateTunerFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+});
+const echoEstimatePercentFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 1,
+  style: "percent",
+});
+
+function formatExpectedEchoes(value: number | null) {
+  return value === null ? "-" : echoEstimateNumberFormatter.format(value);
+}
+
+function formatExpectedTuners(value: number | null) {
+  return value === null ? "-" : echoEstimateTunerFormatter.format(value);
+}
+
+function EchoEstimateSection({ estimate }: { estimate: MakanEchoEstimate }) {
+  const targetStatPrefix = estimate.parsed.usedFallback
+    ? "Fallback target stats"
+    : "Target stats";
+  const targetStatSource = estimate.parsed.usedFallback
+    ? "using defaults"
+    : "parsed from above";
+
+  return (
+    <section className="grid gap-3 rounded-md border border-app-border bg-app-surface p-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-app-fg">5/20/25 Estimate</h2>
+          <p className="mt-1 text-xs font-medium leading-5 text-app-muted-subtle">
+            Average echos and tuners needed to finish 1 piece. {targetStatPrefix} (
+            {targetStatSource}):{" "}
+            {estimate.parsed.otherTargetStats.map((stat, index) => (
+              <span key={stat}>
+                {index === 0 ? "" : ", "}
+                <strong className="font-semibold text-app-fg">
+                  {ECHO_SUBSTAT_LABELS[stat]}
+                </strong>
+              </span>
+            ))}
+          </p>
+        </div>
+        <div className="text-xs font-medium text-app-muted-dim">
+          +5 {echoEstimatePercentFormatter.format(estimate.passFiveChance)} · +20{" "}
+          {echoEstimatePercentFormatter.format(estimate.passTwentyChance)}
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-md border border-app-border">
+        <table className="min-w-full border-collapse text-sm">
+          <thead className="bg-app-raised text-xs font-semibold text-app-muted-subtle">
+            <tr>
+              <th className="px-3 py-2 text-left">Goal</th>
+              <th className="px-3 py-2 text-right">Avg echos</th>
+              <th className="px-3 py-2 text-right">Net tuners</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-app-border bg-app-surface">
+            {estimate.rows.map((row) => (
+              <tr
+                className={row.emphasized ? "bg-app-raised/45 text-app-fg" : "text-app-muted"}
+                key={row.id}
+              >
+                <td className="px-3 py-2 font-semibold">{row.label}</td>
+                <td className="px-3 py-2 text-right font-medium">
+                  {formatExpectedEchoes(row.expectedEchoes)}
+                </td>
+                <td className="px-3 py-2 text-right font-medium">
+                  {formatExpectedTuners(row.expectedNetTuners)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="text-xs font-medium leading-5 text-app-muted-dim">
+        Net tuners assume 30% refund on trashed leveled echos.
+      </p>
+    </section>
   );
 }
 
@@ -204,6 +317,19 @@ export function DetailScreen({
   });
   const prydwenUrl = getPrydwenCharacterUrl(character.characterName);
   const defaultPlan = getDefaultEchoCheckerPlan(character.roles);
+  const substatPriorityValue =
+    character.substatPriority ?? character.echoChecker?.substatPriority ?? "";
+  const {
+    debouncedValue: debouncedSubstatPriority,
+    isDebouncing: substatPriorityParsing,
+  } = useDebouncedValue(substatPriorityValue, 3000);
+  const makanEchoEstimate = useMemo(
+    () =>
+      getMakanEchoEstimate({
+        substatPriority: debouncedSubstatPriority,
+      }),
+    [debouncedSubstatPriority],
+  );
   const planOptions = ECHO_CHECKER_PLAN_OPTIONS.map((option) => ({
     ...option,
     label:
@@ -353,7 +479,9 @@ export function DetailScreen({
         </div>
         <div className="flex flex-wrap gap-2">
           <TextButton onClick={onBack}>Dashboard</TextButton>
-          <TextLink href={prydwenUrl}>Prydwen</TextLink>
+          <TextLink href={prydwenUrl} variant="external">
+            Prydwen
+          </TextLink>
           <TextButton onClick={onDelete} variant="danger">
             Delete
           </TextButton>
@@ -380,9 +508,15 @@ export function DetailScreen({
             value={ratings.cdRating}
           />
           <RatingSummaryBlock
-            label="Weighted"
-            tone={ratings.weighted === null ? "warn" : ratings.weighted >= 1 ? "good" : "neutral"}
-            value={ratings.weighted}
+            label="Build Score"
+            tone={
+              ratings.buildScore === null
+                ? "warn"
+                : ratings.buildScore >= 1
+                  ? "good"
+                  : "neutral"
+            }
+            value={ratings.buildScore}
           />
         </section>
       )}
@@ -653,17 +787,19 @@ export function DetailScreen({
           <div className="flex items-center gap-2">
             <label htmlFor="character-substat-priority">Substat Priority</label>
             <HelpTooltip>
-              Paste or type the character&apos;s target substat priority here. This is saved as a note only.
+              Paste or type the character&apos;s target substat priority here. This also feeds the
+              Makan estimate below.
             </HelpTooltip>
           </div>
           <AutoGrowTextarea
             id="character-substat-priority"
             onChange={patchSubstatPriority}
+            parsing={substatPriorityParsing}
             placeholder="Energy Regen (Until Satisfied) > CRIT DMG = CRIT Rate > ATK% > Liberation DMG% > ATK"
-            value={character.substatPriority ?? character.echoChecker?.substatPriority ?? ""}
+            value={substatPriorityValue}
           />
           <span className="text-xs font-medium leading-5 text-app-muted-dim">
-            Saved with this character for reference while checking echo rolls.
+            Saved with this character and parsed after typing pauses.
           </span>
         </div>
       </section>
@@ -680,8 +816,8 @@ export function DetailScreen({
               <h2 className="text-lg font-semibold text-app-fg">Echo Tracker</h2>
               <p className="mt-1 text-sm text-app-muted-subtle">
                 {echoChecker.plan === "DPS"
-                  ? "DPS: double crit, then either 30 CV plus a target stat or two target stats."
-                  : "Hybrid/Support: double crit on each echo."}
+                  ? "DPS: double crit, then either 30 CV plus a target stat or two target stats. Echo Score adds target stat bonuses to CV."
+                  : "Hybrid/Support: double crit on each echo. Echo Score adds target stat bonuses to CV."}
               </p>
             </div>
             <div className="w-full sm:w-80">
@@ -701,9 +837,9 @@ export function DetailScreen({
               const echo = getEchoCheckerEcho(character, item.key);
               const echoComplete = isEchoCheckerEchoComplete(echo, echoChecker.plan);
               const critValue = getEchoCheckerCritValue(echo);
-              const critValueRating = getEchoCheckerCritValueRating(echo);
-              const critValueGrade =
-                critValueRating === null ? null : getRatingGrade(critValueRating);
+              const targetStatCount = getEchoCheckerTargetStatCount(echo);
+              const echoScore = getEchoCheckerScore(echo);
+              const echoScoreGrade = echoScore === null ? null : getRatingGrade(echoScore);
 
               return (
                 <div
@@ -750,6 +886,9 @@ export function DetailScreen({
                             hasSecondRelevantStat: event.target.checked
                               ? echo.hasSecondRelevantStat
                               : false,
+                            hasThirdRelevantStat: event.target.checked
+                              ? echo.hasThirdRelevantStat
+                              : false,
                           })
                         }
                         type="checkbox"
@@ -766,38 +905,75 @@ export function DetailScreen({
                               ? true
                               : echo.hasRelevantStat,
                             hasSecondRelevantStat: event.target.checked,
+                            hasThirdRelevantStat: event.target.checked
+                              ? echo.hasThirdRelevantStat
+                              : false,
+                          })
+                        }
+                        type="checkbox"
+                      />
+                    </label>
+                    <label className="flex items-center justify-between gap-2 rounded-md border border-app-border bg-app-surface/70 px-2 py-2 text-xs font-semibold text-app-muted">
+                      Target stat 3
+                      <input
+                        checked={echo.hasThirdRelevantStat}
+                        className="h-4 w-4 accent-app-accent"
+                        onChange={(event) =>
+                          patchEchoCheckerEcho(item.key, {
+                            hasRelevantStat: event.target.checked
+                              ? true
+                              : echo.hasRelevantStat,
+                            hasSecondRelevantStat: event.target.checked
+                              ? true
+                              : echo.hasSecondRelevantStat,
+                            hasThirdRelevantStat: event.target.checked,
                           })
                         }
                         type="checkbox"
                       />
                     </label>
                   </div>
-                  <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
-                    <div className="text-[10px] font-medium text-app-muted-subtle">
-                      Crit Value
+                  <div className="grid gap-2">
+                    <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
+                      <div className="text-[10px] font-medium text-app-muted-subtle">
+                        Echo Score
+                      </div>
+                      <div className="mt-1 flex min-h-6 items-center gap-1.5">
+                        {echoScoreGrade === null ? (
+                          <span className="rounded-sm bg-status-warn-bg px-1.5 py-0.5 text-xs font-bold leading-none text-status-warn-text">
+                            Check
+                          </span>
+                        ) : (
+                          <span
+                            className={`rounded-sm px-1.5 py-0.5 text-xs font-bold leading-none ${ratingGradeClasses(
+                              echoScoreGrade,
+                            )}`}
+                          >
+                            {echoScoreGrade}
+                          </span>
+                        )}
+                        <span className="text-sm font-semibold leading-none text-app-fg">
+                          {echoScore === null ? "-" : echoScore.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-1 flex min-h-6 items-center gap-1.5">
-                      {critValueGrade === null ? (
-                        <span className="rounded-sm bg-status-warn-bg px-1.5 py-0.5 text-xs font-bold leading-none text-status-warn-text">
-                          Check
-                        </span>
-                      ) : (
-                        <span
-                          className={`rounded-sm px-1.5 py-0.5 text-xs font-bold leading-none ${ratingGradeClasses(
-                            critValueGrade,
-                          )}`}
-                        >
-                          {critValueGrade}
-                        </span>
-                      )}
-                      <span className="text-sm font-semibold leading-none text-app-fg">
-                        {critValue === null ? "-" : critValue}
-                      </span>
-                      {critValueRating === null ? null : (
-                        <span className="text-[11px] font-semibold leading-none text-app-muted-dim">
-                          {critValueRating.toFixed(2)}
-                        </span>
-                      )}
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
+                        <div className="text-[10px] font-medium text-app-muted-subtle">
+                          Crit Value
+                        </div>
+                        <div className="mt-1 font-semibold leading-none text-app-fg">
+                          {critValue === null ? "-" : critValue}
+                        </div>
+                      </div>
+                      <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
+                        <div className="text-[10px] font-medium text-app-muted-subtle">
+                          Targets
+                        </div>
+                        <div className="mt-1 font-semibold leading-none text-app-fg">
+                          {targetStatCount}/3
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -832,6 +1008,8 @@ export function DetailScreen({
           </div>
         ) : null}
       </section>
+
+      {character.noCrit ? null : <EchoEstimateSection estimate={makanEchoEstimate} />}
 
       <CharacterRotationsSection rotations={rotations} />
     </main>

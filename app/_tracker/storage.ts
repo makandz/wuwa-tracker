@@ -14,10 +14,51 @@ import {
 import type {
   DashboardSortKey,
   DashboardViewMode,
+  EchoChecker,
+  EchoCheckerEcho,
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
 } from "./types";
+
+function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
+  if (!echo || typeof echo !== "object") {
+    return {
+      critRate: null,
+      critDmg: null,
+      hasRelevantStat: false,
+      hasSecondRelevantStat: false,
+      hasThirdRelevantStat: false,
+    };
+  }
+
+  const candidate = echo as Partial<EchoCheckerEcho>;
+
+  return {
+    critRate: typeof candidate.critRate === "number" ? candidate.critRate : null,
+    critDmg: typeof candidate.critDmg === "number" ? candidate.critDmg : null,
+    hasRelevantStat: candidate.hasRelevantStat === true,
+    hasSecondRelevantStat: candidate.hasSecondRelevantStat === true,
+    hasThirdRelevantStat: candidate.hasThirdRelevantStat === true,
+  };
+}
+
+function normalizeEchoChecker(echoChecker: TrackedCharacter["echoChecker"]) {
+  if (!echoChecker) {
+    return echoChecker;
+  }
+
+  return {
+    ...echoChecker,
+    echoes: Object.entries(echoChecker.echoes ?? {}).reduce(
+      (echoes, [key, echo]) => ({
+        ...echoes,
+        [key]: normalizeEchoCheckerEcho(echo),
+      }),
+      {} as EchoChecker["echoes"],
+    ),
+  };
+}
 
 function createEmptyMatrixTeam(id = "team-1"): MatrixTeam {
   return {
@@ -98,6 +139,7 @@ function normalizeCharacters(characters: unknown): TrackedCharacter[] {
 
     return {
       ...candidate,
+      echoChecker: normalizeEchoChecker(candidate.echoChecker),
       substatPriority:
         typeof candidate.substatPriority === "string"
           ? candidate.substatPriority

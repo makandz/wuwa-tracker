@@ -183,16 +183,23 @@ export function TextLink({
   children,
   href,
   compact = false,
+  variant = "secondary",
 }: {
   children: React.ReactNode;
   href: string;
   compact?: boolean;
+  variant?: "secondary" | "external";
 }) {
+  const classes =
+    variant === "external"
+      ? "border-weapon-blue-strong/80 bg-weapon-blue-bg text-weapon-blue-text hover:border-weapon-blue-strong hover:bg-weapon-blue-strong hover:text-app-bg focus-visible:ring-weapon-blue-strong/30"
+      : "border-app-border bg-app-bg text-app-muted hover:border-app-muted-dim hover:bg-app-surface hover:text-app-fg focus-visible:ring-app-accent/25";
+
   return (
     <a
-      className={`inline-flex items-center rounded-md border border-app-border bg-app-bg font-semibold text-app-muted transition-colors hover:border-app-muted-dim hover:bg-app-surface hover:text-app-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25 ${
+      className={`inline-flex items-center rounded-md border font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
-      }`}
+      } ${classes}`}
       href={href}
       rel="noreferrer"
       target="_blank"

@@ -28,9 +28,9 @@ function createTeam(): MatrixTeam {
 }
 
 function getLetterScore(character: TrackedCharacter) {
-  const weighted = getRatings(character).weighted;
+  const buildScore = getRatings(character).buildScore;
 
-  return weighted === null ? null : getRatingGrade(weighted);
+  return buildScore === null ? null : getRatingGrade(buildScore);
 }
 
 function getUsageCounts(teams: MatrixTeam[]) {

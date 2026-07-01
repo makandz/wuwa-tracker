@@ -74,6 +74,7 @@ export type EchoCheckerEcho = {
   critDmg: number | null;
   hasRelevantStat: boolean;
   hasSecondRelevantStat: boolean;
+  hasThirdRelevantStat: boolean;
 };
 
 export type EchoCheckerSubstat = {

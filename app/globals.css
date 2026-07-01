@@ -177,6 +177,38 @@ button {
       border-box;
 }
 
+.substat-priority-textarea {
+  border-color: transparent;
+  border-width: 2px;
+  background:
+    linear-gradient(var(--background), var(--background)) padding-box,
+    linear-gradient(var(--border), var(--border)) border-box;
+}
+
+.substat-priority-textarea:focus {
+  background:
+    linear-gradient(var(--background), var(--background)) padding-box,
+    linear-gradient(var(--accent-strong), var(--accent-strong)) border-box;
+}
+
+.substat-priority-parsing,
+.substat-priority-parsing:focus {
+  border-color: transparent;
+  border-width: 2px;
+  background:
+    linear-gradient(var(--background), var(--background)) padding-box,
+    conic-gradient(
+        from var(--matrix-border-angle),
+        rgba(242, 244, 242, 0.92) 0deg,
+        rgba(242, 244, 242, 0.92) 72deg,
+        rgba(115, 125, 125, 0.34) 142deg,
+        rgba(115, 125, 125, 0.34) 278deg,
+        rgba(242, 244, 242, 0.92) 360deg
+      )
+      border-box;
+  animation: matrix-border-spin 1.6s linear infinite;
+}
+
 @keyframes matrix-border-spin {
   to {
     --matrix-border-angle: 360deg;
@@ -196,6 +228,10 @@ button {
   }
 
   .matrix-planner-button {
+    animation: none;
+  }
+
+  .substat-priority-parsing {
     animation: none;
   }
 }

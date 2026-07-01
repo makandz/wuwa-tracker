@@ -78,20 +78,20 @@ export function Dashboard({
     readStoredDashboardViewMode,
   );
   const completeCount = characters.filter(isComplete).length;
-  const critWeightedCharacters = characters.filter((character) => !character.noCrit);
-  const validWeights = critWeightedCharacters
-    .map((character) => getRatings(character).weighted)
-    .filter((weight): weight is number => weight !== null);
-  const averageWeighted =
-    validWeights.length > 0
-      ? validWeights.reduce((sum, weight) => sum + weight, 0) / validWeights.length
+  const critScoredCharacters = characters.filter((character) => !character.noCrit);
+  const validBuildScores = critScoredCharacters
+    .map((character) => getRatings(character).buildScore)
+    .filter((score): score is number => score !== null);
+  const averageBuildScore =
+    validBuildScores.length > 0
+      ? validBuildScores.reduce((sum, score) => sum + score, 0) / validBuildScores.length
       : null;
-  const averageWeightedValue =
+  const averageBuildScoreValue =
     characters.length === 0
       ? "0.00"
-      : averageWeighted !== null
-        ? formatRatingValue(averageWeighted)
-        : critWeightedCharacters.length === 0
+      : averageBuildScore !== null
+        ? formatRatingValue(averageBuildScore)
+        : critScoredCharacters.length === 0
           ? "No crit"
           : formatRatingValue(null);
   const totalWeaponCopies = weaponInventory.reduce((sum, item) => sum + item.count, 0);
@@ -186,7 +186,7 @@ export function Dashboard({
   const dashboardStats = [
     { label: "Tracked", value: String(characters.length) },
     { label: "Complete", value: `${completeCount}/${characters.length}` },
-    { label: "Avg weighted", value: averageWeightedValue },
+    { label: "Avg build", value: averageBuildScoreValue },
     { label: "Weapon copies", value: String(totalWeaponCopies) },
   ];
 
@@ -307,8 +307,8 @@ export function Dashboard({
                     { label: "Name A-Z", value: "name" },
                     { label: "Closest to done", value: "completionDesc" },
                     { label: "Needs most work", value: "completionAsc" },
-                    { label: "Highest weight", value: "weightDesc" },
-                    { label: "Lowest weight", value: "weightAsc" },
+                    { label: "Highest build score", value: "weightDesc" },
+                    { label: "Lowest build score", value: "weightAsc" },
                   ]}
                   showLabel={false}
                   value={sortKey}
@@ -389,9 +389,9 @@ export function Dashboard({
                       CD {formatRoleSummaryValue(group.summary.averageCd, group.summary.critCharacterCount)}
                     </span>
                     <span>
-                      Wt{" "}
+                      Build{" "}
                       {formatRoleSummaryValue(
-                        group.summary.averageWeighted,
+                        group.summary.averageBuildScore,
                         group.summary.critCharacterCount,
                       )}
                     </span>
@@ -578,7 +578,7 @@ function DashboardListCard({
           <div className="grid grid-cols-3 gap-1.5">
             <RatingBlock label="CR" value={ratings.crRating} />
             <RatingBlock label="CD" value={ratings.cdRating} />
-            <RatingBlock label="Weight" value={ratings.weighted} />
+            <RatingBlock label="Build" value={ratings.buildScore} />
           </div>
         )}
       </div>
@@ -723,7 +723,7 @@ function DashboardGridCard({
             </div>
           </div>
         ) : (
-          <RatingBlock label="Weight" value={ratings.weighted} />
+          <RatingBlock label="Build" value={ratings.buildScore} />
         )}
         <div
           className={`rounded-md border p-2 ${
