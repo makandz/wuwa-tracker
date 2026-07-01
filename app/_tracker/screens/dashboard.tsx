@@ -16,6 +16,7 @@ import {
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   getWeaponToneClasses,
+  isEchoCheckerEnabled,
   isComplete,
   rolePillClasses,
   roleSectionClasses,
@@ -466,17 +467,30 @@ function getDashboardCharacterCardState({
   const weaponToneClasses = getWeaponToneClasses(weaponTone);
   const erBelowTarget =
     character.expectedEr > 0 && character.actualEr < character.expectedEr;
+  const echoTrackerEnabled = isEchoCheckerEnabled(character);
 
   return {
     characterToneClasses,
     checklistCount,
     complete,
+    echoTrackerEnabled,
     effectiveChecklist,
     erBelowTarget,
     ratings,
     weaponStatus,
     weaponToneClasses,
   };
+}
+
+function EchoTrackerBadge() {
+  return (
+    <span
+      className="rounded-sm border border-status-good-border/70 bg-status-good-bg/55 px-1.5 py-0.5 text-[10px] font-semibold text-status-good-text"
+      title="Echo Tracker mode enabled"
+    >
+      Echo Tracker
+    </span>
+  );
 }
 
 function DashboardListCard({
@@ -489,6 +503,7 @@ function DashboardListCard({
     characterToneClasses,
     checklistCount,
     complete,
+    echoTrackerEnabled,
     effectiveChecklist,
     erBelowTarget,
     ratings,
@@ -520,6 +535,7 @@ function DashboardListCard({
             >
               {complete ? "Done" : "In progress"}
             </span>
+            {echoTrackerEnabled ? <EchoTrackerBadge /> : null}
           </div>
           <p className="mt-0.5 text-[11px] text-app-muted-subtle">
             {character.elementName} / {character.weaponTypeName}
@@ -633,6 +649,7 @@ function DashboardGridCard({
     characterToneClasses,
     checklistCount,
     complete,
+    echoTrackerEnabled,
     effectiveChecklist,
     erBelowTarget,
     ratings,
@@ -659,12 +676,15 @@ function DashboardGridCard({
             <h2 className="min-w-0 truncate text-sm font-semibold text-app-fg">
               {character.characterName}
             </h2>
-            <span
-              className={`shrink-0 rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
-                characterToneClasses.status
-              }`}
-            >
-              {complete ? "Done" : "WIP"}
+            <span className="flex shrink-0 flex-wrap justify-end gap-1">
+              <span
+                className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
+                  characterToneClasses.status
+                }`}
+              >
+                {complete ? "Done" : "WIP"}
+              </span>
+              {echoTrackerEnabled ? <EchoTrackerBadge /> : null}
             </span>
           </div>
           <div className="mt-1 flex flex-wrap gap-1">

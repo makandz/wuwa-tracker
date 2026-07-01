@@ -15,17 +15,12 @@ import { Dashboard } from "./_tracker/screens/dashboard";
 import { WeaponInventoryScreen } from "./_tracker/screens/inventory";
 import { AddScreen } from "./_tracker/screens/add-screen";
 import { DetailScreen } from "./_tracker/screens/detail";
-import { EchoCheckerScreen } from "./_tracker/screens/echo-checker";
 import { MatrixScreen } from "./_tracker/screens/matrix";
 import { SettingsScreen } from "./_tracker/screens/settings";
 import { WelcomeScreen } from "./_tracker/screens/welcome";
 
 function getCharacterHref(id: string) {
   return `/characters/${encodeURIComponent(id)}`;
-}
-
-function getCharacterEchoCheckerHref(id: string) {
-  return `${getCharacterHref(id)}/echo-checker`;
 }
 
 function hasTrackerData(
@@ -299,52 +294,9 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
         character={selectedCharacter}
         onBack={() => router.push("/")}
         onDelete={() => deleteCharacter(selectedCharacter.id)}
-        onOpenEchoChecker={() => router.push(getCharacterEchoCheckerHref(selectedCharacter.id))}
         onUpdate={updateCharacter}
         weaponInventory={weaponInventory}
         weapons={catalog.weapons}
-      />
-    </div>
-  );
-}
-
-export function CharacterEchoCheckerRoute({ characterId }: { characterId: string }) {
-  const router = useRouter();
-  const {
-    characters,
-    setCharacters,
-    storageLoaded,
-  } = useTrackerData();
-  const decodedCharacterId = decodeURIComponent(characterId);
-  const selectedCharacter =
-    characters.find((character) => character.id === decodedCharacterId) ?? null;
-
-  useEffect(() => {
-    if (!storageLoaded || selectedCharacter) {
-      return;
-    }
-
-    router.replace("/");
-  }, [router, selectedCharacter, storageLoaded]);
-
-  function updateCharacter(nextCharacter: TrackedCharacter) {
-    setCharacters((current) =>
-      current.map((character) =>
-        character.id === nextCharacter.id ? nextCharacter : character,
-      ),
-    );
-  }
-
-  if (!selectedCharacter) {
-    return <div className="min-h-full bg-app-bg text-app-fg" />;
-  }
-
-  return (
-    <div className="min-h-full bg-app-bg text-app-fg">
-      <EchoCheckerScreen
-        character={selectedCharacter}
-        onBack={() => router.push(getCharacterHref(selectedCharacter.id))}
-        onUpdate={updateCharacter}
       />
     </div>
   );

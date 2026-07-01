@@ -76,7 +76,6 @@ export function createDefaultEchoChecker(roles: Role[]): EchoChecker {
       }),
       {} as EchoChecker["echoes"],
     ),
-    substatPriority: "",
     substats: ECHO_RELEVANT_SUBSTAT_OPTIONS.map((item) => ({ ...item })),
   };
 }

@@ -7,3 +7,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Local workflow
 
 The user will run the development server manually. Agents should not start the app server unless the user explicitly asks for it.
+Agents should not create or use git worktrees. Use the existing local project checkout unless the user explicitly changes this instruction.

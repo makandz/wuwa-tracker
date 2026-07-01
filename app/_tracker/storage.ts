@@ -78,10 +78,32 @@ export function readStoredCharacters() {
       return [];
     }
 
-    return parsed as TrackedCharacter[];
+    return normalizeCharacters(parsed);
   } catch {
     return [];
   }
+}
+
+function normalizeCharacters(characters: unknown): TrackedCharacter[] {
+  if (!Array.isArray(characters)) {
+    return [];
+  }
+
+  return characters.map((character) => {
+    const candidate = character as TrackedCharacter;
+    const legacySubstatPriority =
+      typeof candidate.echoChecker?.substatPriority === "string"
+        ? candidate.echoChecker.substatPriority
+        : "";
+
+    return {
+      ...candidate,
+      substatPriority:
+        typeof candidate.substatPriority === "string"
+          ? candidate.substatPriority
+          : legacySubstatPriority,
+    };
+  });
 }
 
 export function normalizeWeaponInventory(
@@ -277,7 +299,7 @@ export function parseImportedTrackerData(text: string) {
   }
 
   return {
-    characters: importedCharacters,
+    characters: normalizeCharacters(importedCharacters),
     weaponInventory:
       Array.isArray(parsed) || !Array.isArray(parsed.weaponInventory)
         ? []

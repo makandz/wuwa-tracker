@@ -86,7 +86,7 @@ export type EchoChecker = {
   enabled: boolean;
   plan: EchoCheckerPlan;
   echoes: Record<EchoChecklistKey, EchoCheckerEcho>;
-  substatPriority: string;
+  substatPriority?: string;
   substats: EchoCheckerSubstat[];
 };
 
@@ -109,6 +109,7 @@ export type TrackedCharacter = {
   critDmg: number;
   checklist: Checklist;
   echoChecker?: EchoChecker;
+  substatPriority: string;
   expectedEr: number;
   actualEr: number;
   notes: string;
