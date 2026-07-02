@@ -9,7 +9,6 @@ import {
 } from "./_tracker/constants";
 import { getAssignmentCounts } from "./_tracker/domain";
 import {
-  exportStorageMigrationBackup,
   exportTrackerData,
   parseImportedTrackerData,
 } from "./_tracker/storage";
@@ -23,7 +22,6 @@ import { AddScreen } from "./_tracker/screens/add-screen";
 import { DetailScreen } from "./_tracker/screens/detail";
 import { MatrixScreen } from "./_tracker/screens/matrix";
 import { SettingsScreen } from "./_tracker/screens/settings";
-import { StorageMigrationScreen } from "./_tracker/screens/storage-migration";
 import { WelcomeScreen } from "./_tracker/screens/welcome";
 
 function getCharacterHref(id: string) {
@@ -55,15 +53,12 @@ export function DashboardRoute() {
     setDashboardViewMode,
     setWelcomeSeen,
     storageLoaded,
-    storageMigrationPlan,
     storageStatus,
     storageVersion,
-    commitPendingStorageMigration,
     welcomeSeen,
     weaponInventory,
   } = useTrackerData();
   const [backupNoticeCheckedAt, setBackupNoticeCheckedAt] = useState<number | null>(null);
-  const [migrationRunning, setMigrationRunning] = useState(false);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
 
   useEffect(() => {
@@ -80,29 +75,6 @@ export function DashboardRoute() {
 
   if (!storageLoaded) {
     return <div className="min-h-full bg-app-bg text-app-fg" />;
-  }
-
-  if (storageMigrationPlan) {
-    return (
-      <div className="min-h-full bg-app-bg text-app-fg">
-        <StorageMigrationScreen
-          isMigrating={migrationRunning}
-          onExportBackup={() => exportStorageMigrationBackup(storageMigrationPlan)}
-          onMigrate={() => {
-            setMigrationRunning(true);
-
-            try {
-              commitPendingStorageMigration();
-            } catch {
-              alert("Tracker storage could not be migrated.");
-            } finally {
-              setMigrationRunning(false);
-            }
-          }}
-          plan={storageMigrationPlan}
-        />
-      </div>
-    );
   }
 
   if (storageStatus.state === "error") {

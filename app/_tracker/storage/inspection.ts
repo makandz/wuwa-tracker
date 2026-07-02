@@ -31,6 +31,21 @@ function errorStatus(message: string): TrackerStorageStatus {
   };
 }
 
+function migrationRequiredInspection(
+  migrationPlan: StorageMigrationPlan,
+  message = "Legacy tracker storage needs migration.",
+): TrackerStorageInspection {
+  return {
+    document: null,
+    status: {
+      state: "ready",
+      message,
+    },
+    state: "migration-required",
+    migrationPlan,
+  };
+}
+
 export function inspectTrackerStorage(): TrackerStorageInspection {
   const result = readStoredTrackerDocument();
 
@@ -42,16 +57,26 @@ export function inspectTrackerStorage(): TrackerStorageInspection {
     };
   }
 
+  const migration = createStorageMigrationPlan();
+
   if (result.status.state === "error") {
+    if (migration.state === "ready") {
+      return migrationRequiredInspection(
+        migration.plan,
+        "Current tracker storage could not be recovered, but older tracker data can be migrated.",
+      );
+    }
+
     return {
       document: null,
-      status: result.status,
+      status:
+        migration.state === "error"
+          ? errorStatus(`${result.status.message} ${migration.error}`)
+          : result.status,
       state: "error",
       migrationPlan: null,
     };
   }
-
-  const migration = createStorageMigrationPlan();
 
   if (migration.state === "error") {
     return {
@@ -63,15 +88,7 @@ export function inspectTrackerStorage(): TrackerStorageInspection {
   }
 
   if (migration.state === "ready") {
-    return {
-      document: null,
-      status: {
-        state: "ready",
-        message: "Legacy tracker storage needs migration.",
-      },
-      state: "migration-required",
-      migrationPlan: migration.plan,
-    };
+    return migrationRequiredInspection(migration.plan);
   }
 
   return {
