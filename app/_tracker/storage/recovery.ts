@@ -4,25 +4,13 @@ import {
   type TrackerDocumentV4,
   type TrackerPreferences,
 } from "./documents";
-import { migrateLegacySplitStorageToV4 } from "./migrations/legacy-v3-to-v4";
 import {
-  BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
-  DASHBOARD_SORT_STORAGE_KEY,
-  DASHBOARD_VIEW_STORAGE_KEY,
-  INVENTORY_STORAGE_KEY,
-  MATRIX_STORAGE_KEY,
-  STORAGE_KEY,
   TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
   TRACKER_DOCUMENT_STORAGE_KEY,
-  WELCOME_SEEN_STORAGE_KEY,
 } from "./keys";
-import {
-  legacyArrayExportSchema,
-  legacySplitStorageSchema,
-} from "./schemas/legacy-v3";
 
 export type TrackerStorageStatus = {
-  state: "ready" | "migrated" | "recovered" | "error";
+  state: "ready" | "recovered" | "error";
   message: string;
 };
 
@@ -30,14 +18,6 @@ export type ReadTrackerDocumentResult = {
   document: TrackerDocumentV4 | null;
   status: TrackerStorageStatus;
 };
-
-function parseJson(raw: string | null) {
-  if (!raw) {
-    return null;
-  }
-
-  return JSON.parse(raw) as unknown;
-}
 
 export function parseTrackerDocument(raw: string | null) {
   if (!raw) {
@@ -57,45 +37,6 @@ export function readCurrentTrackerDocument() {
   }
 
   return parseTrackerDocument(localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY));
-}
-
-function readLegacyJsonArray(key: string) {
-  try {
-    const parsed = legacyArrayExportSchema.safeParse(
-      parseJson(localStorage.getItem(key)),
-    );
-
-    return parsed.success ? parsed.data : [];
-  } catch {
-    return [];
-  }
-}
-
-function readLegacySplitStorage() {
-  const parsed = legacySplitStorageSchema.safeParse({
-    characters: readLegacyJsonArray(STORAGE_KEY),
-    weaponInventory: readLegacyJsonArray(INVENTORY_STORAGE_KEY),
-    matrixTeams: readLegacyJsonArray(MATRIX_STORAGE_KEY),
-    preferences: {
-      welcomeSeen: localStorage.getItem(WELCOME_SEEN_STORAGE_KEY) === "true",
-      dashboardSortKey: localStorage.getItem(DASHBOARD_SORT_STORAGE_KEY),
-      dashboardViewMode: localStorage.getItem(DASHBOARD_VIEW_STORAGE_KEY),
-      backupNoticeAcknowledgedAt: Number(
-        localStorage.getItem(BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY),
-      ),
-    },
-  });
-
-  if (!parsed.success) {
-    return {
-      characters: [],
-      weaponInventory: [],
-      matrixTeams: [],
-      preferences: {},
-    };
-  }
-
-  return parsed.data;
 }
 
 export function writeCurrentTrackerDocument(document: TrackerDocumentV4) {
@@ -208,17 +149,11 @@ export function readStoredTrackerDocument(): ReadTrackerDocumentResult {
       };
     }
 
-    const migratedDocument = migrateLegacySplitStorageToV4(
-      readLegacySplitStorage(),
-    );
-
-    writeCurrentTrackerDocument(migratedDocument);
-
     return {
-      document: migratedDocument,
+      document: null,
       status: {
-        state: "migrated",
-        message: "Legacy tracker storage was migrated to the v4 document.",
+        state: "ready",
+        message: "No current tracker document was found.",
       },
     };
   } catch {

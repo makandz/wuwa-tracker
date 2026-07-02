@@ -18,6 +18,7 @@ import type {
 } from "./types";
 import type {
   ParsedImportedTrackerData,
+  StorageMigrationPlan,
   TrackerStorageStatus,
 } from "./storage";
 import { useCatalog } from "./use-catalog";
@@ -42,6 +43,9 @@ type TrackerContextValue = {
   replaceTrackerData: (data: ParsedImportedTrackerData) => void;
   storageLoaded: boolean;
   storageStatus: TrackerStorageStatus;
+  storageMigrationPlan: StorageMigrationPlan | null;
+  storageVersion: number | null;
+  commitPendingStorageMigration: () => void;
 };
 
 const TrackerContext = createContext<TrackerContextValue | null>(null);
@@ -66,6 +70,9 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     replaceTrackerData,
     storageLoaded,
     storageStatus,
+    storageMigrationPlan,
+    storageVersion,
+    commitPendingStorageMigration,
   } = usePersistedTrackerState();
 
   return (
@@ -89,6 +96,9 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
         replaceTrackerData,
         storageLoaded,
         storageStatus,
+        storageMigrationPlan,
+        storageVersion,
+        commitPendingStorageMigration,
       }}
     >
       {children}

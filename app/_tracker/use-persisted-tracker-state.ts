@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   DEFAULT_TRACKER_PREFERENCES,
+  commitStorageMigration,
   createTrackerDocumentV4,
-  readStoredTrackerDocument,
+  inspectTrackerStorage,
   writeStoredTrackerDocument,
   type ParsedImportedTrackerData,
+  type StorageMigrationPlan,
   type TrackerDocumentV4,
   type TrackerPreferences,
   type TrackerStorageStatus,
@@ -45,32 +47,58 @@ export function usePersistedTrackerState() {
     state: "ready",
     message: "Tracker storage has not loaded yet.",
   });
+  const [storageMigrationPlan, setStorageMigrationPlan] =
+    useState<StorageMigrationPlan | null>(null);
+  const [storageVersion, setStorageVersion] = useState<number | null>(null);
   const storageLoadedRef = useRef(false);
   const storageWritableRef = useRef(false);
   const revisionRef = useRef(0);
   const lastPersistedDataSignatureRef = useRef("");
 
+  function applyDocumentToState(document: TrackerDocumentV4, writable: boolean) {
+    const { data } = document;
+
+    revisionRef.current = document.revision;
+    storageWritableRef.current = writable;
+    lastPersistedDataSignatureRef.current = getDocumentDataSignature(document);
+    setStorageVersion(document.schemaVersion);
+    setCharacters(data.characters);
+    setWeaponInventory(data.weaponInventory);
+    setMatrixTeams(data.matrixTeams);
+    setWelcomeSeen(data.preferences.welcomeSeen);
+    setDashboardSortKey(data.preferences.dashboardSortKey);
+    setDashboardViewMode(data.preferences.dashboardViewMode);
+    setBackupNoticeAcknowledgedAt(data.preferences.backupNoticeAcknowledgedAt);
+  }
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      const result = readStoredTrackerDocument();
+      const result = inspectTrackerStorage();
       const { document } = result;
 
       setStorageStatus(result.status);
 
-      if (document) {
-        const { data } = document;
+      if (result.state === "migration-required") {
+        setStorageMigrationPlan(result.migrationPlan);
+        storageWritableRef.current = false;
+        storageLoadedRef.current = true;
+        setStorageLoaded(true);
+        return;
+      }
 
-        revisionRef.current = document.revision;
-        storageWritableRef.current = true;
-        lastPersistedDataSignatureRef.current = getDocumentDataSignature(document);
-        setCharacters(data.characters);
-        setWeaponInventory(data.weaponInventory);
-        setMatrixTeams(data.matrixTeams);
-        setWelcomeSeen(data.preferences.welcomeSeen);
-        setDashboardSortKey(data.preferences.dashboardSortKey);
-        setDashboardViewMode(data.preferences.dashboardViewMode);
-        setBackupNoticeAcknowledgedAt(
-          data.preferences.backupNoticeAcknowledgedAt,
+      if (document) {
+        setStorageMigrationPlan(null);
+        applyDocumentToState(document, true);
+      } else if (result.state === "ready") {
+        setStorageMigrationPlan(null);
+        applyDocumentToState(
+          createTrackerDocumentV4({
+            characters: [],
+            weaponInventory: [],
+            matrixTeams: [],
+            preferences: DEFAULT_TRACKER_PREFERENCES,
+          }),
+          true,
         );
       } else {
         storageWritableRef.current = false;
@@ -162,6 +190,32 @@ export function usePersistedTrackerState() {
       state: "ready",
       message: "Tracker document saved.",
     });
+    setStorageVersion(nextDocument.schemaVersion);
+    setStorageMigrationPlan(null);
+  }
+
+  function commitPendingStorageMigration() {
+    if (!storageMigrationPlan) {
+      return;
+    }
+
+    try {
+      const document = commitStorageMigration(storageMigrationPlan);
+
+      setStorageMigrationPlan(null);
+      applyDocumentToState(document, true);
+      setStorageStatus({
+        state: "ready",
+        message: `Tracker storage migrated to v${document.schemaVersion}.`,
+      });
+    } catch {
+      storageWritableRef.current = false;
+      setStorageStatus({
+        state: "error",
+        message: "Tracker storage migration could not be completed.",
+      });
+      throw new Error("Tracker storage migration could not be completed.");
+    }
   }
 
   return {
@@ -182,5 +236,8 @@ export function usePersistedTrackerState() {
     replaceTrackerData,
     storageLoaded,
     storageStatus,
+    storageMigrationPlan,
+    storageVersion,
+    commitPendingStorageMigration,
   };
 }

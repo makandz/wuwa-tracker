@@ -7,7 +7,7 @@ export function StorageStatusNotice({
 }: {
   storageStatus: TrackerStorageStatus;
 }) {
-  if (storageStatus.state === "ready" || storageStatus.state === "migrated") {
+  if (storageStatus.state === "ready") {
     return null;
   }
 

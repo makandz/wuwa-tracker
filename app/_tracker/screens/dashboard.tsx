@@ -40,6 +40,7 @@ import {
 } from "../components/ui";
 import { StorageStatusNotice } from "../components/storage-status-notice";
 import type { TrackerStorageStatus } from "../storage";
+import { TRACKER_DOCUMENT_STORAGE_KEY } from "../storage/keys";
 
 export function Dashboard({
   characters,
@@ -48,6 +49,7 @@ export function Dashboard({
   dashboardSortKey,
   dashboardViewMode,
   storageStatus,
+  storageVersion,
   onAdd,
   onDashboardSortKeyChange,
   onDashboardViewModeChange,
@@ -64,6 +66,7 @@ export function Dashboard({
   dashboardSortKey: DashboardSortKey;
   dashboardViewMode: DashboardViewMode;
   storageStatus: TrackerStorageStatus;
+  storageVersion: number | null;
   onAdd: () => void;
   onDashboardSortKeyChange: (sortKey: DashboardSortKey) => void;
   onDashboardViewModeChange: (viewMode: DashboardViewMode) => void;
@@ -173,6 +176,11 @@ export function Dashboard({
     { label: "Complete", value: `${completeCount}/${characters.length}` },
     { label: "Avg build", value: averageBuildScoreValue },
     { label: "Weapon copies", value: String(totalWeaponCopies) },
+    {
+      label: "Storage",
+      title: TRACKER_DOCUMENT_STORAGE_KEY,
+      value: storageVersion ? `v${storageVersion}` : "Local",
+    },
   ];
 
   return (
@@ -187,7 +195,9 @@ export function Dashboard({
               {dashboardStats.map((stat) => (
                 <div className="flex items-center gap-1.5" key={stat.label}>
                   <dt className="text-app-muted-dim">{stat.label}</dt>
-                  <dd className="font-semibold text-app-muted">{stat.value}</dd>
+                  <dd className="font-semibold text-app-muted" title={stat.title}>
+                    {stat.value}
+                  </dd>
                 </div>
               ))}
             </dl>

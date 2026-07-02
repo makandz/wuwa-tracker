@@ -25,6 +25,7 @@ import {
   type TrackerPreferences,
 } from "./documents";
 import {
+  CURRENT_SCHEMA_VERSION,
   BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
   DASHBOARD_SORT_STORAGE_KEY,
   DASHBOARD_VIEW_STORAGE_KEY,
@@ -33,6 +34,12 @@ import {
   STORAGE_KEY,
   WELCOME_SEEN_STORAGE_KEY,
 } from "./keys";
+import { inspectTrackerStorage } from "./inspection";
+import {
+  commitStorageMigration,
+  exportStorageMigrationBackup,
+  type StorageMigrationPlan,
+} from "./migrations/plans";
 import {
   parseLegacyArrayExport,
   parseLegacyObjectExport,
@@ -51,8 +58,12 @@ import {
 } from "./schemas/legacy-v3";
 
 export {
+  CURRENT_SCHEMA_VERSION,
   DEFAULT_TRACKER_PREFERENCES,
+  commitStorageMigration,
   createTrackerDocumentV4,
+  exportStorageMigrationBackup,
+  inspectTrackerStorage,
   isDashboardSortKey,
   isDashboardViewMode,
   normalizeCharacters,
@@ -65,6 +76,7 @@ export {
 export type {
   ParsedImportedTrackerData,
   ReadTrackerDocumentResult,
+  StorageMigrationPlan,
   TrackerDocumentV4,
   TrackerPreferences,
   TrackerStorageStatus,

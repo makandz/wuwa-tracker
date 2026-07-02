@@ -12,3 +12,4 @@ export {
 
 export const TRACKER_APP_ID = "wuwa-tracker";
 export const TRACKER_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = TRACKER_SCHEMA_VERSION;
