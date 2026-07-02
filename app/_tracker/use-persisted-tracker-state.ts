@@ -3,36 +3,80 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
-  readStoredCharacters,
-  readStoredBackupNoticeAcknowledgedAt,
-  readStoredMatrixTeams,
-  readStoredWelcomeSeen,
-  readStoredWeaponInventory,
-  writeStoredBackupNoticeAcknowledgedAt,
-  writeStoredCharacters,
-  writeStoredMatrixTeams,
-  writeStoredWelcomeSeen,
-  writeStoredWeaponInventory,
+  DEFAULT_TRACKER_PREFERENCES,
+  createTrackerDocumentV4,
+  readStoredTrackerDocument,
+  writeStoredTrackerDocument,
+  type ParsedImportedTrackerData,
+  type TrackerDocumentV4,
+  type TrackerPreferences,
+  type TrackerStorageStatus,
 } from "./storage";
-import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "./types";
+import type {
+  DashboardSortKey,
+  DashboardViewMode,
+  MatrixTeam,
+  TrackedCharacter,
+  WeaponInventoryItem,
+} from "./types";
+
+function getDocumentDataSignature(document: TrackerDocumentV4) {
+  return JSON.stringify(document.data);
+}
 
 export function usePersistedTrackerState() {
   const [characters, setCharacters] = useState<TrackedCharacter[]>([]);
   const [weaponInventory, setWeaponInventory] = useState<WeaponInventoryItem[]>([]);
   const [matrixTeams, setMatrixTeams] = useState<MatrixTeam[]>([]);
-  const [welcomeSeen, setWelcomeSeen] = useState(false);
-  const [backupNoticeAcknowledgedAt, setBackupNoticeAcknowledgedAt] = useState(0);
+  const [welcomeSeen, setWelcomeSeen] = useState(
+    DEFAULT_TRACKER_PREFERENCES.welcomeSeen,
+  );
+  const [dashboardSortKey, setDashboardSortKey] = useState<DashboardSortKey>(
+    DEFAULT_TRACKER_PREFERENCES.dashboardSortKey,
+  );
+  const [dashboardViewMode, setDashboardViewMode] = useState<DashboardViewMode>(
+    DEFAULT_TRACKER_PREFERENCES.dashboardViewMode,
+  );
+  const [backupNoticeAcknowledgedAt, setBackupNoticeAcknowledgedAt] = useState(
+    DEFAULT_TRACKER_PREFERENCES.backupNoticeAcknowledgedAt,
+  );
   const [storageLoaded, setStorageLoaded] = useState(false);
+  const [storageStatus, setStorageStatus] = useState<TrackerStorageStatus>({
+    state: "ready",
+    message: "Tracker storage has not loaded yet.",
+  });
   const storageLoadedRef = useRef(false);
+  const storageWritableRef = useRef(false);
+  const revisionRef = useRef(0);
+  const lastPersistedDataSignatureRef = useRef("");
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
+      const result = readStoredTrackerDocument();
+      const { document } = result;
+
+      setStorageStatus(result.status);
+
+      if (document) {
+        const { data } = document;
+
+        revisionRef.current = document.revision;
+        storageWritableRef.current = true;
+        lastPersistedDataSignatureRef.current = getDocumentDataSignature(document);
+        setCharacters(data.characters);
+        setWeaponInventory(data.weaponInventory);
+        setMatrixTeams(data.matrixTeams);
+        setWelcomeSeen(data.preferences.welcomeSeen);
+        setDashboardSortKey(data.preferences.dashboardSortKey);
+        setDashboardViewMode(data.preferences.dashboardViewMode);
+        setBackupNoticeAcknowledgedAt(
+          data.preferences.backupNoticeAcknowledgedAt,
+        );
+      } else {
+        storageWritableRef.current = false;
+      }
+
       storageLoadedRef.current = true;
-      setCharacters(readStoredCharacters());
-      setWeaponInventory(readStoredWeaponInventory());
-      setMatrixTeams(readStoredMatrixTeams());
-      setWelcomeSeen(readStoredWelcomeSeen());
-      setBackupNoticeAcknowledgedAt(readStoredBackupNoticeAcknowledgedAt());
       setStorageLoaded(true);
     }, 0);
 
@@ -40,44 +84,85 @@ export function usePersistedTrackerState() {
   }, []);
 
   useEffect(() => {
-    if (!storageLoadedRef.current) {
+    if (!storageLoadedRef.current || !storageWritableRef.current) {
       return;
     }
 
-    writeStoredCharacters(characters);
-  }, [characters]);
+    const nextDocument = createTrackerDocumentV4({
+      characters,
+      weaponInventory,
+      matrixTeams,
+      preferences: {
+        welcomeSeen,
+        dashboardSortKey,
+        dashboardViewMode,
+        backupNoticeAcknowledgedAt,
+      },
+      revision: revisionRef.current + 1,
+    });
+    const nextSignature = getDocumentDataSignature(nextDocument);
 
-  useEffect(() => {
-    if (!storageLoadedRef.current) {
+    if (nextSignature === lastPersistedDataSignatureRef.current) {
       return;
     }
 
-    writeStoredWeaponInventory(weaponInventory);
-  }, [weaponInventory]);
-
-  useEffect(() => {
-    if (!storageLoadedRef.current) {
-      return;
+    try {
+      writeStoredTrackerDocument(nextDocument);
+      revisionRef.current = nextDocument.revision;
+      lastPersistedDataSignatureRef.current = nextSignature;
+    } catch {
+      storageWritableRef.current = false;
+      window.setTimeout(() => {
+        setStorageStatus({
+          state: "error",
+          message: "Tracker storage could not be saved in this browser.",
+        });
+      }, 0);
     }
+  }, [
+    backupNoticeAcknowledgedAt,
+    characters,
+    dashboardSortKey,
+    dashboardViewMode,
+    matrixTeams,
+    welcomeSeen,
+    weaponInventory,
+  ]);
 
-    writeStoredMatrixTeams(matrixTeams);
-  }, [matrixTeams]);
+  function replaceTrackerData(imported: ParsedImportedTrackerData) {
+    const preferences: TrackerPreferences = imported.preferences ?? {
+      welcomeSeen,
+      dashboardSortKey,
+      dashboardViewMode,
+      backupNoticeAcknowledgedAt,
+    };
+    const nextDocument = createTrackerDocumentV4({
+      characters: imported.characters,
+      weaponInventory: imported.weaponInventory,
+      matrixTeams: imported.matrixTeams,
+      preferences,
+      revision: revisionRef.current + 1,
+    });
 
-  useEffect(() => {
-    if (!storageLoadedRef.current) {
-      return;
-    }
+    writeStoredTrackerDocument(nextDocument);
 
-    writeStoredWelcomeSeen(welcomeSeen);
-  }, [welcomeSeen]);
-
-  useEffect(() => {
-    if (!storageLoadedRef.current) {
-      return;
-    }
-
-    writeStoredBackupNoticeAcknowledgedAt(backupNoticeAcknowledgedAt);
-  }, [backupNoticeAcknowledgedAt]);
+    revisionRef.current = nextDocument.revision;
+    storageWritableRef.current = true;
+    lastPersistedDataSignatureRef.current = getDocumentDataSignature(nextDocument);
+    setCharacters(nextDocument.data.characters);
+    setWeaponInventory(nextDocument.data.weaponInventory);
+    setMatrixTeams(nextDocument.data.matrixTeams);
+    setWelcomeSeen(nextDocument.data.preferences.welcomeSeen);
+    setDashboardSortKey(nextDocument.data.preferences.dashboardSortKey);
+    setDashboardViewMode(nextDocument.data.preferences.dashboardViewMode);
+    setBackupNoticeAcknowledgedAt(
+      nextDocument.data.preferences.backupNoticeAcknowledgedAt,
+    );
+    setStorageStatus({
+      state: "ready",
+      message: "Tracker document saved.",
+    });
+  }
 
   return {
     characters,
@@ -88,8 +173,14 @@ export function usePersistedTrackerState() {
     setMatrixTeams,
     welcomeSeen,
     setWelcomeSeen,
+    dashboardSortKey,
+    setDashboardSortKey,
+    dashboardViewMode,
+    setDashboardViewMode,
     backupNoticeAcknowledgedAt,
     setBackupNoticeAcknowledgedAt,
+    replaceTrackerData,
     storageLoaded,
+    storageStatus,
   };
 }

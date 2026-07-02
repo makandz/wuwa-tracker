@@ -8,3 +8,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 The user will run the development server manually. Agents should not start the app server unless the user explicitly asks for it.
 Agents should not create or use git worktrees. Use the existing local project checkout unless the user explicitly changes this instruction.
+When creating another local Codex thread for this project, use GPT-5.5. Choose medium reasoning for routine implementation tasks and high reasoning for complex architecture, migration, or debugging work.

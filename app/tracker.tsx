@@ -11,6 +11,8 @@ import { getAssignmentCounts } from "./_tracker/domain";
 import { exportTrackerData, parseImportedTrackerData } from "./_tracker/storage";
 import { useTrackerData } from "./_tracker/tracker-provider";
 import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "./_tracker/types";
+import { StorageStatusNotice } from "./_tracker/components/storage-status-notice";
+import { TextButton } from "./_tracker/components/ui";
 import { Dashboard } from "./_tracker/screens/dashboard";
 import { WeaponInventoryScreen } from "./_tracker/screens/inventory";
 import { AddScreen } from "./_tracker/screens/add-screen";
@@ -40,10 +42,15 @@ export function DashboardRoute() {
   const {
     characters,
     backupNoticeAcknowledgedAt,
+    dashboardSortKey,
+    dashboardViewMode,
     matrixTeams,
     setBackupNoticeAcknowledgedAt,
+    setDashboardSortKey,
+    setDashboardViewMode,
     setWelcomeSeen,
     storageLoaded,
+    storageStatus,
     welcomeSeen,
     weaponInventory,
   } = useTrackerData();
@@ -66,6 +73,19 @@ export function DashboardRoute() {
     return <div className="min-h-full bg-app-bg text-app-fg" />;
   }
 
+  if (storageStatus.state === "error") {
+    return (
+      <div className="min-h-full bg-app-bg text-app-fg">
+        <main className="mx-auto grid w-full max-w-3xl gap-4 px-4 py-6 sm:px-6 lg:px-8">
+          <StorageStatusNotice storageStatus={storageStatus} />
+          <TextButton onClick={() => router.push("/settings")}>
+            Open Settings
+          </TextButton>
+        </main>
+      </div>
+    );
+  }
+
   if (!welcomeSeen) {
     return (
       <WelcomeScreen
@@ -86,8 +106,15 @@ export function DashboardRoute() {
   }
 
   function exportBackupFromNotice() {
-    exportTrackerData(characters, weaponInventory, matrixTeams);
-    setBackupNoticeAcknowledgedAt(Date.now());
+    const acknowledgedAt = Date.now();
+
+    exportTrackerData(characters, weaponInventory, matrixTeams, {
+      welcomeSeen,
+      dashboardSortKey,
+      dashboardViewMode,
+      backupNoticeAcknowledgedAt: acknowledgedAt,
+    });
+    setBackupNoticeAcknowledgedAt(acknowledgedAt);
   }
 
   return (
@@ -95,7 +122,11 @@ export function DashboardRoute() {
       <Dashboard
         assignmentCounts={assignmentCounts}
         characters={characters}
+        dashboardSortKey={dashboardSortKey}
+        dashboardViewMode={dashboardViewMode}
         onAdd={() => router.push("/add")}
+        onDashboardSortKeyChange={setDashboardSortKey}
+        onDashboardViewModeChange={setDashboardViewMode}
         onExportBackup={exportBackupFromNotice}
         onInventory={() => router.push("/inventory")}
         onMatrix={() => router.push("/matrix")}
@@ -105,6 +136,7 @@ export function DashboardRoute() {
           backupNoticeCheckedAt !== null &&
           backupNoticeCheckedAt - backupNoticeAcknowledgedAt >= BACKUP_NOTICE_INTERVAL_MS
         }
+        storageStatus={storageStatus}
         weaponInventory={weaponInventory}
       />
     </div>
@@ -115,27 +147,46 @@ export function SettingsRoute() {
   const router = useRouter();
   const {
     characters,
-    setCharacters,
+    backupNoticeAcknowledgedAt,
+    dashboardSortKey,
+    dashboardViewMode,
     weaponInventory,
-    setWeaponInventory,
     matrixTeams,
-    setMatrixTeams,
+    replaceTrackerData,
     setBackupNoticeAcknowledgedAt,
+    storageStatus,
+    welcomeSeen,
   } = useTrackerData();
   const importRef = useRef<HTMLInputElement | null>(null);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
 
   function clearData() {
-    if (
-      (!characters.length && !weaponInventory.length && !matrixTeams.length) ||
-      !confirm("Clear all tracker data from this browser?")
-    ) {
+    const noLoadedData =
+      !characters.length && !weaponInventory.length && !matrixTeams.length;
+
+    if (storageStatus.state !== "error" && noLoadedData) {
       return;
     }
 
-    setCharacters([]);
-    setWeaponInventory([]);
-    setMatrixTeams([]);
+    if (!confirm("Clear all tracker data from this browser?")) {
+      return;
+    }
+
+    try {
+      replaceTrackerData({
+        characters: [],
+        weaponInventory: [],
+        matrixTeams: [],
+        preferences: {
+          welcomeSeen,
+          dashboardSortKey,
+          dashboardViewMode,
+          backupNoticeAcknowledgedAt,
+        },
+      });
+    } catch {
+      alert("Tracker data could not be cleared.");
+    }
   }
 
   async function importCharacters(event: ChangeEvent<HTMLInputElement>) {
@@ -150,9 +201,15 @@ export function SettingsRoute() {
       const text = await file.text();
       const imported = parseImportedTrackerData(text);
 
-      setCharacters(imported.characters);
-      setWeaponInventory(imported.weaponInventory);
-      setMatrixTeams(imported.matrixTeams);
+      replaceTrackerData({
+        ...imported,
+        preferences: imported.preferences ?? {
+          welcomeSeen,
+          dashboardSortKey,
+          dashboardViewMode,
+          backupNoticeAcknowledgedAt,
+        },
+      });
       router.replace("/");
     } catch {
       alert("That JSON file could not be imported.");
@@ -160,8 +217,15 @@ export function SettingsRoute() {
   }
 
   function exportSettingsBackup() {
-    exportTrackerData(characters, weaponInventory, matrixTeams);
-    setBackupNoticeAcknowledgedAt(Date.now());
+    const acknowledgedAt = Date.now();
+
+    exportTrackerData(characters, weaponInventory, matrixTeams, {
+      welcomeSeen,
+      dashboardSortKey,
+      dashboardViewMode,
+      backupNoticeAcknowledgedAt: acknowledgedAt,
+    });
+    setBackupNoticeAcknowledgedAt(acknowledgedAt);
   }
 
   return (
@@ -175,6 +239,7 @@ export function SettingsRoute() {
         onClear={clearData}
         onExport={exportSettingsBackup}
         onImport={importCharacters}
+        storageStatus={storageStatus}
         weaponInventory={weaponInventory}
       />
     </div>

@@ -3,12 +3,15 @@
 import type { ChangeEvent, RefObject } from "react";
 
 import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "../types";
+import type { TrackerStorageStatus } from "../storage";
+import { StorageStatusNotice } from "../components/storage-status-notice";
 import { TextButton } from "../components/ui";
 
 export function SettingsScreen({
   characters,
   weaponInventory,
   matrixTeams,
+  storageStatus,
   assignmentCounts,
   onBack,
   onExport,
@@ -19,6 +22,7 @@ export function SettingsScreen({
   characters: TrackedCharacter[];
   weaponInventory: WeaponInventoryItem[];
   matrixTeams: MatrixTeam[];
+  storageStatus: TrackerStorageStatus;
   assignmentCounts: Record<number, number>;
   onBack: () => void;
   onExport: () => void;
@@ -55,6 +59,8 @@ export function SettingsScreen({
         </div>
         <TextButton onClick={onBack}>Dashboard</TextButton>
       </div>
+
+      <StorageStatusNotice storageStatus={storageStatus} />
 
       <section className="grid gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
         <div>
