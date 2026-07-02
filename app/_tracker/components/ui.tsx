@@ -151,6 +151,7 @@ export function TextButton({
   variant = "secondary",
   type = "button",
   compact = false,
+  disabled = false,
 }: {
   children: React.ReactNode;
   className?: string;
@@ -158,6 +159,7 @@ export function TextButton({
   variant?: "primary" | "secondary" | "danger";
   type?: "button" | "submit";
   compact?: boolean;
+  disabled?: boolean;
 }) {
   const classes =
     variant === "primary"
@@ -168,9 +170,10 @@ export function TextButton({
 
   return (
     <button
-      className={`rounded-md border font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25 ${
+      className={`rounded-md border font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/25 disabled:cursor-not-allowed disabled:opacity-60 ${
         compact ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm"
       } ${classes} ${className}`}
+      disabled={disabled}
       onClick={onClick}
       type={type}
     >

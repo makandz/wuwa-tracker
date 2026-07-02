@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ROLES } from "../constants";
 import {
@@ -22,12 +22,6 @@ import {
   roleSectionClasses,
   sortDashboardCharacters,
 } from "../domain";
-import {
-  readStoredDashboardSortKey,
-  readStoredDashboardViewMode,
-  writeStoredDashboardSortKey,
-  writeStoredDashboardViewMode,
-} from "../storage";
 import type {
   DashboardSortKey,
   DashboardViewMode,
@@ -44,12 +38,21 @@ import {
   TextButton,
   WeaponStatusBadge,
 } from "../components/ui";
+import { StorageStatusNotice } from "../components/storage-status-notice";
+import type { TrackerStorageStatus } from "../storage";
+import { TRACKER_DOCUMENT_STORAGE_KEY } from "../storage/keys";
 
 export function Dashboard({
   characters,
   weaponInventory,
   assignmentCounts,
+  dashboardSortKey,
+  dashboardViewMode,
+  storageStatus,
+  storageVersion,
   onAdd,
+  onDashboardSortKeyChange,
+  onDashboardViewModeChange,
   onExportBackup,
   onOpen,
   onInventory,
@@ -60,7 +63,13 @@ export function Dashboard({
   characters: TrackedCharacter[];
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
+  dashboardSortKey: DashboardSortKey;
+  dashboardViewMode: DashboardViewMode;
+  storageStatus: TrackerStorageStatus;
+  storageVersion: number | null;
   onAdd: () => void;
+  onDashboardSortKeyChange: (sortKey: DashboardSortKey) => void;
+  onDashboardViewModeChange: (viewMode: DashboardViewMode) => void;
   onExportBackup: () => void;
   onOpen: (id: string) => void;
   onInventory: () => void;
@@ -71,10 +80,8 @@ export function Dashboard({
   const [query, setQuery] = useState("");
   const [weaponFilter, setWeaponFilter] = useState<WeaponFilter>("all");
   const [hideComplete, setHideComplete] = useState(false);
-  const [sortKey, setSortKey] = useState<DashboardSortKey>(readStoredDashboardSortKey);
-  const [dashboardView, setDashboardView] = useState<DashboardViewMode>(
-    readStoredDashboardViewMode,
-  );
+  const sortKey = dashboardSortKey;
+  const dashboardView = dashboardViewMode;
   const completeCount = characters.filter(isComplete).length;
   const critScoredCharacters = characters.filter((character) => !character.noCrit);
   const validBuildScores = critScoredCharacters
@@ -163,20 +170,17 @@ export function Dashboard({
     [sortKey, visibleCharacters],
   );
 
-  useEffect(() => {
-    writeStoredDashboardSortKey(sortKey);
-  }, [sortKey]);
-
-  useEffect(() => {
-    writeStoredDashboardViewMode(dashboardView);
-  }, [dashboardView]);
-
   const filtersActive = normalizedQuery || weaponFilter !== "all" || hideComplete;
   const dashboardStats = [
     { label: "Tracked", value: String(characters.length) },
     { label: "Complete", value: `${completeCount}/${characters.length}` },
     { label: "Avg build", value: averageBuildScoreValue },
     { label: "Weapon copies", value: String(totalWeaponCopies) },
+    {
+      label: "Storage",
+      title: TRACKER_DOCUMENT_STORAGE_KEY,
+      value: storageVersion ? `v${storageVersion}` : "Local",
+    },
   ];
 
   return (
@@ -191,7 +195,9 @@ export function Dashboard({
               {dashboardStats.map((stat) => (
                 <div className="flex items-center gap-1.5" key={stat.label}>
                   <dt className="text-app-muted-dim">{stat.label}</dt>
-                  <dd className="font-semibold text-app-muted">{stat.value}</dd>
+                  <dd className="font-semibold text-app-muted" title={stat.title}>
+                    {stat.value}
+                  </dd>
                 </div>
               ))}
             </dl>
@@ -216,6 +222,8 @@ export function Dashboard({
       </section>
 
       <main className="mx-auto grid w-full max-w-7xl gap-3 px-4 py-5 sm:px-6 lg:px-8">
+        <StorageStatusNotice storageStatus={storageStatus} />
+
         {showBackupNotice ? (
           <section className="flex flex-col gap-3 rounded-md border border-app-border bg-app-surface px-4 py-3 text-app-muted sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium leading-6">
@@ -279,7 +287,7 @@ export function Dashboard({
                 <SelectInput
                   compact
                   label="Sort"
-                  onChange={setSortKey}
+                  onChange={onDashboardSortKeyChange}
                   options={[
                     { label: "Recently updated", value: "updated" },
                     { label: "Name A-Z", value: "name" },
@@ -315,7 +323,7 @@ export function Dashboard({
                         : "text-app-muted hover:bg-app-surface hover:text-app-fg"
                     }`}
                     key={viewMode}
-                    onClick={() => setDashboardView(viewMode)}
+                    onClick={() => onDashboardViewModeChange(viewMode)}
                     type="button"
                   >
                     {viewMode}
