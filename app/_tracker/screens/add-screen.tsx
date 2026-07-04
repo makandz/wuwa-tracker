@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 
 import { FOUR_COST_OPTIONS, ROLES, emptyChecklist } from "../constants";
-import { getCharacterRarityDisplay, getWeaponRarityTone } from "../domain";
+import {
+  buildWeaponInventoryCountMap,
+  getCharacterRarityDisplay,
+  getOwnedWeaponsByType,
+  getWeaponRarityTone,
+} from "../domain";
 import type { ApiCharacter, Catalog, FourCostMain, Role, TrackedCharacter, WeaponInventoryItem } from "../types";
 import { CharacterPickerModal, PickerSummary, WeaponPickerModal } from "../components/pickers";
 import { RoleToggle, TextButton } from "../components/ui";
@@ -34,19 +39,15 @@ export function AddScreen({
     qualityId: selectedCharacter?.QualityId,
   });
   const inventoryCounts = useMemo(
-    () =>
-      weaponInventory.reduce<Record<number, number>>((counts, item) => {
-        counts[item.weaponId] = item.count;
-        return counts;
-      }, {}),
+    () => buildWeaponInventoryCountMap(weaponInventory),
     [weaponInventory],
   );
   const availableWeapons = selectedCharacter
-    ? catalog.weapons.filter(
-        (weapon) =>
-          weapon.Type === selectedCharacter.WeaponType?.Id &&
-          (inventoryCounts[weapon.Id] ?? 0) > 0,
-      )
+    ? getOwnedWeaponsByType({
+        inventoryCounts,
+        weaponTypeId: selectedCharacter.WeaponType?.Id,
+        weapons: catalog.weapons,
+      })
     : [];
   const [weaponId, setWeaponId] = useState<number | null>(availableWeapons[0]?.Id ?? null);
   const [roles, setRoles] = useState<Role[]>(["DPS"]);
@@ -82,11 +83,11 @@ export function AddScreen({
   }
 
   function updateSelectedCharacter(nextCharacter: ApiCharacter) {
-    const nextWeapon = catalog.weapons.find(
-      (weapon) =>
-        weapon.Type === nextCharacter?.WeaponType?.Id &&
-        (inventoryCounts[weapon.Id] ?? 0) > 0,
-    );
+    const nextWeapon = getOwnedWeaponsByType({
+      inventoryCounts,
+      weaponTypeId: nextCharacter.WeaponType?.Id,
+      weapons: catalog.weapons,
+    })[0];
 
     setCharacterId(nextCharacter.Id);
     setWeaponId(nextWeapon?.Id ?? null);

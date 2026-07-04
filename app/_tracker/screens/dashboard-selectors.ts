@@ -1,5 +1,7 @@
 import { ROLES } from "../constants";
 import {
+  buildCatalogCharacterLookup,
+  buildCatalogWeaponLookup,
   characterRoleToneClasses,
   checklistTotal,
   formatRatingValue,
@@ -34,10 +36,8 @@ export type DashboardCatalogLookups = {
 
 export function buildDashboardCatalogLookups(catalog: Catalog): DashboardCatalogLookups {
   return {
-    catalogCharacterById: new Map(
-      catalog.characters.map((character) => [character.Id, character]),
-    ),
-    catalogWeaponById: new Map(catalog.weapons.map((weapon) => [weapon.Id, weapon])),
+    catalogCharacterById: buildCatalogCharacterLookup(catalog.characters),
+    catalogWeaponById: buildCatalogWeaponLookup(catalog.weapons),
   };
 }
 

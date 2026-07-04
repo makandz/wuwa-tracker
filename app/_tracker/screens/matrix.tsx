@@ -3,6 +3,7 @@
 import { useMemo, useState, type DragEvent } from "react";
 
 import {
+  buildCatalogCharacterLookup,
   getMatrixCharacterMaxUses,
   getRatingGrade,
   getRatings,
@@ -165,7 +166,7 @@ export function MatrixScreen({
     [characters],
   );
   const catalogCharacterById = useMemo(
-    () => new Map(catalog.characters.map((character) => [character.Id, character])),
+    () => buildCatalogCharacterLookup(catalog.characters),
     [catalog.characters],
   );
   const usageCounts = useMemo(() => getUsageCounts(cleanedTeams), [cleanedTeams]);

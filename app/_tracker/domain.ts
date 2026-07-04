@@ -614,12 +614,20 @@ export function findCatalogCharacter(
   return characters.find((character) => character.Id === characterId) ?? null;
 }
 
+export function buildCatalogCharacterLookup(characters: ApiCharacter[]) {
+  return new Map(characters.map((character) => [character.Id, character]));
+}
+
 export function findCatalogWeapon(weapons: ApiWeapon[], weaponId: number | null) {
   if (!weaponId) {
     return null;
   }
 
   return weapons.find((weapon) => weapon.Id === weaponId) ?? null;
+}
+
+export function buildCatalogWeaponLookup(weapons: ApiWeapon[]) {
+  return new Map(weapons.map((weapon) => [weapon.Id, weapon]));
 }
 
 export function getTrackedCharacterDisplay(
@@ -804,6 +812,31 @@ export function getInventoryCount(
   }
 
   return inventory.find((item) => item.weaponId === weaponId)?.count ?? 0;
+}
+
+export function buildWeaponInventoryCountMap(inventory: WeaponInventoryItem[]) {
+  return inventory.reduce<Record<number, number>>((counts, item) => {
+    counts[item.weaponId] = item.count;
+    return counts;
+  }, {});
+}
+
+export function getOwnedWeaponsByType({
+  inventoryCounts,
+  weaponTypeId,
+  weapons,
+}: {
+  inventoryCounts: Record<number, number>;
+  weaponTypeId: number | null | undefined;
+  weapons: ApiWeapon[];
+}) {
+  if (!weaponTypeId) {
+    return [];
+  }
+
+  return weapons.filter(
+    (weapon) => weapon.Type === weaponTypeId && (inventoryCounts[weapon.Id] ?? 0) > 0,
+  );
 }
 
 export function getAssignmentCounts(characters: TrackedCharacter[]) {

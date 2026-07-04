@@ -3,7 +3,12 @@
 import { useMemo, useState } from "react";
 import Image from "next/image";
 
-import { getWeaponRarityTone, getWeaponToneClasses, parseWholeNumberInput } from "../domain";
+import {
+  buildWeaponInventoryCountMap,
+  getWeaponRarityTone,
+  getWeaponToneClasses,
+  parseWholeNumberInput,
+} from "../domain";
 import type { ApiWeapon, Catalog, WeaponInventoryItem } from "../types";
 import {
   ImageFallback,
@@ -38,11 +43,7 @@ export function WeaponInventoryScreen({
 }) {
   const [query, setQuery] = useState("");
   const inventoryCounts = useMemo(
-    () =>
-      inventory.reduce<Record<number, number>>((counts, item) => {
-        counts[item.weaponId] = item.count;
-        return counts;
-      }, {}),
+    () => buildWeaponInventoryCountMap(inventory),
     [inventory],
   );
   const normalizedQuery = query.trim().toLowerCase();

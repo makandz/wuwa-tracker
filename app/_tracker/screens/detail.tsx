@@ -11,6 +11,7 @@ import {
   ROLES,
 } from "../constants";
 import {
+  buildWeaponInventoryCountMap,
   characterRoleToneClasses,
   createDefaultEchoChecker,
   findCatalogCharacter,
@@ -24,6 +25,7 @@ import {
   getEffectiveEchoCritStats,
   getEffectiveChecklist,
   getPrimaryRole,
+  getOwnedWeaponsByType,
   getPrydwenCharacterUrl,
   getRatingGrade,
   getRatings,
@@ -294,20 +296,16 @@ export function DetailScreen({
   onUpdate: (character: TrackedCharacter) => void;
 }) {
   const inventoryCounts = useMemo(
-    () =>
-      weaponInventory.reduce<Record<number, number>>((counts, item) => {
-        counts[item.weaponId] = item.count;
-        return counts;
-      }, {}),
+    () => buildWeaponInventoryCountMap(weaponInventory),
     [weaponInventory],
   );
   const catalogCharacter = findCatalogCharacter(characters, character.characterId);
   const characterDisplay = getTrackedCharacterDisplay(character, catalogCharacter);
-  const availableWeapons = weapons.filter(
-    (weapon) =>
-      weapon.Type === characterDisplay.weaponTypeId &&
-      (inventoryCounts[weapon.Id] ?? 0) > 0,
-  );
+  const availableWeapons = getOwnedWeaponsByType({
+    inventoryCounts,
+    weaponTypeId: characterDisplay.weaponTypeId,
+    weapons,
+  });
   const ratings = getRatings(character);
   const echoChecker = character.echoChecker ?? createDefaultEchoChecker(character.roles);
   const echoCritPlaceholders = getEchoCritPlaceholders(character.fourCostMain);
