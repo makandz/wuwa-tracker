@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useMemo, useState, type DragEvent } from "react";
 
 import {
   getMatrixCharacterMaxUses,
@@ -196,16 +196,6 @@ export function MatrixScreen({
       : cleanedTeams[0]
         ? { teamId: cleanedTeams[0].id, slotIndex: 0 }
         : null;
-
-  useEffect(() => {
-    if (teams === cleanedTeams) {
-      return;
-    }
-
-    if (JSON.stringify(teams) !== JSON.stringify(cleanedTeams)) {
-      onUpdateTeams(cleanedTeams);
-    }
-  }, [cleanedTeams, onUpdateTeams, teams]);
 
   function addTeam() {
     const team = createTeam();
