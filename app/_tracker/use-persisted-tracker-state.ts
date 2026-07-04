@@ -32,7 +32,7 @@ function getTrackerDataSignature(data: TrackerData) {
   return JSON.stringify(data);
 }
 
-function cleanMatrixTeamsForCharacters(
+export function cleanMatrixTeamsForCharacters(
   matrixTeams: MatrixTeam[],
   characters: TrackedCharacter[],
 ) {
