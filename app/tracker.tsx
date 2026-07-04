@@ -7,7 +7,11 @@ import {
   BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
   BACKUP_NOTICE_INTERVAL_MS,
 } from "./_tracker/constants";
-import { getAssignmentCounts } from "./_tracker/domain";
+import {
+  findTrackedCharacterByRouteSegment,
+  getAssignmentCounts,
+  getTrackedCharacterRouteSegment,
+} from "./_tracker/domain";
 import {
   exportTrackerData,
   parseImportedTrackerData,
@@ -24,8 +28,13 @@ import { MatrixScreen } from "./_tracker/screens/matrix";
 import { SettingsScreen } from "./_tracker/screens/settings";
 import { WelcomeScreen } from "./_tracker/screens/welcome";
 
-function getCharacterHref(id: string) {
-  return `/characters/${encodeURIComponent(id)}`;
+function getCharacterHref(
+  character: TrackedCharacter,
+  characters: TrackedCharacter[],
+) {
+  return `/characters/${encodeURIComponent(
+    getTrackedCharacterRouteSegment(character, characters),
+  )}`;
 }
 
 function hasTrackerData(
@@ -143,7 +152,13 @@ export function DashboardRoute() {
         onExportBackup={exportBackupFromNotice}
         onInventory={() => router.push("/inventory")}
         onMatrix={() => router.push("/matrix")}
-        onOpen={(id) => router.push(getCharacterHref(id))}
+        onOpen={(id) => {
+          const character = characters.find((item) => item.id === id);
+
+          if (character) {
+            router.push(getCharacterHref(character, characters));
+          }
+        }}
         onSettings={() => router.push("/settings")}
         showBackupNotice={
           backupNoticeCheckedAt !== null &&
@@ -274,7 +289,7 @@ export function AddCharacterRoute() {
 
   function addCharacter(character: TrackedCharacter) {
     createCharacter(character);
-    router.push(getCharacterHref(character.id));
+    router.push(getCharacterHref(character, [...characters, character]));
   }
 
   return (
@@ -318,9 +333,7 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
     weaponInventory,
     storageLoaded,
   } = useTrackerData();
-  const decodedCharacterId = decodeURIComponent(characterId);
-  const selectedCharacter =
-    characters.find((character) => character.id === decodedCharacterId) ?? null;
+  const selectedCharacter = findTrackedCharacterByRouteSegment(characterId, characters);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
 
   useEffect(() => {

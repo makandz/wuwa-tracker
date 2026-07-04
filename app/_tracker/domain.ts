@@ -526,6 +526,67 @@ export function getPrydwenCharacterUrl(characterName: string) {
   return `${PRYDWEN_CHARACTER_BASE_URL}/${slug}`;
 }
 
+export function slugifyCharacterName(name: string) {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function getTrackedCharacterSlug(character: TrackedCharacter) {
+  return slugifyCharacterName(character.characterName) || String(character.characterId);
+}
+
+function hasDuplicateCharacterSlug(
+  character: TrackedCharacter,
+  characters: TrackedCharacter[],
+) {
+  const slug = getTrackedCharacterSlug(character);
+
+  return characters.some(
+    (item) => item.id !== character.id && getTrackedCharacterSlug(item) === slug,
+  );
+}
+
+export function getTrackedCharacterRouteSegment(
+  character: TrackedCharacter,
+  characters: TrackedCharacter[],
+) {
+  const slug = getTrackedCharacterSlug(character);
+
+  return hasDuplicateCharacterSlug(character, characters)
+    ? `${slug}-${character.characterId}`
+    : slug;
+}
+
+export function findTrackedCharacterByRouteSegment(
+  routeSegment: string,
+  characters: TrackedCharacter[],
+) {
+  let decodedRouteSegment = routeSegment;
+
+  try {
+    decodedRouteSegment = decodeURIComponent(routeSegment);
+  } catch {
+    return null;
+  }
+
+  return (
+    characters.find((character) => character.id === decodedRouteSegment) ??
+    characters.find(
+      (character) =>
+        getTrackedCharacterRouteSegment(character, characters) === decodedRouteSegment,
+    ) ??
+    characters.find(
+      (character) => getTrackedCharacterSlug(character) === decodedRouteSegment,
+    ) ??
+    null
+  );
+}
+
 export function normalizeCharacterName(name: string | null | undefined) {
   return (name ?? "").trim().toLowerCase();
 }
