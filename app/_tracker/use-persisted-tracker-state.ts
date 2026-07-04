@@ -28,14 +28,6 @@ import type {
 
 type TrackerData = TrackerDocumentV5["data"];
 
-function getDocumentDataSignature(document: TrackerDocumentV5) {
-  return JSON.stringify(document.data);
-}
-
-function getTrackerDataSignature(data: TrackerData) {
-  return JSON.stringify(data);
-}
-
 export function cleanMatrixTeamsForCharacters(
   matrixTeams: MatrixTeam[],
   characters: TrackedCharacter[],
@@ -197,8 +189,7 @@ export function usePersistedTrackerState() {
     });
 
     if (
-      getDocumentDataSignature(nextDocument) ===
-      getTrackerDataSignature(trackerDataRef.current)
+      JSON.stringify(nextDocument.data) === JSON.stringify(trackerDataRef.current)
     ) {
       return false;
     }
@@ -233,6 +224,15 @@ export function usePersistedTrackerState() {
       setStorageSaveError();
       throw new Error("Tracker storage could not be saved.");
     }
+  }
+
+  function commitTrackerDataUpdate(
+    getNextData: (currentData: TrackerData) => TrackerData | null,
+    options?: Parameters<typeof commitTrackerData>[1],
+  ) {
+    const nextData = getNextData(trackerDataRef.current);
+
+    return nextData ? commitTrackerData(nextData, options) : false;
   }
 
   useEffect(() => {
@@ -305,7 +305,6 @@ export function usePersistedTrackerState() {
   }, [storageLoaded]);
 
   function createCharacter(character: TrackedCharacter) {
-    const currentData = trackerDataRef.current;
     const now = new Date().toISOString();
     const nextCharacter = {
       ...character,
@@ -313,86 +312,86 @@ export function usePersistedTrackerState() {
       updatedAt: now,
     };
 
-    if (currentData.characters.some((item) => item.id === nextCharacter.id)) {
-      return;
-    }
-
-    commitTrackerData({
-      ...currentData,
-      characters: [...currentData.characters, nextCharacter],
-    });
+    commitTrackerDataUpdate((currentData) =>
+      currentData.characters.some((item) => item.id === nextCharacter.id)
+        ? null
+        : {
+            ...currentData,
+            characters: [...currentData.characters, nextCharacter],
+          },
+    );
   }
 
   function updateCharacter(character: TrackedCharacter) {
-    const currentData = trackerDataRef.current;
+    const now = new Date().toISOString();
 
-    if (!currentData.characters.some((item) => item.id === character.id)) {
-      return;
-    }
-
-    commitTrackerData({
-      ...currentData,
-      characters: currentData.characters.map((item) =>
-        item.id === character.id
-          ? {
-              ...character,
-              updatedAt: new Date().toISOString(),
-            }
-          : item,
-      ),
-    });
+    commitTrackerDataUpdate((currentData) =>
+      currentData.characters.some((item) => item.id === character.id)
+        ? {
+            ...currentData,
+            characters: currentData.characters.map((item) =>
+              item.id === character.id
+                ? {
+                    ...character,
+                    updatedAt: now,
+                  }
+                : item,
+            ),
+          }
+        : null,
+    );
   }
 
   function deleteCharacter(id: string) {
-    const currentData = trackerDataRef.current;
-
-    if (!currentData.characters.some((character) => character.id === id)) {
-      return;
-    }
-
-    commitTrackerData({
-      ...currentData,
-      characters: currentData.characters.filter((character) => character.id !== id),
-      matrixTeams: currentData.matrixTeams.map((team) => ({
-        ...team,
-        slots: team.slots.map((characterId) =>
-          characterId === id ? null : characterId,
-        ) as MatrixTeam["slots"],
-      })),
-    });
+    commitTrackerDataUpdate((currentData) =>
+      currentData.characters.some((character) => character.id === id)
+        ? {
+            ...currentData,
+            characters: currentData.characters.filter(
+              (character) => character.id !== id,
+            ),
+            matrixTeams: currentData.matrixTeams.map((team) => ({
+              ...team,
+              slots: team.slots.map((characterId) =>
+                characterId === id ? null : characterId,
+              ) as MatrixTeam["slots"],
+            })),
+          }
+        : null,
+    );
   }
 
   function setWeaponCount(weaponId: number, count: number) {
-    const currentData = trackerDataRef.current;
     const nextCount = Math.max(0, Math.round(count));
-    const existing = currentData.weaponInventory.find(
-      (item) => item.weaponId === weaponId,
-    );
-    const weaponInventory =
-      nextCount === 0
-        ? currentData.weaponInventory.filter((item) => item.weaponId !== weaponId)
-        : existing
-          ? currentData.weaponInventory.map((item) =>
-              item.weaponId === weaponId ? { ...item, count: nextCount } : item,
-            )
-          : [...currentData.weaponInventory, { weaponId, count: nextCount }];
 
-    commitTrackerData({
-      ...currentData,
-      weaponInventory,
+    commitTrackerDataUpdate((currentData) => {
+      const existing = currentData.weaponInventory.find(
+        (item) => item.weaponId === weaponId,
+      );
+      const weaponInventory =
+        nextCount === 0
+          ? currentData.weaponInventory.filter((item) => item.weaponId !== weaponId)
+          : existing
+            ? currentData.weaponInventory.map((item) =>
+                item.weaponId === weaponId ? { ...item, count: nextCount } : item,
+              )
+            : [...currentData.weaponInventory, { weaponId, count: nextCount }];
+
+      return {
+        ...currentData,
+        weaponInventory,
+      };
     });
   }
 
   function replaceAllData(imported: ParsedImportedTrackerData) {
-    const currentData = trackerDataRef.current;
-
-    commitTrackerData(
-      {
+    commitTrackerDataUpdate(
+      (currentData) => ({
         characters: imported.characters,
         weaponInventory: imported.weaponInventory,
         matrixTeams: imported.matrixTeams,
         preferences: imported.preferences ?? currentData.preferences,
-      },
+      }),
       {
         forceWritable: true,
       },
@@ -400,13 +399,13 @@ export function usePersistedTrackerState() {
   }
 
   function clearTrackerData() {
-    commitTrackerData(
-      {
+    commitTrackerDataUpdate(
+      (currentData) => ({
         characters: [],
         weaponInventory: [],
         matrixTeams: [],
-        preferences: trackerDataRef.current.preferences,
-      },
+        preferences: currentData.preferences,
+      }),
       {
         forceWritable: true,
       },
@@ -414,22 +413,20 @@ export function usePersistedTrackerState() {
   }
 
   function updateMatrixTeams(matrixTeams: MatrixTeam[]) {
-    commitTrackerData({
-      ...trackerDataRef.current,
+    commitTrackerDataUpdate((currentData) => ({
+      ...currentData,
       matrixTeams,
-    });
+    }));
   }
 
   function updatePreferences(preferences: Partial<TrackerPreferences>) {
-    const currentData = trackerDataRef.current;
-
-    commitTrackerData({
+    commitTrackerDataUpdate((currentData) => ({
       ...currentData,
       preferences: {
         ...currentData.preferences,
         ...preferences,
       },
-    });
+    }));
   }
 
   function commitPendingStorageMigration() {
