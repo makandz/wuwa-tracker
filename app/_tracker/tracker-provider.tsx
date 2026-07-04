@@ -4,9 +4,7 @@ import {
   createContext,
   useContext,
   useState,
-  type Dispatch,
   type ReactNode,
-  type SetStateAction,
 } from "react";
 
 import type {
@@ -20,6 +18,7 @@ import type {
 import type {
   ParsedImportedTrackerData,
   StorageMigrationPlan,
+  TrackerPreferences,
   TrackerStorageStatus,
 } from "./storage";
 import { exportStorageMigrationBackup } from "./storage";
@@ -30,20 +29,20 @@ import { usePersistedTrackerState } from "./use-persisted-tracker-state";
 type TrackerContextValue = {
   catalog: Catalog;
   characters: TrackedCharacter[];
-  setCharacters: Dispatch<SetStateAction<TrackedCharacter[]>>;
   weaponInventory: WeaponInventoryItem[];
-  setWeaponInventory: Dispatch<SetStateAction<WeaponInventoryItem[]>>;
   matrixTeams: MatrixTeam[];
-  setMatrixTeams: Dispatch<SetStateAction<MatrixTeam[]>>;
   welcomeSeen: boolean;
-  setWelcomeSeen: Dispatch<SetStateAction<boolean>>;
   dashboardSortKey: DashboardSortKey;
-  setDashboardSortKey: Dispatch<SetStateAction<DashboardSortKey>>;
   dashboardViewMode: DashboardViewMode;
-  setDashboardViewMode: Dispatch<SetStateAction<DashboardViewMode>>;
   backupNoticeAcknowledgedAt: number;
-  setBackupNoticeAcknowledgedAt: Dispatch<SetStateAction<number>>;
-  replaceTrackerData: (data: ParsedImportedTrackerData) => void;
+  createCharacter: (character: TrackedCharacter) => void;
+  updateCharacter: (character: TrackedCharacter) => void;
+  deleteCharacter: (id: string) => void;
+  setWeaponCount: (weaponId: number, count: number) => void;
+  replaceAllData: (data: ParsedImportedTrackerData) => void;
+  clearTrackerData: () => void;
+  updateMatrixTeams: (teams: MatrixTeam[]) => void;
+  updatePreferences: (preferences: Partial<TrackerPreferences>) => void;
   storageLoaded: boolean;
   storageStatus: TrackerStorageStatus;
   storageMigrationPlan: StorageMigrationPlan | null;
@@ -58,20 +57,20 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
   const [migrationRunning, setMigrationRunning] = useState(false);
   const {
     characters,
-    setCharacters,
     weaponInventory,
-    setWeaponInventory,
     matrixTeams,
-    setMatrixTeams,
     welcomeSeen,
-    setWelcomeSeen,
     dashboardSortKey,
-    setDashboardSortKey,
     dashboardViewMode,
-    setDashboardViewMode,
     backupNoticeAcknowledgedAt,
-    setBackupNoticeAcknowledgedAt,
-    replaceTrackerData,
+    createCharacter,
+    updateCharacter,
+    deleteCharacter,
+    setWeaponCount,
+    replaceAllData,
+    clearTrackerData,
+    updateMatrixTeams,
+    updatePreferences,
     storageLoaded,
     storageStatus,
     storageMigrationPlan,
@@ -81,20 +80,20 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
   const value: TrackerContextValue = {
     catalog,
     characters,
-    setCharacters,
     weaponInventory,
-    setWeaponInventory,
     matrixTeams,
-    setMatrixTeams,
     welcomeSeen,
-    setWelcomeSeen,
     dashboardSortKey,
-    setDashboardSortKey,
     dashboardViewMode,
-    setDashboardViewMode,
     backupNoticeAcknowledgedAt,
-    setBackupNoticeAcknowledgedAt,
-    replaceTrackerData,
+    createCharacter,
+    updateCharacter,
+    deleteCharacter,
+    setWeaponCount,
+    replaceAllData,
+    clearTrackerData,
+    updateMatrixTeams,
+    updatePreferences,
     storageLoaded,
     storageStatus,
     storageMigrationPlan,

@@ -48,13 +48,10 @@ export function DashboardRoute() {
     dashboardSortKey,
     dashboardViewMode,
     matrixTeams,
-    setBackupNoticeAcknowledgedAt,
-    setDashboardSortKey,
-    setDashboardViewMode,
-    setWelcomeSeen,
     storageLoaded,
     storageStatus,
     storageVersion,
+    updatePreferences,
     welcomeSeen,
     weaponInventory,
   } = useTrackerData();
@@ -94,16 +91,22 @@ export function DashboardRoute() {
     return (
       <WelcomeScreen
         onStart={() => {
+          const preferences = {
+            welcomeSeen: true,
+            backupNoticeAcknowledgedAt,
+          };
+
           if (
             backupNoticeAcknowledgedAt === 0 &&
             !hasTrackerData(characters, weaponInventory, matrixTeams)
           ) {
-            setBackupNoticeAcknowledgedAt(
-              Date.now() - BACKUP_NOTICE_INTERVAL_MS + BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
-            );
+            preferences.backupNoticeAcknowledgedAt =
+              Date.now() -
+              BACKUP_NOTICE_INTERVAL_MS +
+              BACKUP_NOTICE_FIRST_VISIT_DELAY_MS;
           }
 
-          setWelcomeSeen(true);
+          updatePreferences(preferences);
         }}
       />
     );
@@ -118,7 +121,7 @@ export function DashboardRoute() {
       dashboardViewMode,
       backupNoticeAcknowledgedAt: acknowledgedAt,
     });
-    setBackupNoticeAcknowledgedAt(acknowledgedAt);
+    updatePreferences({ backupNoticeAcknowledgedAt: acknowledgedAt });
   }
 
   return (
@@ -129,8 +132,12 @@ export function DashboardRoute() {
         dashboardSortKey={dashboardSortKey}
         dashboardViewMode={dashboardViewMode}
         onAdd={() => router.push("/add")}
-        onDashboardSortKeyChange={setDashboardSortKey}
-        onDashboardViewModeChange={setDashboardViewMode}
+        onDashboardSortKeyChange={(nextSortKey) =>
+          updatePreferences({ dashboardSortKey: nextSortKey })
+        }
+        onDashboardViewModeChange={(nextViewMode) =>
+          updatePreferences({ dashboardViewMode: nextViewMode })
+        }
         onExportBackup={exportBackupFromNotice}
         onInventory={() => router.push("/inventory")}
         onMatrix={() => router.push("/matrix")}
@@ -152,15 +159,15 @@ export function SettingsRoute() {
   const router = useRouter();
   const {
     characters,
-    backupNoticeAcknowledgedAt,
     dashboardSortKey,
     dashboardViewMode,
     weaponInventory,
     matrixTeams,
-    replaceTrackerData,
-    setBackupNoticeAcknowledgedAt,
+    clearTrackerData,
+    replaceAllData,
     storageStatus,
     storageVersion,
+    updatePreferences,
     welcomeSeen,
   } = useTrackerData();
   const importRef = useRef<HTMLInputElement | null>(null);
@@ -168,7 +175,7 @@ export function SettingsRoute() {
 
   function clearData() {
     const noLoadedData =
-      !characters.length && !weaponInventory.length && !matrixTeams.length;
+      !hasTrackerData(characters, weaponInventory, matrixTeams);
 
     if (storageStatus.state !== "error" && noLoadedData) {
       return;
@@ -179,17 +186,7 @@ export function SettingsRoute() {
     }
 
     try {
-      replaceTrackerData({
-        characters: [],
-        weaponInventory: [],
-        matrixTeams: [],
-        preferences: {
-          welcomeSeen,
-          dashboardSortKey,
-          dashboardViewMode,
-          backupNoticeAcknowledgedAt,
-        },
-      });
+      clearTrackerData();
     } catch {
       alert("Tracker data could not be cleared.");
     }
@@ -207,15 +204,7 @@ export function SettingsRoute() {
       const text = await file.text();
       const imported = parseImportedTrackerData(text);
 
-      replaceTrackerData({
-        ...imported,
-        preferences: imported.preferences ?? {
-          welcomeSeen,
-          dashboardSortKey,
-          dashboardViewMode,
-          backupNoticeAcknowledgedAt,
-        },
-      });
+      replaceAllData(imported);
       router.replace("/");
     } catch {
       alert("That JSON file could not be imported.");
@@ -231,7 +220,7 @@ export function SettingsRoute() {
       dashboardViewMode,
       backupNoticeAcknowledgedAt: acknowledgedAt,
     });
-    setBackupNoticeAcknowledgedAt(acknowledgedAt);
+    updatePreferences({ backupNoticeAcknowledgedAt: acknowledgedAt });
   }
 
   return (
@@ -254,7 +243,7 @@ export function SettingsRoute() {
 }
 
 export function WeaponInventoryRoute() {
-  const { catalog, characters, weaponInventory, setWeaponInventory } = useTrackerData();
+  const { catalog, characters, weaponInventory, setWeaponCount } = useTrackerData();
   const router = useRouter();
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
 
@@ -265,7 +254,7 @@ export function WeaponInventoryRoute() {
         catalog={catalog}
         inventory={weaponInventory}
         onBack={() => router.push("/")}
-        onUpdate={setWeaponInventory}
+        onSetWeaponCount={setWeaponCount}
       />
     </div>
   );
@@ -276,13 +265,13 @@ export function AddCharacterRoute() {
   const {
     catalog,
     characters,
-    setCharacters,
+    createCharacter,
     weaponInventory,
   } = useTrackerData();
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
 
   function addCharacter(character: TrackedCharacter) {
-    setCharacters((current) => [...current, character]);
+    createCharacter(character);
     router.push(getCharacterHref(character.id));
   }
 
@@ -301,7 +290,7 @@ export function AddCharacterRoute() {
 }
 
 export function MatrixRoute() {
-  const { characters, matrixTeams, setMatrixTeams } = useTrackerData();
+  const { characters, matrixTeams, updateMatrixTeams } = useTrackerData();
   const router = useRouter();
 
   return (
@@ -309,7 +298,7 @@ export function MatrixRoute() {
       <MatrixScreen
         characters={characters}
         onBack={() => router.push("/")}
-        onUpdateTeams={setMatrixTeams}
+        onUpdateTeams={updateMatrixTeams}
         teams={matrixTeams}
       />
     </div>
@@ -321,7 +310,8 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
   const {
     catalog,
     characters,
-    setCharacters,
+    deleteCharacter,
+    updateCharacter,
     weaponInventory,
     storageLoaded,
   } = useTrackerData();
@@ -338,20 +328,12 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
     router.replace("/");
   }, [router, selectedCharacter, storageLoaded]);
 
-  function updateCharacter(nextCharacter: TrackedCharacter) {
-    setCharacters((current) =>
-      current.map((character) =>
-        character.id === nextCharacter.id ? nextCharacter : character,
-      ),
-    );
-  }
-
-  function deleteCharacter(id: string) {
+  function confirmDeleteCharacter(id: string) {
     if (!confirm("Delete this tracked character?")) {
       return;
     }
 
-    setCharacters((current) => current.filter((character) => character.id !== id));
+    deleteCharacter(id);
     router.replace("/");
   }
 
@@ -365,7 +347,7 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
         assignmentCounts={assignmentCounts}
         character={selectedCharacter}
         onBack={() => router.push("/")}
-        onDelete={() => deleteCharacter(selectedCharacter.id)}
+        onDelete={() => confirmDeleteCharacter(selectedCharacter.id)}
         onUpdate={updateCharacter}
         weaponInventory={weaponInventory}
         weapons={catalog.weapons}

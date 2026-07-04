@@ -28,13 +28,13 @@ export function WeaponInventoryScreen({
   inventory,
   assignmentCounts,
   onBack,
-  onUpdate,
+  onSetWeaponCount,
 }: {
   catalog: Catalog;
   inventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
   onBack: () => void;
-  onUpdate: (inventory: WeaponInventoryItem[]) => void;
+  onSetWeaponCount: (weaponId: number, count: number) => void;
 }) {
   const [query, setQuery] = useState("");
   const inventoryCounts = useMemo(
@@ -85,25 +85,7 @@ export function WeaponInventoryScreen({
   ];
 
   function setWeaponCount(weaponId: number, count: number) {
-    const nextCount = Math.max(0, Math.round(count));
-
-    if (nextCount === 0) {
-      onUpdate(inventory.filter((item) => item.weaponId !== weaponId));
-      return;
-    }
-
-    const existing = inventory.find((item) => item.weaponId === weaponId);
-
-    if (existing) {
-      onUpdate(
-        inventory.map((item) =>
-          item.weaponId === weaponId ? { ...item, count: nextCount } : item,
-        ),
-      );
-      return;
-    }
-
-    onUpdate([...inventory, { weaponId, count: nextCount }]);
+    onSetWeaponCount(weaponId, count);
   }
 
   function renderWeaponCard(weapon: ApiWeapon) {
