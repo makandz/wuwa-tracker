@@ -45,10 +45,13 @@ import {
   parseLegacyObjectExport,
 } from "./migrations/legacy-v3-to-v5";
 import {
+  TrackerStorageRevisionConflictError,
+  hasNewerTrackerDocumentRevision,
   readCurrentTrackerDocument,
   readStoredTrackerDocument,
   updateCurrentTrackerDocumentData,
   writeStoredTrackerDocument,
+  writeStoredTrackerDocumentWithRevisionGuard,
   type ReadTrackerDocumentResult,
   type TrackerStorageStatus,
 } from "./recovery";
@@ -63,6 +66,7 @@ export {
   commitStorageMigration,
   createTrackerDocumentV5,
   exportStorageMigrationBackup,
+  hasNewerTrackerDocumentRevision,
   inspectTrackerStorage,
   isDashboardSortKey,
   isDashboardViewMode,
@@ -71,7 +75,9 @@ export {
   normalizeTrackerDocumentV5,
   normalizeWeaponInventory,
   readStoredTrackerDocument,
+  TrackerStorageRevisionConflictError,
   writeStoredTrackerDocument,
+  writeStoredTrackerDocumentWithRevisionGuard,
 };
 export type {
   ParsedImportedTrackerData,

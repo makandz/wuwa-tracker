@@ -19,7 +19,12 @@ import {
 } from "../keys";
 import { legacyArrayExportSchema } from "../schemas/legacy-v3";
 import type { LegacySplitStorage } from "../schemas/legacy-v3";
-import { writeCurrentTrackerDocument } from "../recovery";
+import {
+  TrackerStorageRevisionConflictError,
+  hasNewerTrackerDocumentRevision,
+  readCurrentTrackerDocument,
+  writeCurrentTrackerDocument,
+} from "../recovery";
 import { migrateLegacySplitStorageToV5 } from "./legacy-v3-to-v5";
 
 type StorageVersion = "legacy-v3" | number;
@@ -410,6 +415,15 @@ export function commitStorageMigration(
 
   if (!document) {
     throw new Error("Storage migration did not produce a valid tracker document.");
+  }
+
+  const currentDocument = readCurrentTrackerDocument();
+
+  if (
+    currentDocument &&
+    hasNewerTrackerDocumentRevision(currentDocument, document.revision)
+  ) {
+    throw new TrackerStorageRevisionConflictError(currentDocument);
   }
 
   writeCurrentTrackerDocument(document);

@@ -10,7 +10,7 @@ import {
 } from "./keys";
 
 export type TrackerStorageStatus = {
-  state: "ready" | "recovered" | "error";
+  state: "ready" | "recovered" | "stale" | "error";
   message: string;
 };
 
@@ -18,6 +18,26 @@ export type ReadTrackerDocumentResult = {
   document: TrackerDocumentV5 | null;
   status: TrackerStorageStatus;
 };
+
+export type GuardedWriteTrackerDocumentResult =
+  | {
+      state: "written";
+      document: TrackerDocumentV5;
+    }
+  | {
+      state: "stale";
+      currentDocument: TrackerDocumentV5;
+    };
+
+export class TrackerStorageRevisionConflictError extends Error {
+  currentDocument: TrackerDocumentV5;
+
+  constructor(currentDocument: TrackerDocumentV5) {
+    super("Tracker storage has a newer revision.");
+    this.name = "TrackerStorageRevisionConflictError";
+    this.currentDocument = currentDocument;
+  }
+}
 
 export function parseTrackerDocument(raw: string | null) {
   if (!raw) {
@@ -37,6 +57,13 @@ export function readCurrentTrackerDocument() {
   }
 
   return parseTrackerDocument(localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY));
+}
+
+export function hasNewerTrackerDocumentRevision(
+  document: TrackerDocumentV5,
+  baseRevision: number,
+) {
+  return document.revision > baseRevision;
 }
 
 export function writeCurrentTrackerDocument(document: TrackerDocumentV5) {
@@ -89,6 +116,43 @@ export function writeStoredTrackerDocument(document: TrackerDocumentV5) {
   }
 
   writeCurrentTrackerDocument(normalizedDocument);
+}
+
+export function writeStoredTrackerDocumentWithRevisionGuard(
+  document: TrackerDocumentV5,
+  baseRevision: number,
+): GuardedWriteTrackerDocumentResult {
+  const normalizedDocument = normalizeTrackerDocumentV5(document);
+
+  if (!normalizedDocument) {
+    throw new Error("Tracker document is invalid.");
+  }
+
+  const currentDocument = readCurrentTrackerDocument();
+
+  if (
+    currentDocument &&
+    hasNewerTrackerDocumentRevision(currentDocument, baseRevision)
+  ) {
+    return {
+      state: "stale",
+      currentDocument,
+    };
+  }
+
+  if (currentDocument) {
+    localStorage.setItem(
+      TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
+      JSON.stringify(currentDocument),
+    );
+  }
+
+  writeCurrentTrackerDocument(normalizedDocument);
+
+  return {
+    state: "written",
+    document: normalizedDocument,
+  };
 }
 
 export function readStoredTrackerDocument(): ReadTrackerDocumentResult {

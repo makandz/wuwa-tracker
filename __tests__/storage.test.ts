@@ -13,9 +13,12 @@ import {
 } from "../app/_tracker/storage/keys";
 import {
   DEFAULT_TRACKER_PREFERENCES,
+  TrackerStorageRevisionConflictError,
   createTrackerDocumentV5,
   exportTrackerData,
+  hasNewerTrackerDocumentRevision,
   parseImportedTrackerData,
+  writeStoredTrackerDocumentWithRevisionGuard,
 } from "../app/_tracker/storage";
 import { normalizePreferences } from "../app/_tracker/storage/documents";
 import { commitStorageMigration } from "../app/_tracker/storage/migrations/plans";
@@ -352,6 +355,163 @@ describe("tracker storage", () => {
     expect(
       localStorage.getItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY),
     ).toBe("{backup-corrupt");
+  });
+
+  test("guarded document writes save when storage has the expected revision", () => {
+    const currentDocument = createTrackerDocumentV5({
+      characters: [makeCharacter()],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+      revision: 2,
+      savedAt: "2026-01-03T00:00:00.000Z",
+    });
+    const nextDocument = createTrackerDocumentV5({
+      ...currentDocument.data,
+      characters: [
+        makeCharacter({
+          notes: "updated",
+          updatedAt: "2026-01-04T00:00:00.000Z",
+        }),
+      ],
+      revision: 3,
+      savedAt: "2026-01-04T00:00:00.000Z",
+    });
+
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify(currentDocument),
+    );
+
+    const result = writeStoredTrackerDocumentWithRevisionGuard(nextDocument, 2);
+    const storedDocument = JSON.parse(
+      localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY) ?? "null",
+    );
+    const lastKnownGood = JSON.parse(
+      localStorage.getItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY) ??
+        "null",
+    );
+
+    expect(result.state).toBe("written");
+    expect(storedDocument.revision).toBe(3);
+    expect(storedDocument.data.characters[0].notes).toBe("updated");
+    expect(lastKnownGood.revision).toBe(2);
+  });
+
+  test("guarded document writes refuse to overwrite newer storage revisions", () => {
+    const previousLastKnownGood = createTrackerDocumentV5({
+      characters: [makeCharacter({ notes: "backup" })],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+      revision: 3,
+      savedAt: "2026-01-03T00:00:00.000Z",
+    });
+    const newerDocument = createTrackerDocumentV5({
+      characters: [makeCharacter({ notes: "newer tab" })],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+      revision: 5,
+      savedAt: "2026-01-05T00:00:00.000Z",
+    });
+    const staleNextDocument = createTrackerDocumentV5({
+      characters: [makeCharacter({ notes: "stale tab" })],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+      revision: 4,
+      savedAt: "2026-01-04T00:00:00.000Z",
+    });
+
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify(newerDocument),
+    );
+    localStorage.setItem(
+      TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
+      JSON.stringify(previousLastKnownGood),
+    );
+
+    const result = writeStoredTrackerDocumentWithRevisionGuard(
+      staleNextDocument,
+      3,
+    );
+    const storedDocument = JSON.parse(
+      localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY) ?? "null",
+    );
+    const lastKnownGood = JSON.parse(
+      localStorage.getItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY) ??
+        "null",
+    );
+
+    expect(result.state).toBe("stale");
+    expect(storedDocument.revision).toBe(5);
+    expect(storedDocument.data.characters[0].notes).toBe("newer tab");
+    expect(lastKnownGood.revision).toBe(3);
+    expect(lastKnownGood.data.characters[0].notes).toBe("backup");
+  });
+
+  test("detects newer document revisions", () => {
+    const document = createTrackerDocumentV5({
+      characters: [makeCharacter()],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+      revision: 4,
+    });
+
+    expect(hasNewerTrackerDocumentRevision(document, 3)).toBe(true);
+    expect(hasNewerTrackerDocumentRevision(document, 4)).toBe(false);
+  });
+
+  test("does not let stale migration plans overwrite newer v5 documents", () => {
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 4,
+        app: "wuwa-tracker",
+        savedAt: "2026-01-04T00:00:00.000Z",
+        revision: 4,
+        data: {
+          characters: [makeLegacyFlatCharacter()],
+          weaponInventory: makeWeaponInventory(),
+          matrixTeams: makeMatrixTeams(),
+          preferences: DEFAULT_TRACKER_PREFERENCES,
+        },
+      }),
+    );
+
+    const inspection = inspectTrackerStorage();
+
+    if (inspection.state !== "migration-required") {
+      throw new Error("Expected v4 migration plan.");
+    }
+
+    const newerDocument = createTrackerDocumentV5({
+      characters: [makeCharacter({ notes: "newer tab" })],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+      revision: 5,
+      savedAt: "2026-01-05T00:00:00.000Z",
+    });
+
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify(newerDocument),
+    );
+
+    expect(() => commitStorageMigration(inspection.migrationPlan)).toThrow(
+      TrackerStorageRevisionConflictError,
+    );
+
+    const storedDocument = JSON.parse(
+      localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY) ?? "null",
+    );
+
+    expect(storedDocument.revision).toBe(5);
+    expect(storedDocument.data.characters[0].notes).toBe("newer tab");
   });
 
   test("cleans deleted characters out of Matrix teams", () => {

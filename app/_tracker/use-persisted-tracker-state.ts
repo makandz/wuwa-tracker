@@ -4,16 +4,20 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   DEFAULT_TRACKER_PREFERENCES,
+  TrackerStorageRevisionConflictError,
   commitStorageMigration,
   createTrackerDocumentV5,
   inspectTrackerStorage,
-  writeStoredTrackerDocument,
+  normalizeTrackerDocumentV5,
+  readStoredTrackerDocument,
+  writeStoredTrackerDocumentWithRevisionGuard,
   type ParsedImportedTrackerData,
   type StorageMigrationPlan,
   type TrackerDocumentV5,
   type TrackerPreferences,
   type TrackerStorageStatus,
 } from "./storage";
+import { TRACKER_DOCUMENT_STORAGE_KEY } from "./storage/keys";
 import type {
   DashboardSortKey,
   DashboardViewMode,
@@ -143,6 +147,34 @@ export function usePersistedTrackerState() {
     });
   }
 
+  function setStorageStale() {
+    storageWritableRef.current = false;
+    setStorageStatus({
+      state: "stale",
+      message: "Data changed in another tab. Reload data before making more edits.",
+    });
+  }
+
+  function setStorageReadError(message: string) {
+    storageWritableRef.current = false;
+    setStorageStatus({
+      state: "error",
+      message,
+    });
+  }
+
+  function parseStorageEventDocument(raw: string | null) {
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return normalizeTrackerDocumentV5(JSON.parse(raw) as unknown);
+    } catch {
+      return null;
+    }
+  }
+
   function commitTrackerData(
     nextData: TrackerData,
     {
@@ -158,9 +190,10 @@ export function usePersistedTrackerState() {
       throw new Error("Tracker storage is not writable.");
     }
 
+    const baseRevision = revisionRef.current;
     const nextDocument = createInvariantTrackerDocument({
       ...nextData,
-      revision: revisionRef.current + 1,
+      revision: baseRevision + 1,
     });
 
     if (
@@ -171,19 +204,32 @@ export function usePersistedTrackerState() {
     }
 
     try {
-      writeStoredTrackerDocument(nextDocument);
-      revisionRef.current = nextDocument.revision;
+      const result = writeStoredTrackerDocumentWithRevisionGuard(
+        nextDocument,
+        baseRevision,
+      );
+
+      if (result.state === "stale") {
+        setStorageStale();
+        throw new TrackerStorageRevisionConflictError(result.currentDocument);
+      }
+
+      revisionRef.current = result.document.revision;
       storageWritableRef.current = true;
-      applyDataToState(nextDocument.data);
+      applyDataToState(result.document.data);
       setStorageStatus({
         state: "ready",
         message: statusMessage,
       });
-      setStorageVersion(nextDocument.schemaVersion);
+      setStorageVersion(result.document.schemaVersion);
       setStorageMigrationPlan(null);
 
       return true;
-    } catch {
+    } catch (error) {
+      if (error instanceof TrackerStorageRevisionConflictError) {
+        throw error;
+      }
+
       setStorageSaveError();
       throw new Error("Tracker storage could not be saved.");
     }
@@ -228,6 +274,35 @@ export function usePersistedTrackerState() {
     // Storage inspection must only run once when the client provider mounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!storageLoaded) {
+      return;
+    }
+
+    function handleStorageEvent(event: StorageEvent) {
+      if (event.key !== TRACKER_DOCUMENT_STORAGE_KEY) {
+        return;
+      }
+
+      const changedDocument = parseStorageEventDocument(event.newValue);
+
+      if (!changedDocument) {
+        setStorageReadError(
+          "Tracker storage changed in another tab but could not be read.",
+        );
+        return;
+      }
+
+      if (changedDocument.revision > revisionRef.current) {
+        setStorageStale();
+      }
+    }
+
+    window.addEventListener("storage", handleStorageEvent);
+
+    return () => window.removeEventListener("storage", handleStorageEvent);
+  }, [storageLoaded]);
 
   function createCharacter(character: TrackedCharacter) {
     const currentData = trackerDataRef.current;
@@ -371,7 +446,13 @@ export function usePersistedTrackerState() {
         state: "ready",
         message: `Tracker storage migrated to v${document.schemaVersion}.`,
       });
-    } catch {
+    } catch (error) {
+      if (error instanceof TrackerStorageRevisionConflictError) {
+        setStorageMigrationPlan(null);
+        setStorageStale();
+        return;
+      }
+
       storageWritableRef.current = false;
       setStorageStatus({
         state: "error",
@@ -379,6 +460,23 @@ export function usePersistedTrackerState() {
       });
       throw new Error("Tracker storage migration could not be completed.");
     }
+  }
+
+  function reloadStoredTrackerData() {
+    const result = readStoredTrackerDocument();
+
+    if (!result.document) {
+      setStorageReadError(
+        result.status.state === "error"
+          ? result.status.message
+          : "Tracker storage could not be reloaded from this browser.",
+      );
+      return;
+    }
+
+    setStorageMigrationPlan(null);
+    applyDocumentToState(result.document, true);
+    setStorageStatus(result.status);
   }
 
   return {
@@ -402,5 +500,6 @@ export function usePersistedTrackerState() {
     storageMigrationPlan,
     storageVersion,
     commitPendingStorageMigration,
+    reloadStoredTrackerData,
   };
 }
