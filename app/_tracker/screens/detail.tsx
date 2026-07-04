@@ -7,8 +7,6 @@ import {
   ECHO_CHECKLIST_ITEMS,
   ECHO_CRIT_DMG_VALUES,
   ECHO_CRIT_RATE_VALUES,
-  FOUR_COST_OPTIONS,
-  ROLES,
 } from "../constants";
 import {
   buildWeaponInventoryCountMap,
@@ -55,6 +53,16 @@ import type {
   TrackedCharacter,
   WeaponInventoryItem,
 } from "../types";
+import {
+  FourCostMainControl,
+  RoleSelectionControl,
+} from "../components/build-form-controls";
+import {
+  getFourCostMainSelection,
+  getNextNoCrit,
+  getNextRolesAfterRoleToggle,
+  getRolesAfterMultipleRolesChange,
+} from "../components/build-form-state";
 import { PickerSummary, WeaponPickerModal } from "../components/pickers";
 import { CharacterRotationsSection } from "../components/rotations";
 import {
@@ -63,7 +71,6 @@ import {
   Field,
   NumberInput,
   RatingSummaryBlock,
-  RoleToggle,
   SelectInput,
   TextButton,
   TextLink,
@@ -436,16 +443,13 @@ export function DetailScreen({
   }
 
   function toggleRole(role: Role) {
-    if (!multipleRoles) {
-      patchCharacter({ roles: [role] });
-      return;
-    }
+    const nextRoles = getNextRolesAfterRoleToggle({
+      multipleRoles,
+      role,
+      roles: character.roles,
+    });
 
-    const nextRoles = character.roles.includes(role)
-      ? character.roles.filter((item) => item !== role)
-      : [...character.roles, role];
-
-    if (nextRoles.length === 0) {
+    if (nextRoles === character.roles) {
       return;
     }
 
@@ -453,10 +457,12 @@ export function DetailScreen({
   }
 
   function updateMultipleRoles(checked: boolean) {
+    const nextRoles = getRolesAfterMultipleRolesChange(character.roles, checked);
+
     setMultipleRoles(checked);
 
-    if (!checked) {
-      patchCharacter({ roles: [character.roles[0] ?? "DPS"] });
+    if (nextRoles !== character.roles) {
+      patchCharacter({ roles: nextRoles });
     }
   }
 
@@ -580,63 +586,21 @@ export function DetailScreen({
             />
           ) : null}
 
-          <div>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm font-medium text-app-muted">Roles</div>
-              <label className="flex items-center gap-2 text-sm font-medium text-app-muted-subtle">
-                <input
-                  checked={multipleRoles}
-                  className="h-4 w-4 accent-app-accent"
-                  onChange={(event) => updateMultipleRoles(event.target.checked)}
-                  type="checkbox"
-                />
-                Multiple roles?
-              </label>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {ROLES.map((role) => (
-                <RoleToggle
-                  active={character.roles.includes(role)}
-                  key={role}
-                  onToggle={() => toggleRole(role)}
-                  role={role}
-                />
-              ))}
-            </div>
-          </div>
+          <RoleSelectionControl
+            multipleRoles={multipleRoles}
+            onMultipleRolesChange={updateMultipleRoles}
+            onToggleRole={toggleRole}
+            roles={character.roles}
+          />
 
-          <div>
-            <div className="mb-2 text-sm font-medium text-app-muted">4 Cost Main Stat</div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {FOUR_COST_OPTIONS.map((option) => (
-                <button
-                  className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
-                    !character.noCrit && character.fourCostMain === option.value
-                      ? "border-app-accent-strong bg-app-accent-strong text-app-bg"
-                      : "border-app-border bg-app-bg text-app-muted-subtle hover:border-app-muted-dim hover:bg-app-surface hover:text-app-muted"
-                  }`}
-                  aria-pressed={!character.noCrit && character.fourCostMain === option.value}
-                  key={option.value}
-                  onClick={() => patchCharacter({ fourCostMain: option.value, noCrit: false })}
-                  type="button"
-                >
-                  {option.label}
-                </button>
-              ))}
-              <button
-                className={`h-10 rounded-md border px-3 text-sm font-semibold transition ${
-                  character.noCrit
-                    ? "border-app-accent-strong bg-app-accent-strong text-app-bg"
-                    : "border-app-border bg-app-bg text-app-muted-subtle hover:border-app-muted-dim hover:bg-app-surface hover:text-app-muted"
-                }`}
-                aria-pressed={character.noCrit}
-                onClick={() => patchCharacter({ noCrit: !character.noCrit })}
-                type="button"
-              >
-                No crit
-              </button>
-            </div>
-          </div>
+          <FourCostMainControl
+            fourCostMain={character.fourCostMain}
+            noCrit={character.noCrit}
+            onSelectFourCostMain={(fourCostMain) =>
+              patchCharacter(getFourCostMainSelection(fourCostMain))
+            }
+            onToggleNoCrit={() => patchCharacter({ noCrit: getNextNoCrit(character.noCrit) })}
+          />
 
           <div className="max-w-md">
             <Field label="Expected Minimum ER">
