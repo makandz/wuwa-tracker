@@ -18,6 +18,17 @@ import {
   type TrackerStorageStatus,
 } from "./storage";
 import { TRACKER_DOCUMENT_STORAGE_KEY } from "./storage/keys";
+import {
+  cleanMatrixTeamsForCharacters,
+  clearTrackerData as clearTrackerDataValue,
+  createCharacterData,
+  deleteCharacterData,
+  replaceAllTrackerData,
+  setWeaponCountData,
+  updateCharacterData,
+  updateMatrixTeamsData,
+  updatePreferencesData,
+} from "./tracker-data";
 import type {
   DashboardSortKey,
   DashboardViewMode,
@@ -27,20 +38,6 @@ import type {
 } from "./types";
 
 type TrackerData = TrackerDocumentV5["data"];
-
-export function cleanMatrixTeamsForCharacters(
-  matrixTeams: MatrixTeam[],
-  characters: TrackedCharacter[],
-) {
-  const characterIds = new Set(characters.map((character) => character.id));
-
-  return matrixTeams.map((team) => ({
-    ...team,
-    slots: team.slots.map((characterId) =>
-      characterId && characterIds.has(characterId) ? characterId : null,
-    ) as MatrixTeam["slots"],
-  }));
-}
 
 function createInvariantTrackerDocument({
   characters,
@@ -306,19 +303,9 @@ export function usePersistedTrackerState() {
 
   function createCharacter(character: TrackedCharacter) {
     const now = new Date().toISOString();
-    const nextCharacter = {
-      ...character,
-      createdAt: character.createdAt || now,
-      updatedAt: now,
-    };
 
     commitTrackerDataUpdate((currentData) =>
-      currentData.characters.some((item) => item.id === nextCharacter.id)
-        ? null
-        : {
-            ...currentData,
-            characters: [...currentData.characters, nextCharacter],
-          },
+      createCharacterData(currentData, character, now),
     );
   }
 
@@ -326,72 +313,25 @@ export function usePersistedTrackerState() {
     const now = new Date().toISOString();
 
     commitTrackerDataUpdate((currentData) =>
-      currentData.characters.some((item) => item.id === character.id)
-        ? {
-            ...currentData,
-            characters: currentData.characters.map((item) =>
-              item.id === character.id
-                ? {
-                    ...character,
-                    updatedAt: now,
-                  }
-                : item,
-            ),
-          }
-        : null,
+      updateCharacterData(currentData, character, now),
     );
   }
 
   function deleteCharacter(id: string) {
     commitTrackerDataUpdate((currentData) =>
-      currentData.characters.some((character) => character.id === id)
-        ? {
-            ...currentData,
-            characters: currentData.characters.filter(
-              (character) => character.id !== id,
-            ),
-            matrixTeams: currentData.matrixTeams.map((team) => ({
-              ...team,
-              slots: team.slots.map((characterId) =>
-                characterId === id ? null : characterId,
-              ) as MatrixTeam["slots"],
-            })),
-          }
-        : null,
+      deleteCharacterData(currentData, id),
     );
   }
 
   function setWeaponCount(weaponId: number, count: number) {
-    const nextCount = Math.max(0, Math.round(count));
-
-    commitTrackerDataUpdate((currentData) => {
-      const existing = currentData.weaponInventory.find(
-        (item) => item.weaponId === weaponId,
-      );
-      const weaponInventory =
-        nextCount === 0
-          ? currentData.weaponInventory.filter((item) => item.weaponId !== weaponId)
-          : existing
-            ? currentData.weaponInventory.map((item) =>
-                item.weaponId === weaponId ? { ...item, count: nextCount } : item,
-              )
-            : [...currentData.weaponInventory, { weaponId, count: nextCount }];
-
-      return {
-        ...currentData,
-        weaponInventory,
-      };
-    });
+    commitTrackerDataUpdate((currentData) =>
+      setWeaponCountData(currentData, weaponId, count),
+    );
   }
 
   function replaceAllData(imported: ParsedImportedTrackerData) {
     commitTrackerDataUpdate(
-      (currentData) => ({
-        characters: imported.characters,
-        weaponInventory: imported.weaponInventory,
-        matrixTeams: imported.matrixTeams,
-        preferences: imported.preferences ?? currentData.preferences,
-      }),
+      (currentData) => replaceAllTrackerData(currentData, imported),
       {
         forceWritable: true,
       },
@@ -400,33 +340,23 @@ export function usePersistedTrackerState() {
 
   function clearTrackerData() {
     commitTrackerDataUpdate(
-      (currentData) => ({
-        characters: [],
-        weaponInventory: [],
-        matrixTeams: [],
-        preferences: currentData.preferences,
-      }),
+      (currentData) => clearTrackerDataValue(currentData),
       {
         forceWritable: true,
       },
     );
   }
 
-  function updateMatrixTeams(matrixTeams: MatrixTeam[]) {
-    commitTrackerDataUpdate((currentData) => ({
-      ...currentData,
-      matrixTeams,
-    }));
+  function updateMatrixTeams(matrixTeams: TrackerData["matrixTeams"]) {
+    commitTrackerDataUpdate((currentData) =>
+      updateMatrixTeamsData(currentData, matrixTeams),
+    );
   }
 
   function updatePreferences(preferences: Partial<TrackerPreferences>) {
-    commitTrackerDataUpdate((currentData) => ({
-      ...currentData,
-      preferences: {
-        ...currentData.preferences,
-        ...preferences,
-      },
-    }));
+    commitTrackerDataUpdate((currentData) =>
+      updatePreferencesData(currentData, preferences),
+    );
   }
 
   function commitPendingStorageMigration() {

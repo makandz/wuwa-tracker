@@ -24,7 +24,7 @@ import { normalizePreferences } from "../app/_tracker/storage/documents";
 import { commitStorageMigration } from "../app/_tracker/storage/migrations/plans";
 import { inspectTrackerStorage } from "../app/_tracker/storage/inspection";
 import { readStoredTrackerDocument } from "../app/_tracker/storage/recovery";
-import { cleanMatrixTeamsForCharacters } from "../app/_tracker/use-persisted-tracker-state";
+import { cleanMatrixTeamsForCharacters } from "../app/_tracker/tracker-data";
 import type {
   MatrixTeam,
   TrackedCharacter,
