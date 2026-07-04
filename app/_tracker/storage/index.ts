@@ -1,19 +1,11 @@
-import {
-  DEFAULT_DASHBOARD_SORT_KEY,
-  DEFAULT_DASHBOARD_VIEW_MODE,
-} from "../constants";
 import type {
-  DashboardSortKey,
-  DashboardViewMode,
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
 } from "../types";
 import {
   DEFAULT_TRACKER_PREFERENCES,
-  createEmptyMatrixTeam,
   createTrackerDocumentV5,
-  ensureMatrixTeams,
   isDashboardSortKey,
   isDashboardViewMode,
   normalizeCharacters,
@@ -24,16 +16,7 @@ import {
   type TrackerDocumentV5,
   type TrackerPreferences,
 } from "./documents";
-import {
-  CURRENT_SCHEMA_VERSION,
-  BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
-  DASHBOARD_SORT_STORAGE_KEY,
-  DASHBOARD_VIEW_STORAGE_KEY,
-  INVENTORY_STORAGE_KEY,
-  MATRIX_STORAGE_KEY,
-  STORAGE_KEY,
-  WELCOME_SEEN_STORAGE_KEY,
-} from "./keys";
+import { CURRENT_SCHEMA_VERSION } from "./keys";
 import { inspectTrackerStorage } from "./inspection";
 import {
   commitStorageMigration,
@@ -47,9 +30,7 @@ import {
 import {
   TrackerStorageRevisionConflictError,
   hasNewerTrackerDocumentRevision,
-  readCurrentTrackerDocument,
   readStoredTrackerDocument,
-  updateCurrentTrackerDocumentData,
   writeStoredTrackerDocument,
   writeStoredTrackerDocumentWithRevisionGuard,
   type ReadTrackerDocumentResult,
@@ -88,14 +69,6 @@ export type {
   TrackerStorageStatus,
 };
 
-function parseJsonValue(raw: string | null) {
-  if (!raw) {
-    return null;
-  }
-
-  return JSON.parse(raw) as unknown;
-}
-
 export function exportTrackerData(
   characters: TrackedCharacter[],
   weaponInventory: WeaponInventoryItem[],
@@ -122,263 +95,6 @@ export function exportTrackerData(
   link.download = `wuwa-tracker-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-export function readStoredCharacters() {
-  try {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.characters;
-    }
-
-    const parsed = legacyArrayExportSchema.safeParse(
-      parseJsonValue(localStorage.getItem(STORAGE_KEY)),
-    );
-
-    return parsed.success ? normalizeCharacters(parsed.data) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function readStoredWeaponInventory() {
-  try {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.weaponInventory;
-    }
-
-    const parsed = legacyArrayExportSchema.safeParse(
-      parseJsonValue(localStorage.getItem(INVENTORY_STORAGE_KEY)),
-    );
-
-    return parsed.success ? normalizeWeaponInventory(parsed.data) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function readStoredMatrixTeams() {
-  try {
-    if (typeof window === "undefined") {
-      return [];
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.matrixTeams;
-    }
-
-    const raw = localStorage.getItem(MATRIX_STORAGE_KEY);
-
-    if (!raw) {
-      return [createEmptyMatrixTeam()];
-    }
-
-    const parsed = legacyArrayExportSchema.safeParse(parseJsonValue(raw));
-
-    return parsed.success
-      ? ensureMatrixTeams(normalizeMatrixTeams(parsed.data))
-      : [createEmptyMatrixTeam()];
-  } catch {
-    return [createEmptyMatrixTeam()];
-  }
-}
-
-export function writeStoredCharacters(characters: TrackedCharacter[]) {
-  if (
-    updateCurrentTrackerDocumentData(() => ({
-      characters,
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(characters));
-}
-
-export function writeStoredWeaponInventory(
-  weaponInventory: WeaponInventoryItem[],
-) {
-  if (
-    updateCurrentTrackerDocumentData(() => ({
-      weaponInventory,
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(weaponInventory));
-}
-
-export function writeStoredMatrixTeams(matrixTeams: MatrixTeam[]) {
-  if (
-    updateCurrentTrackerDocumentData(() => ({
-      matrixTeams,
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(MATRIX_STORAGE_KEY, JSON.stringify(matrixTeams));
-}
-
-export function readStoredDashboardSortKey() {
-  try {
-    if (typeof window === "undefined") {
-      return DEFAULT_DASHBOARD_SORT_KEY;
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.preferences.dashboardSortKey;
-    }
-
-    const storedSortKey = localStorage.getItem(DASHBOARD_SORT_STORAGE_KEY);
-
-    return isDashboardSortKey(storedSortKey)
-      ? storedSortKey
-      : DEFAULT_DASHBOARD_SORT_KEY;
-  } catch {
-    return DEFAULT_DASHBOARD_SORT_KEY;
-  }
-}
-
-export function writeStoredDashboardSortKey(sortKey: DashboardSortKey) {
-  if (
-    updateCurrentTrackerDocumentData((document) => ({
-      preferences: {
-        ...document.data.preferences,
-        dashboardSortKey: sortKey,
-      },
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(DASHBOARD_SORT_STORAGE_KEY, sortKey);
-}
-
-export function readStoredDashboardViewMode() {
-  try {
-    if (typeof window === "undefined") {
-      return DEFAULT_DASHBOARD_VIEW_MODE;
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.preferences.dashboardViewMode;
-    }
-
-    const storedViewMode = localStorage.getItem(DASHBOARD_VIEW_STORAGE_KEY);
-
-    return isDashboardViewMode(storedViewMode)
-      ? storedViewMode
-      : DEFAULT_DASHBOARD_VIEW_MODE;
-  } catch {
-    return DEFAULT_DASHBOARD_VIEW_MODE;
-  }
-}
-
-export function writeStoredDashboardViewMode(viewMode: DashboardViewMode) {
-  if (
-    updateCurrentTrackerDocumentData((document) => ({
-      preferences: {
-        ...document.data.preferences,
-        dashboardViewMode: viewMode,
-      },
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(DASHBOARD_VIEW_STORAGE_KEY, viewMode);
-}
-
-export function readStoredWelcomeSeen() {
-  try {
-    if (typeof window === "undefined") {
-      return false;
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.preferences.welcomeSeen;
-    }
-
-    return localStorage.getItem(WELCOME_SEEN_STORAGE_KEY) === "true";
-  } catch {
-    return false;
-  }
-}
-
-export function writeStoredWelcomeSeen(welcomeSeen: boolean) {
-  if (
-    updateCurrentTrackerDocumentData((document) => ({
-      preferences: {
-        ...document.data.preferences,
-        welcomeSeen,
-      },
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(WELCOME_SEEN_STORAGE_KEY, String(welcomeSeen));
-}
-
-export function readStoredBackupNoticeAcknowledgedAt() {
-  try {
-    if (typeof window === "undefined") {
-      return 0;
-    }
-
-    const currentDocument = readCurrentTrackerDocument();
-
-    if (currentDocument) {
-      return currentDocument.data.preferences.backupNoticeAcknowledgedAt;
-    }
-
-    const storedValue = Number(
-      localStorage.getItem(BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY),
-    );
-
-    return Number.isFinite(storedValue) && storedValue > 0 ? storedValue : 0;
-  } catch {
-    return 0;
-  }
-}
-
-export function writeStoredBackupNoticeAcknowledgedAt(acknowledgedAt: number) {
-  if (
-    updateCurrentTrackerDocumentData((document) => ({
-      preferences: {
-        ...document.data.preferences,
-        backupNoticeAcknowledgedAt: acknowledgedAt,
-      },
-    }))
-  ) {
-    return;
-  }
-
-  localStorage.setItem(
-    BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
-    String(acknowledgedAt),
-  );
 }
 
 export function parseImportedTrackerData(
