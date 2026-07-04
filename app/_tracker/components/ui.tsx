@@ -7,6 +7,7 @@ import { CHECKLIST_SEGMENTS } from "../constants";
 import {
   characterElementBorderClasses,
   formatDecimalInputValue,
+  getTrackedCharacterDisplay,
   getRatingGrade,
   getWeaponToneClasses,
   parseDecimalInput,
@@ -17,6 +18,7 @@ import {
 import type {
   CharacterBadgeTone,
   Checklist,
+  ApiCharacter,
   RatingValue,
   Role,
   TrackedCharacter,
@@ -533,16 +535,19 @@ export function RoleToggle({
 
 export function CharacterAvatar({
   character,
+  catalogCharacter,
   compact = false,
   dense = false,
 }: {
   character: TrackedCharacter;
+  catalogCharacter?: ApiCharacter | null;
   compact?: boolean;
   dense?: boolean;
 }) {
   const sizeClass = dense ? "h-10 w-10" : compact ? "h-12 w-12" : "h-14 w-14";
   const imageSize = dense ? "40px" : compact ? "48px" : "56px";
-  const elementBorderClasses = characterElementBorderClasses(character.elementName);
+  const display = getTrackedCharacterDisplay(character, catalogCharacter);
+  const elementBorderClasses = characterElementBorderClasses(display.elementName);
 
   return (
     <div
@@ -551,32 +556,38 @@ export function CharacterAvatar({
       } ${
         sizeClass
       }`}
-      title={character.elementName}
+      title={display.elementName || character.characterName}
     >
-      {character.characterIcon ? (
+      {display.icon ? (
         <Image
           alt=""
           className="h-full w-full object-cover"
           fill
           sizes={imageSize}
-          src={character.characterIcon}
+          src={display.icon}
         />
       ) : (
         <div className="grid h-full w-full place-items-center text-lg font-bold text-app-muted-dim">
-          {character.characterName.charAt(0)}
+          {display.name.charAt(0)}
         </div>
       )}
-      <span
-        className={`absolute bottom-0 right-0 border-l border-t border-black/20 px-1 text-[10px] font-bold ${
-          character.qualityId >= 5
-            ? "bg-weapon-gold-text text-app-bg"
-            : character.qualityId === 4
-              ? "bg-weapon-purple-strong text-white"
-              : "bg-weapon-blue-strong text-white"
-        }`}
-      >
-        {character.qualityId}
-      </span>
+      {display.qualityId ? (
+        <span
+          className={`absolute bottom-0 right-0 border-l border-t border-black/20 px-1 text-[10px] font-bold ${
+            display.animatedBadge
+              ? "rating-s-plus border-weapon-gold-text text-app-bg"
+              : display.badgeTone === "blue"
+                ? "bg-weapon-blue-strong text-white"
+                : display.qualityId >= 5
+                  ? "bg-weapon-gold-text text-app-bg"
+                  : display.qualityId === 4
+                    ? "bg-weapon-purple-strong text-white"
+                    : "bg-weapon-blue-strong text-white"
+          }`}
+        >
+          {display.qualityId}
+        </span>
+      ) : null}
     </div>
   );
 }

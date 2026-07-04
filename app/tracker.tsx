@@ -43,6 +43,7 @@ function hasTrackerData(
 export function DashboardRoute() {
   const router = useRouter();
   const {
+    catalog,
     characters,
     backupNoticeAcknowledgedAt,
     dashboardSortKey,
@@ -128,6 +129,7 @@ export function DashboardRoute() {
     <div className="min-h-full bg-app-bg text-app-fg">
       <Dashboard
         assignmentCounts={assignmentCounts}
+        catalog={catalog}
         characters={characters}
         dashboardSortKey={dashboardSortKey}
         dashboardViewMode={dashboardViewMode}
@@ -290,12 +292,13 @@ export function AddCharacterRoute() {
 }
 
 export function MatrixRoute() {
-  const { characters, matrixTeams, updateMatrixTeams } = useTrackerData();
+  const { catalog, characters, matrixTeams, updateMatrixTeams } = useTrackerData();
   const router = useRouter();
 
   return (
     <div className="min-h-full bg-app-bg text-app-fg">
       <MatrixScreen
+        catalog={catalog}
         characters={characters}
         onBack={() => router.push("/")}
         onUpdateTeams={updateMatrixTeams}
@@ -346,6 +349,7 @@ export function CharacterDetailRoute({ characterId }: { characterId: string }) {
       <DetailScreen
         assignmentCounts={assignmentCounts}
         character={selectedCharacter}
+        characters={catalog.characters}
         onBack={() => router.push("/")}
         onDelete={() => confirmDeleteCharacter(selectedCharacter.id)}
         onUpdate={updateCharacter}

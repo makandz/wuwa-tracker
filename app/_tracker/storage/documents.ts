@@ -24,9 +24,9 @@ import type {
 } from "../types";
 import { TRACKER_APP_ID, TRACKER_SCHEMA_VERSION } from "./keys";
 import {
-  rawTrackerDocumentV4Schema,
-  trackerDocumentV4Schema,
-} from "./schemas/v4";
+  rawTrackerDocumentV5Schema,
+  trackerDocumentV5Schema,
+} from "./schemas/v5";
 
 export type TrackerPreferences = {
   welcomeSeen: boolean;
@@ -35,7 +35,7 @@ export type TrackerPreferences = {
   backupNoticeAcknowledgedAt: number;
 };
 
-export type TrackerDocumentV4 = {
+export type TrackerDocumentV5 = {
   schemaVersion: typeof TRACKER_SCHEMA_VERSION;
   app: typeof TRACKER_APP_ID;
   savedAt: string;
@@ -250,7 +250,7 @@ export function ensureMatrixTeams(teams: MatrixTeam[]) {
   return teams.length > 0 ? teams : [createEmptyMatrixTeam()];
 }
 
-export function createTrackerDocumentV4({
+export function createTrackerDocumentV5({
   characters,
   weaponInventory,
   matrixTeams,
@@ -264,7 +264,7 @@ export function createTrackerDocumentV4({
   preferences?: unknown;
   revision?: unknown;
   savedAt?: unknown;
-}): TrackerDocumentV4 {
+}): TrackerDocumentV5 {
   const document = {
     schemaVersion: TRACKER_SCHEMA_VERSION,
     app: TRACKER_APP_ID,
@@ -278,20 +278,20 @@ export function createTrackerDocumentV4({
     },
   };
 
-  return trackerDocumentV4Schema.parse(document) as TrackerDocumentV4;
+  return trackerDocumentV5Schema.parse(document) as TrackerDocumentV5;
 }
 
-export function normalizeTrackerDocumentV4(
+export function normalizeTrackerDocumentV5(
   document: unknown,
-): TrackerDocumentV4 | null {
-  const result = rawTrackerDocumentV4Schema.safeParse(document);
+): TrackerDocumentV5 | null {
+  const result = rawTrackerDocumentV5Schema.safeParse(document);
 
   if (!result.success) {
     return null;
   }
 
   try {
-    return createTrackerDocumentV4({
+    return createTrackerDocumentV5({
       characters: result.data.data.characters,
       weaponInventory: result.data.data.weaponInventory,
       matrixTeams: result.data.data.matrixTeams,
@@ -346,15 +346,9 @@ function normalizeTrackedCharacter(character: unknown): TrackedCharacter | null 
     id,
     characterId,
     characterName: characterName || id,
-    characterIcon: toStringValue(character.characterIcon),
-    qualityId: toNonNegativeInteger(character.qualityId),
-    elementName: toStringValue(character.elementName, "Unknown"),
-    weaponTypeId: toNonNegativeInteger(character.weaponTypeId),
-    weaponTypeName: toStringValue(character.weaponTypeName, "Unknown"),
     roles: normalizeRoles(character.roles),
     weaponId: toNullableNumber(character.weaponId),
     weaponName: toStringValue(character.weaponName),
-    weaponQualityId: toNullableNumber(character.weaponQualityId),
     fourCostMain: isFourCostMain(character.fourCostMain)
       ? character.fourCostMain
       : "CR",

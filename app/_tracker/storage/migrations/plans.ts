@@ -1,7 +1,9 @@
+import { z } from "zod";
+
 import {
-  createTrackerDocumentV4,
-  normalizeTrackerDocumentV4,
-  type TrackerDocumentV4,
+  createTrackerDocumentV5,
+  normalizeTrackerDocumentV5,
+  type TrackerDocumentV5,
 } from "../documents";
 import {
   BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
@@ -13,11 +15,12 @@ import {
   STORAGE_KEY,
   TRACKER_DOCUMENT_STORAGE_KEY,
   WELCOME_SEEN_STORAGE_KEY,
+  TRACKER_APP_ID,
 } from "../keys";
 import { legacyArrayExportSchema } from "../schemas/legacy-v3";
 import type { LegacySplitStorage } from "../schemas/legacy-v3";
 import { writeCurrentTrackerDocument } from "../recovery";
-import { migrateLegacySplitStorageToV4 } from "./legacy-v3-to-v4";
+import { migrateLegacySplitStorageToV5 } from "./legacy-v3-to-v5";
 
 type StorageVersion = "legacy-v3" | number;
 
@@ -96,15 +99,54 @@ const LEGACY_SPLIT_STORAGE_KEYS = [
 
 const migrationRegistry: RegisteredMigrationStep[] = [
   {
-    id: "legacy-v3-to-v4",
+    id: "v4-to-v5",
+    fromVersion: 4,
+    toVersion: CURRENT_SCHEMA_VERSION,
+    title: "Remove cached catalog display fields",
+    description:
+      "Tracked characters will keep durable IDs, reference names, and build data. Live catalog details will load from Encore.",
+    apply: (input) => {
+      const document = input as LegacyTrackerDocumentV4;
+
+      return createTrackerDocumentV5({
+        characters: document.data.characters,
+        weaponInventory: document.data.weaponInventory,
+        matrixTeams: document.data.matrixTeams,
+        preferences: document.data.preferences,
+        revision: document.revision,
+        savedAt: document.savedAt,
+      });
+    },
+  },
+  {
+    id: "legacy-v3-to-v5",
     fromVersion: "legacy-v3",
     toVersion: CURRENT_SCHEMA_VERSION,
     title: "Move tracker data into one save file",
     description:
       "Characters, weapon inventory, Matrix teams, and settings will be copied into the current save format.",
-    apply: (input) => migrateLegacySplitStorageToV4(input as LegacySplitStorage),
+    apply: (input) => migrateLegacySplitStorageToV5(input as LegacySplitStorage),
   },
 ];
+
+const legacyTrackerDocumentV4Schema = z
+  .object({
+    schemaVersion: z.literal(4),
+    app: z.literal(TRACKER_APP_ID),
+    savedAt: z.unknown(),
+    revision: z.unknown(),
+    data: z
+      .object({
+        characters: z.array(z.unknown()),
+        weaponInventory: z.array(z.unknown()),
+        matrixTeams: z.array(z.unknown()),
+        preferences: z.object({}).catchall(z.unknown()),
+      })
+      .catchall(z.unknown()),
+  })
+  .catchall(z.unknown());
+
+type LegacyTrackerDocumentV4 = z.infer<typeof legacyTrackerDocumentV4Schema>;
 
 function versionMatches(left: StorageVersion, right: StorageVersion) {
   return left === right;
@@ -150,6 +192,63 @@ function readLegacyJsonArray(key: string) {
   }
 }
 
+function readCurrentDocumentV4Source(): MigrationSource | null {
+  const raw = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
+
+  if (raw === null) {
+    return null;
+  }
+
+  const parsed = legacyTrackerDocumentV4Schema.safeParse(parseJson(raw));
+
+  if (!parsed.success) {
+    return null;
+  }
+
+  const previewDocument = createTrackerDocumentV5({
+    characters: parsed.data.data.characters,
+    weaponInventory: parsed.data.data.weaponInventory,
+    matrixTeams: parsed.data.data.matrixTeams,
+    preferences: parsed.data.data.preferences,
+    revision: parsed.data.revision,
+    savedAt: parsed.data.savedAt,
+  });
+
+  return {
+    id: "tracker-document-v4",
+    version: 4,
+    label: "Tracker save v4",
+    payload: parsed.data,
+    backup: {
+      keys: [
+        {
+          key: TRACKER_DOCUMENT_STORAGE_KEY,
+          value: raw,
+        },
+      ],
+    },
+    preview: {
+      counts: [
+        {
+          label: "Characters",
+          value: previewDocument.data.characters.length,
+        },
+        {
+          label: "Weapons",
+          value: previewDocument.data.weaponInventory.length,
+        },
+        {
+          label: "Matrix teams",
+          value: previewDocument.data.matrixTeams.length,
+        },
+      ],
+      items: previewDocument.data.characters.map(
+        (character) => character.characterName,
+      ),
+    },
+  };
+}
+
 function readLegacySplitStorageSource(): MigrationSource | null {
   const backupKeys = LEGACY_SPLIT_STORAGE_KEYS.map((key) => ({
     key,
@@ -184,7 +283,7 @@ function readLegacySplitStorageSource(): MigrationSource | null {
       ),
     },
   };
-  const previewDocument = createTrackerDocumentV4(payload);
+  const previewDocument = createTrackerDocumentV5(payload);
 
   return {
     id: "legacy-split-storage",
@@ -209,9 +308,9 @@ function readLegacySplitStorageSource(): MigrationSource | null {
           value: previewDocument.data.matrixTeams.length,
         },
       ],
-      items: previewDocument.data.characters
-        .slice(0, 5)
-        .map((character) => character.characterName),
+      items: previewDocument.data.characters.map(
+        (character) => character.characterName,
+      ),
     },
   };
 }
@@ -263,7 +362,7 @@ export function createStorageMigrationPlan(): StorageMigrationPlanResult {
   }
 
   try {
-    const source = readLegacySplitStorageSource();
+    const source = readCurrentDocumentV4Source() ?? readLegacySplitStorageSource();
 
     if (!source) {
       return {
@@ -292,7 +391,7 @@ export function createStorageMigrationPlan(): StorageMigrationPlanResult {
 
 export function commitStorageMigration(
   plan: StorageMigrationPlan,
-): TrackerDocumentV4 {
+): TrackerDocumentV5 {
   let migrated: unknown = plan.source.payload;
 
   for (const plannedStep of plan.steps) {
@@ -307,7 +406,7 @@ export function commitStorageMigration(
     migrated = registeredStep.apply(migrated);
   }
 
-  const document = normalizeTrackerDocumentV4(migrated);
+  const document = normalizeTrackerDocumentV5(migrated);
 
   if (!document) {
     throw new Error("Storage migration did not produce a valid tracker document.");

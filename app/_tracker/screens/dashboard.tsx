@@ -13,6 +13,8 @@ import {
   getPrimaryRole,
   getRatings,
   getRoleSummary,
+  getTrackedCharacterDisplay,
+  getTrackedWeaponDisplay,
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   getWeaponToneClasses,
@@ -23,6 +25,9 @@ import {
   sortDashboardCharacters,
 } from "../domain";
 import type {
+  ApiCharacter,
+  ApiWeapon,
+  Catalog,
   DashboardSortKey,
   DashboardViewMode,
   TrackedCharacter,
@@ -44,6 +49,7 @@ import { TRACKER_DOCUMENT_STORAGE_KEY } from "../storage/keys";
 
 export function Dashboard({
   characters,
+  catalog,
   weaponInventory,
   assignmentCounts,
   dashboardSortKey,
@@ -61,6 +67,7 @@ export function Dashboard({
   showBackupNotice,
 }: {
   characters: TrackedCharacter[];
+  catalog: Catalog;
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
   dashboardSortKey: DashboardSortKey;
@@ -82,6 +89,14 @@ export function Dashboard({
   const [hideComplete, setHideComplete] = useState(false);
   const sortKey = dashboardSortKey;
   const dashboardView = dashboardViewMode;
+  const catalogCharacterById = useMemo(
+    () => new Map(catalog.characters.map((character) => [character.Id, character])),
+    [catalog.characters],
+  );
+  const catalogWeaponById = useMemo(
+    () => new Map(catalog.weapons.map((weapon) => [weapon.Id, weapon])),
+    [catalog.weapons],
+  );
   const completeCount = characters.filter(isComplete).length;
   const critScoredCharacters = characters.filter((character) => !character.noCrit);
   const validBuildScores = critScoredCharacters
@@ -104,6 +119,15 @@ export function Dashboard({
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCharacters = useMemo(() => {
     const filtered = characters.filter((character) => {
+      const characterDisplay = getTrackedCharacterDisplay(
+        character,
+        catalogCharacterById.get(character.characterId),
+      );
+      const weaponDisplay = getTrackedWeaponDisplay(
+        character,
+        catalogWeaponById.get(character.weaponId ?? 0),
+      );
+
       if (hideComplete && isComplete(character)) {
         return false;
       }
@@ -131,10 +155,10 @@ export function Dashboard({
       }
 
       const haystack = [
-        character.characterName,
-        character.elementName,
-        character.weaponTypeName,
-        character.weaponName,
+        characterDisplay.name,
+        characterDisplay.elementName,
+        characterDisplay.weaponTypeName,
+        weaponDisplay.name,
         character.roles.join(" "),
       ]
         .filter(Boolean)
@@ -147,6 +171,8 @@ export function Dashboard({
     return filtered;
   }, [
     assignmentCounts,
+    catalogCharacterById,
+    catalogWeaponById,
     characters,
     hideComplete,
     normalizedQuery,
@@ -394,6 +420,8 @@ export function Dashboard({
                     dashboardView === "grid" ? (
                       <DashboardGridCard
                         assignmentCounts={assignmentCounts}
+                        catalogCharacterById={catalogCharacterById}
+                        catalogWeaponById={catalogWeaponById}
                         character={character}
                         key={character.id}
                         onOpen={onOpen}
@@ -402,6 +430,8 @@ export function Dashboard({
                     ) : (
                       <DashboardListCard
                         assignmentCounts={assignmentCounts}
+                        catalogCharacterById={catalogCharacterById}
+                        catalogWeaponById={catalogWeaponById}
                         character={character}
                         key={character.id}
                         onOpen={onOpen}
@@ -423,17 +453,29 @@ type DashboardCharacterCardProps = {
   character: TrackedCharacter;
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
+  catalogCharacterById: Map<number, ApiCharacter>;
+  catalogWeaponById: Map<number, ApiWeapon>;
   onOpen: (id: string) => void;
 };
 
 function getDashboardCharacterCardState({
   assignmentCounts,
+  catalogCharacterById,
+  catalogWeaponById,
   character,
   weaponInventory,
 }: Pick<
   DashboardCharacterCardProps,
-  "assignmentCounts" | "character" | "weaponInventory"
+  | "assignmentCounts"
+  | "catalogCharacterById"
+  | "catalogWeaponById"
+  | "character"
+  | "weaponInventory"
 >) {
+  const catalogCharacter = catalogCharacterById.get(character.characterId) ?? null;
+  const catalogWeapon = catalogWeaponById.get(character.weaponId ?? 0) ?? null;
+  const characterDisplay = getTrackedCharacterDisplay(character, catalogCharacter);
+  const weaponDisplay = getTrackedWeaponDisplay(character, catalogWeapon);
   const complete = isComplete(character);
   const primaryRole = getPrimaryRole(character.roles);
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
@@ -446,8 +488,8 @@ function getDashboardCharacterCardState({
     assignmentCounts,
   });
   const weaponTone = getWeaponRarityTone({
-    name: character.weaponName,
-    qualityId: character.weaponQualityId,
+    name: weaponDisplay.name,
+    qualityId: weaponDisplay.qualityId,
   });
   const weaponToneClasses = getWeaponToneClasses(weaponTone);
   const erBelowTarget =
@@ -456,12 +498,15 @@ function getDashboardCharacterCardState({
 
   return {
     characterToneClasses,
+    catalogCharacter,
+    characterDisplay,
     checklistCount,
     complete,
     echoTrackerEnabled,
     effectiveChecklist,
     erBelowTarget,
     ratings,
+    weaponDisplay,
     weaponStatus,
     weaponToneClasses,
   };
@@ -480,25 +525,36 @@ function EchoTrackerBadge() {
 
 function DashboardListCard({
   assignmentCounts,
+  catalogCharacterById,
+  catalogWeaponById,
   character,
   onOpen,
   weaponInventory,
 }: DashboardCharacterCardProps) {
   const {
+    catalogCharacter,
     characterToneClasses,
+    characterDisplay,
     checklistCount,
     complete,
     echoTrackerEnabled,
     effectiveChecklist,
     erBelowTarget,
     ratings,
+    weaponDisplay,
     weaponStatus,
     weaponToneClasses,
   } = getDashboardCharacterCardState({
     assignmentCounts,
+    catalogCharacterById,
+    catalogWeaponById,
     character,
     weaponInventory,
   });
+  const characterMeta =
+    [characterDisplay.elementName, characterDisplay.weaponTypeName]
+      .filter(Boolean)
+      .join(" / ") || "Catalog data unavailable";
 
   return (
     <button
@@ -509,11 +565,11 @@ function DashboardListCard({
       type="button"
     >
       <div className="flex min-w-0 gap-3">
-        <CharacterAvatar character={character} />
+        <CharacterAvatar character={character} catalogCharacter={catalogCharacter} />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <h2 className="truncate text-sm font-semibold text-app-fg">
-              {character.characterName}
+              {characterDisplay.name}
             </h2>
             <span
               className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
@@ -523,7 +579,7 @@ function DashboardListCard({
             {echoTrackerEnabled ? <EchoTrackerBadge /> : null}
           </div>
           <p className="mt-0.5 text-[11px] text-app-muted-subtle">
-            {character.elementName} / {character.weaponTypeName}
+            {characterMeta}
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1">
             {character.roles.map((role) => (
@@ -574,12 +630,12 @@ function DashboardListCard({
           <span className="flex min-w-0 flex-wrap justify-end gap-1">
             <span
               className={`truncate rounded-sm px-1.5 py-0.5 font-semibold ${
-                character.weaponName
+                weaponDisplay.name
                   ? `${weaponToneClasses.badge}`
                   : "bg-app-raised text-app-muted-subtle"
               }`}
             >
-              {character.weaponName || "Not selected"}
+              {weaponDisplay.name || "Not selected"}
             </span>
             <WeaponStatusBadge status={weaponStatus} />
           </span>
@@ -626,22 +682,29 @@ function DashboardListCard({
 
 function DashboardGridCard({
   assignmentCounts,
+  catalogCharacterById,
+  catalogWeaponById,
   character,
   onOpen,
   weaponInventory,
 }: DashboardCharacterCardProps) {
   const {
+    catalogCharacter,
     characterToneClasses,
+    characterDisplay,
     checklistCount,
     complete,
     echoTrackerEnabled,
     effectiveChecklist,
     erBelowTarget,
     ratings,
+    weaponDisplay,
     weaponStatus,
     weaponToneClasses,
   } = getDashboardCharacterCardState({
     assignmentCounts,
+    catalogCharacterById,
+    catalogWeaponById,
     character,
     weaponInventory,
   });
@@ -655,11 +718,11 @@ function DashboardGridCard({
       type="button"
     >
       <div className="flex min-w-0 gap-2">
-        <CharacterAvatar character={character} dense />
+        <CharacterAvatar character={character} catalogCharacter={catalogCharacter} dense />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-1.5">
             <h2 className="min-w-0 truncate text-sm font-semibold text-app-fg">
-              {character.characterName}
+              {characterDisplay.name}
             </h2>
             <span className="flex shrink-0 flex-wrap justify-end gap-1">
               <span
@@ -733,12 +796,12 @@ function DashboardGridCard({
       <div className="flex min-w-0 flex-wrap items-center gap-1 text-[11px] font-semibold">
         <span
           className={`max-w-full truncate rounded-sm px-1.5 py-0.5 ${
-            character.weaponName
+            weaponDisplay.name
               ? `${weaponToneClasses.badge}`
               : "bg-app-raised text-app-muted-subtle"
           }`}
         >
-          {character.weaponName || "No weapon"}
+          {weaponDisplay.name || "No weapon"}
         </span>
         <WeaponStatusBadge status={weaponStatus} />
       </div>

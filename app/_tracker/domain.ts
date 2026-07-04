@@ -10,6 +10,8 @@ import {
   STANDARD_FIVE_STAR_WEAPONS,
 } from "./constants";
 import type {
+  ApiCharacter,
+  ApiWeapon,
   Checklist,
   CharacterBadgeTone,
   DashboardSortKey,
@@ -541,6 +543,55 @@ export function getCharacterRarityDisplay({
     qualityId: override?.qualityId ?? qualityId,
     badgeTone: override?.badgeTone,
     animatedBadge: override?.animatedBadge ?? false,
+  };
+}
+
+export function findCatalogCharacter(
+  characters: ApiCharacter[],
+  characterId: number,
+) {
+  return characters.find((character) => character.Id === characterId) ?? null;
+}
+
+export function findCatalogWeapon(weapons: ApiWeapon[], weaponId: number | null) {
+  if (!weaponId) {
+    return null;
+  }
+
+  return weapons.find((weapon) => weapon.Id === weaponId) ?? null;
+}
+
+export function getTrackedCharacterDisplay(
+  character: TrackedCharacter,
+  catalogCharacter?: ApiCharacter | null,
+) {
+  const name = catalogCharacter?.Name ?? character.characterName;
+  const rarityDisplay = getCharacterRarityDisplay({
+    name,
+    qualityId: catalogCharacter?.QualityId,
+  });
+
+  return {
+    name,
+    icon: catalogCharacter?.RoleHeadIcon ?? "",
+    qualityId: rarityDisplay.qualityId ?? null,
+    badgeTone: rarityDisplay.badgeTone,
+    animatedBadge: rarityDisplay.animatedBadge,
+    elementName: catalogCharacter?.Element?.Name ?? "",
+    weaponTypeId: catalogCharacter?.WeaponType?.Id ?? 0,
+    weaponTypeName: catalogCharacter?.WeaponType?.Name ?? "",
+  };
+}
+
+export function getTrackedWeaponDisplay(
+  character: TrackedCharacter,
+  catalogWeapon?: ApiWeapon | null,
+) {
+  return {
+    name: catalogWeapon?.Name ?? character.weaponName,
+    icon: catalogWeapon?.Icon ?? "",
+    qualityId: catalogWeapon?.QualityId ?? null,
+    typeName: catalogWeapon?.TypeName ?? "",
   };
 }
 

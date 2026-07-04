@@ -1,7 +1,7 @@
 import {
-  createTrackerDocumentV4,
-  normalizeTrackerDocumentV4,
-  type TrackerDocumentV4,
+  createTrackerDocumentV5,
+  normalizeTrackerDocumentV5,
+  type TrackerDocumentV5,
   type TrackerPreferences,
 } from "./documents";
 import {
@@ -15,7 +15,7 @@ export type TrackerStorageStatus = {
 };
 
 export type ReadTrackerDocumentResult = {
-  document: TrackerDocumentV4 | null;
+  document: TrackerDocumentV5 | null;
   status: TrackerStorageStatus;
 };
 
@@ -25,7 +25,7 @@ export function parseTrackerDocument(raw: string | null) {
   }
 
   try {
-    return normalizeTrackerDocumentV4(JSON.parse(raw));
+    return normalizeTrackerDocumentV5(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -39,15 +39,15 @@ export function readCurrentTrackerDocument() {
   return parseTrackerDocument(localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY));
 }
 
-export function writeCurrentTrackerDocument(document: TrackerDocumentV4) {
+export function writeCurrentTrackerDocument(document: TrackerDocumentV5) {
   localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(document));
 }
 
 export function updateCurrentTrackerDocumentData(
-  updater: (document: TrackerDocumentV4) => {
-    characters?: TrackerDocumentV4["data"]["characters"];
-    weaponInventory?: TrackerDocumentV4["data"]["weaponInventory"];
-    matrixTeams?: TrackerDocumentV4["data"]["matrixTeams"];
+  updater: (document: TrackerDocumentV5) => {
+    characters?: TrackerDocumentV5["data"]["characters"];
+    weaponInventory?: TrackerDocumentV5["data"]["weaponInventory"];
+    matrixTeams?: TrackerDocumentV5["data"]["matrixTeams"];
     preferences?: TrackerPreferences;
   },
 ) {
@@ -58,7 +58,7 @@ export function updateCurrentTrackerDocumentData(
   }
 
   const updatedData = updater(currentDocument);
-  const nextDocument = createTrackerDocumentV4({
+  const nextDocument = createTrackerDocumentV5({
     characters: updatedData.characters ?? currentDocument.data.characters,
     weaponInventory:
       updatedData.weaponInventory ?? currentDocument.data.weaponInventory,
@@ -72,8 +72,8 @@ export function updateCurrentTrackerDocumentData(
   return true;
 }
 
-export function writeStoredTrackerDocument(document: TrackerDocumentV4) {
-  const normalizedDocument = normalizeTrackerDocumentV4(document);
+export function writeStoredTrackerDocument(document: TrackerDocumentV5) {
+  const normalizedDocument = normalizeTrackerDocumentV5(document);
 
   if (!normalizedDocument) {
     throw new Error("Tracker document is invalid.");

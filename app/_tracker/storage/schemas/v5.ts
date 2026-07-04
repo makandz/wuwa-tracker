@@ -42,7 +42,7 @@ const echoChecklistKeySchemas = ECHO_CHECKLIST_ITEMS.reduce(
   {} as Record<EchoChecklistKey, z.ZodType>,
 );
 
-export const rawTrackerDocumentV4Schema = z
+export const rawTrackerDocumentV5Schema = z
   .object({
     schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
     app: z.literal(TRACKER_APP_ID),
@@ -59,7 +59,7 @@ export const rawTrackerDocumentV4Schema = z
   })
   .catchall(z.unknown());
 
-export const trackerDocumentV4Schema = z
+export const trackerDocumentV5Schema = z
   .object({
     schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
     app: z.literal(TRACKER_APP_ID),
@@ -73,15 +73,9 @@ export const trackerDocumentV4Schema = z
               id: z.string().min(1),
               characterId: z.number().int().nonnegative(),
               characterName: z.string().min(1),
-              characterIcon: z.string(),
-              qualityId: z.number().int().nonnegative(),
-              elementName: z.string(),
-              weaponTypeId: z.number().int().nonnegative(),
-              weaponTypeName: z.string(),
               roles: z.array(roleSchema).min(1),
               weaponId: finiteNumberSchema.nullable(),
               weaponName: z.string(),
-              weaponQualityId: finiteNumberSchema.nullable(),
               fourCostMain: fourCostMainSchema,
               noCrit: z.boolean().optional(),
               critRate: finiteNumberSchema,
@@ -151,5 +145,5 @@ export const trackerDocumentV4Schema = z
   })
   .strict();
 
-export type RawTrackerDocumentV4 = z.infer<typeof rawTrackerDocumentV4Schema>;
-export type ParsedTrackerDocumentV4 = z.infer<typeof trackerDocumentV4Schema>;
+export type RawTrackerDocumentV5 = z.infer<typeof rawTrackerDocumentV5Schema>;
+export type ParsedTrackerDocumentV5 = z.infer<typeof trackerDocumentV5Schema>;

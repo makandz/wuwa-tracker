@@ -5,12 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_TRACKER_PREFERENCES,
   commitStorageMigration,
-  createTrackerDocumentV4,
+  createTrackerDocumentV5,
   inspectTrackerStorage,
   writeStoredTrackerDocument,
   type ParsedImportedTrackerData,
   type StorageMigrationPlan,
-  type TrackerDocumentV4,
+  type TrackerDocumentV5,
   type TrackerPreferences,
   type TrackerStorageStatus,
 } from "./storage";
@@ -22,9 +22,9 @@ import type {
   WeaponInventoryItem,
 } from "./types";
 
-type TrackerData = TrackerDocumentV4["data"];
+type TrackerData = TrackerDocumentV5["data"];
 
-function getDocumentDataSignature(document: TrackerDocumentV4) {
+function getDocumentDataSignature(document: TrackerDocumentV5) {
   return JSON.stringify(document.data);
 }
 
@@ -57,7 +57,7 @@ function createInvariantTrackerDocument({
   revision: number;
   savedAt?: string;
 }) {
-  const normalizedDocument = createTrackerDocumentV4({
+  const normalizedDocument = createTrackerDocumentV5({
     characters,
     weaponInventory,
     matrixTeams,
@@ -70,7 +70,7 @@ function createInvariantTrackerDocument({
     normalizedDocument.data.characters,
   );
 
-  return createTrackerDocumentV4({
+  return createTrackerDocumentV5({
     ...normalizedDocument.data,
     matrixTeams: cleanedMatrixTeams,
     revision: normalizedDocument.revision,
@@ -122,7 +122,7 @@ export function usePersistedTrackerState() {
     setBackupNoticeAcknowledgedAt(data.preferences.backupNoticeAcknowledgedAt);
   }
 
-  function applyDocumentToState(document: TrackerDocumentV4, writable: boolean) {
+  function applyDocumentToState(document: TrackerDocumentV5, writable: boolean) {
     const normalizedDocument = createInvariantTrackerDocument({
       ...document.data,
       revision: document.revision,
@@ -209,7 +209,7 @@ export function usePersistedTrackerState() {
       } else if (result.state === "ready") {
         setStorageMigrationPlan(null);
         applyDocumentToState(
-          createTrackerDocumentV4({
+          createTrackerDocumentV5({
             characters: [],
             weaponInventory: [],
             matrixTeams: [],

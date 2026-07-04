@@ -6,13 +6,14 @@ import {
   getMatrixCharacterMaxUses,
   getRatingGrade,
   getRatings,
+  getTrackedCharacterDisplay,
   normalizeCharacterName,
   ratingGradeClasses,
   rolePillClasses,
   sortDashboardCharacters,
 } from "../domain";
 import { ROLES } from "../constants";
-import type { MatrixTeam, TrackedCharacter } from "../types";
+import type { ApiCharacter, Catalog, MatrixTeam, TrackedCharacter } from "../types";
 import { CharacterAvatar, SearchInput, TextButton } from "../components/ui";
 
 const EMPTY_SLOTS: MatrixTeam["slots"] = [null, null, null];
@@ -52,12 +53,19 @@ function getUsageCounts(teams: MatrixTeam[]) {
 function getTeamElementDiversity(
   team: MatrixTeam,
   characterById: Map<string, TrackedCharacter>,
+  catalogCharacterById: Map<number, ApiCharacter>,
 ) {
   const seenElements = new Set<string>();
   const elements: string[] = [];
 
   team.slots.forEach((characterId) => {
-    const elementName = characterId ? characterById.get(characterId)?.elementName : null;
+    const character = characterId ? characterById.get(characterId) : null;
+    const elementName = character
+      ? getTrackedCharacterDisplay(
+          character,
+          catalogCharacterById.get(character.characterId),
+        ).elementName
+      : null;
     const normalizedElementName = normalizeCharacterName(elementName);
 
     if (!elementName || !normalizedElementName || seenElements.has(normalizedElementName)) {
@@ -119,11 +127,13 @@ function hasAvailableCharacterForNewTeam(
 }
 
 export function MatrixScreen({
+  catalog,
   characters,
   teams,
   onBack,
   onUpdateTeams,
 }: {
+  catalog: Catalog;
   characters: TrackedCharacter[];
   teams: MatrixTeam[];
   onBack: () => void;
@@ -154,6 +164,10 @@ export function MatrixScreen({
     () => new Map(characters.map((character) => [character.id, character])),
     [characters],
   );
+  const catalogCharacterById = useMemo(
+    () => new Map(catalog.characters.map((character) => [character.Id, character])),
+    [catalog.characters],
+  );
   const usageCounts = useMemo(() => getUsageCounts(cleanedTeams), [cleanedTeams]);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCharacters = useMemo(() => {
@@ -165,19 +179,24 @@ export function MatrixScreen({
       return sorted;
     }
 
-    return sorted.filter((character) =>
-      [
-        character.characterName,
-        character.elementName,
-        character.weaponTypeName,
+    return sorted.filter((character) => {
+      const characterDisplay = getTrackedCharacterDisplay(
+        character,
+        catalogCharacterById.get(character.characterId),
+      );
+
+      return [
+        characterDisplay.name,
+        characterDisplay.elementName,
+        characterDisplay.weaponTypeName,
         character.roles.join(" "),
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
-        .includes(normalizedQuery),
-    );
-  }, [characters, normalizedQuery]);
+        .includes(normalizedQuery);
+    });
+  }, [catalogCharacterById, characters, normalizedQuery]);
   const availableCharacters = useMemo(
     () =>
       visibleCharacters.filter(
@@ -420,6 +439,12 @@ export function MatrixScreen({
                 const maxUses = getMatrixCharacterMaxUses(character);
                 const usedCount = usageCounts.get(character.id) ?? 0;
                 const disabled = !canPlaceCharacter(character);
+                const catalogCharacter =
+                  catalogCharacterById.get(character.characterId) ?? null;
+                const characterDisplay = getTrackedCharacterDisplay(
+                  character,
+                  catalogCharacter,
+                );
                 const selected = resolvedActiveSlot
                   ? cleanedTeams
                       .find((team) => team.id === resolvedActiveSlot.teamId)
@@ -440,10 +465,14 @@ export function MatrixScreen({
                     onClick={() => placeCharacter(character)}
                     type="button"
                   >
-                    <CharacterAvatar character={character} compact />
+                    <CharacterAvatar
+                      character={character}
+                      catalogCharacter={catalogCharacter}
+                      compact
+                    />
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-app-fg">
-                        {character.characterName}
+                        {characterDisplay.name}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
                         <span className="rounded-sm bg-app-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-app-muted">
@@ -492,7 +521,11 @@ export function MatrixScreen({
             const activeInTeam = resolvedActiveSlot?.teamId === team.id;
             const isDragging = draggedTeamId === team.id;
             const isDragTarget = dragOverTeamId === team.id && draggedTeamId !== team.id;
-            const elementDiversity = getTeamElementDiversity(team, characterById);
+            const elementDiversity = getTeamElementDiversity(
+              team,
+              characterById,
+              catalogCharacterById,
+            );
 
             return (
               <div
@@ -551,6 +584,12 @@ export function MatrixScreen({
                   {team.slots.map((characterId, slotIndex) => {
                     const character = characterId ? characterById.get(characterId) : null;
                     const letterScore = character ? getLetterScore(character) : null;
+                    const catalogCharacter = character
+                      ? catalogCharacterById.get(character.characterId) ?? null
+                      : null;
+                    const characterDisplay = character
+                      ? getTrackedCharacterDisplay(character, catalogCharacter)
+                      : null;
                     const isActive =
                       resolvedActiveSlot?.teamId === team.id &&
                       resolvedActiveSlot.slotIndex === slotIndex;
@@ -572,13 +611,19 @@ export function MatrixScreen({
                       >
                         {character ? (
                           <span className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-                            <CharacterAvatar character={character} compact />
+                            <CharacterAvatar
+                              character={character}
+                              catalogCharacter={catalogCharacter}
+                              compact
+                            />
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold text-app-fg">
-                                {character.characterName}
+                                {characterDisplay?.name}
                               </span>
                               <span className="mt-1 block text-xs font-medium text-app-muted-subtle">
-                                {character.elementName} / {character.weaponTypeName}
+                                {[characterDisplay?.elementName, characterDisplay?.weaponTypeName]
+                                  .filter(Boolean)
+                                  .join(" / ") || "Catalog data unavailable"}
                               </span>
                             </span>
                             <span className="grid gap-1 justify-items-end">

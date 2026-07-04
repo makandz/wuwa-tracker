@@ -94,15 +94,9 @@ export type TrackedCharacter = {
   id: string;
   characterId: number;
   characterName: string;
-  characterIcon: string;
-  qualityId: number;
-  elementName: string;
-  weaponTypeId: number;
-  weaponTypeName: string;
   roles: Role[];
   weaponId: number | null;
   weaponName: string;
-  weaponQualityId: number | null;
   fourCostMain: FourCostMain;
   noCrit?: boolean;
   critRate: number;

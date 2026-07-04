@@ -13,6 +13,8 @@ import {
 import {
   characterRoleToneClasses,
   createDefaultEchoChecker,
+  findCatalogCharacter,
+  findCatalogWeapon,
   getDefaultEchoCheckerPlan,
   getEchoCheckerCritValue,
   getEchoCritPlaceholders,
@@ -25,6 +27,8 @@ import {
   getPrydwenCharacterUrl,
   getRatingGrade,
   getRatings,
+  getTrackedCharacterDisplay,
+  getTrackedWeaponDisplay,
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   isEchoCheckerEchoComplete,
@@ -39,6 +43,7 @@ import {
 } from "../echo-estimates";
 import { getCharacterRotations } from "../rotations";
 import type {
+  ApiCharacter,
   ApiWeapon,
   Checklist,
   EchoChecker,
@@ -271,6 +276,7 @@ function EchoEstimateSection({ estimate }: { estimate: MakanEchoEstimate }) {
 
 export function DetailScreen({
   character,
+  characters,
   weapons,
   weaponInventory,
   assignmentCounts,
@@ -279,6 +285,7 @@ export function DetailScreen({
   onUpdate,
 }: {
   character: TrackedCharacter;
+  characters: ApiCharacter[];
   weapons: ApiWeapon[];
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
@@ -294,8 +301,12 @@ export function DetailScreen({
       }, {}),
     [weaponInventory],
   );
+  const catalogCharacter = findCatalogCharacter(characters, character.characterId);
+  const characterDisplay = getTrackedCharacterDisplay(character, catalogCharacter);
   const availableWeapons = weapons.filter(
-    (weapon) => weapon.Type === character.weaponTypeId && (inventoryCounts[weapon.Id] ?? 0) > 0,
+    (weapon) =>
+      weapon.Type === characterDisplay.weaponTypeId &&
+      (inventoryCounts[weapon.Id] ?? 0) > 0,
   );
   const ratings = getRatings(character);
   const echoChecker = character.echoChecker ?? createDefaultEchoChecker(character.roles);
@@ -308,14 +319,15 @@ export function DetailScreen({
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
-  const selectedWeapon = weapons.find((weapon) => weapon.Id === character.weaponId) ?? null;
-  const rotations = getCharacterRotations(character.characterName);
+  const selectedWeapon = findCatalogWeapon(weapons, character.weaponId);
+  const weaponDisplay = getTrackedWeaponDisplay(character, selectedWeapon);
+  const rotations = getCharacterRotations(characterDisplay.name);
   const weaponStatus = getWeaponInventoryStatus({
     weaponId: character.weaponId,
     inventory: weaponInventory,
     assignmentCounts,
   });
-  const prydwenUrl = getPrydwenCharacterUrl(character.characterName);
+  const prydwenUrl = getPrydwenCharacterUrl(characterDisplay.name);
   const defaultPlan = getDefaultEchoCheckerPlan(character.roles);
   const substatPriorityValue =
     character.substatPriority ?? character.echoChecker?.substatPriority ?? "";
@@ -454,18 +466,22 @@ export function DetailScreen({
     patchCharacter({
       weaponId: selectedWeapon?.Id ?? null,
       weaponName: selectedWeapon?.Name ?? "",
-      weaponQualityId: selectedWeapon?.QualityId ?? null,
     });
   }
+
+  const characterMeta =
+    [characterDisplay.elementName, characterDisplay.weaponTypeName]
+      .filter(Boolean)
+      .join(" / ") || "Catalog data unavailable";
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <CharacterAvatar character={character} />
+          <CharacterAvatar character={character} catalogCharacter={catalogCharacter} />
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-app-fg">{character.characterName}</h1>
+              <h1 className="text-2xl font-bold text-app-fg">{characterDisplay.name}</h1>
               <span
                 className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${characterToneClasses.status}`}
               >
@@ -473,7 +489,7 @@ export function DetailScreen({
               </span>
             </div>
             <p className="mt-1 text-sm text-app-muted-subtle">
-              {character.elementName} / {character.weaponTypeName}
+              {characterMeta}
             </p>
           </div>
         </div>
@@ -526,22 +542,24 @@ export function DetailScreen({
           <h2 className="text-lg font-semibold text-app-fg">Build Setup</h2>
           <PickerSummary
             actionLabel="Change"
-            image={selectedWeapon?.Icon}
+            image={weaponDisplay.icon}
             label="Weapon"
             meta={
               selectedWeapon
                 ? `${selectedWeapon.TypeName} / Own ${
                     inventoryCounts[selectedWeapon.Id] ?? 0
                   } / Used ${assignmentCounts[selectedWeapon.Id] ?? 0}`
-                : "No weapon selected"
+                : character.weaponId
+                  ? "Catalog data unavailable"
+                  : "No weapon selected"
             }
             onClick={() => setWeaponPickerOpen(true)}
-            quality={selectedWeapon?.QualityId ?? character.weaponQualityId}
+            quality={weaponDisplay.qualityId}
             rarityTone={getWeaponRarityTone({
-              name: selectedWeapon?.Name ?? character.weaponName,
-              qualityId: selectedWeapon?.QualityId ?? character.weaponQualityId,
+              name: weaponDisplay.name,
+              qualityId: weaponDisplay.qualityId,
             })}
-            title={(selectedWeapon?.Name ?? character.weaponName) || "No weapon selected"}
+            title={weaponDisplay.name || "No weapon selected"}
           />
           <WeaponStatusBadge status={weaponStatus} />
 
@@ -560,7 +578,7 @@ export function DetailScreen({
               weapons={availableWeapons}
               inventoryCounts={inventoryCounts}
               assignmentCounts={assignmentCounts}
-              weaponTypeName={character.weaponTypeName}
+              weaponTypeName={characterDisplay.weaponTypeName || "Matching"}
             />
           ) : null}
 

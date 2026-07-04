@@ -13,7 +13,7 @@ import {
 } from "../app/_tracker/storage/keys";
 import {
   DEFAULT_TRACKER_PREFERENCES,
-  createTrackerDocumentV4,
+  createTrackerDocumentV5,
   exportTrackerData,
   parseImportedTrackerData,
 } from "../app/_tracker/storage";
@@ -106,15 +106,9 @@ function makeCharacter(
     id: "char-1",
     characterId: 101,
     characterName: "Rover",
-    characterIcon: "/rover.png",
-    qualityId: 5,
-    elementName: "Spectro",
-    weaponTypeId: 1,
-    weaponTypeName: "Sword",
     roles: ["DPS"],
     weaponId: 201,
     weaponName: "Emerald of Genesis",
-    weaponQualityId: 5,
     fourCostMain: "CR",
     noCrit: false,
     critRate: 70,
@@ -133,6 +127,19 @@ function makeCharacter(
     notes: "main team",
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-02T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function makeLegacyFlatCharacter(overrides: Record<string, unknown> = {}) {
+  return {
+    ...makeCharacter(),
+    characterIcon: "/rover.png",
+    qualityId: 5,
+    elementName: "Spectro",
+    weaponTypeId: 1,
+    weaponTypeName: "Sword",
+    weaponQualityId: 5,
     ...overrides,
   };
 }
@@ -158,8 +165,8 @@ beforeEach(() => {
 });
 
 describe("tracker storage", () => {
-  test("migrates legacy split-key storage into the v4 document", () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([makeCharacter()]));
+  test("migrates legacy split-key storage into the v5 document", () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([makeLegacyFlatCharacter()]));
     localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(makeWeaponInventory()));
     localStorage.setItem(MATRIX_STORAGE_KEY, JSON.stringify(makeMatrixTeams()));
     localStorage.setItem(WELCOME_SEEN_STORAGE_KEY, "true");
@@ -180,7 +187,7 @@ describe("tracker storage", () => {
       localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY) ?? "null",
     );
 
-    expect(document.schemaVersion).toBe(4);
+    expect(document.schemaVersion).toBe(5);
     expect(document.data.characters[0]?.characterName).toBe("Rover");
     expect(document.data.weaponInventory).toEqual(makeWeaponInventory());
     expect(document.data.matrixTeams).toEqual(makeMatrixTeams());
@@ -191,13 +198,74 @@ describe("tracker storage", () => {
       backupNoticeAcknowledgedAt: 12345,
     });
     expect(storedDocument.data.characters[0].id).toBe("char-1");
+    expect(storedDocument.data.characters[0].characterIcon).toBeUndefined();
+    expect(storedDocument.data.characters[0].weaponQualityId).toBeUndefined();
+  });
+
+  test("migrates v4 documents into the reduced v5 character shape", () => {
+    const characters = [
+      makeLegacyFlatCharacter({ id: "char-1", characterId: 101, characterName: "Rover" }),
+      makeLegacyFlatCharacter({ id: "char-2", characterId: 102, characterName: "Verina" }),
+      makeLegacyFlatCharacter({ id: "char-3", characterId: 103, characterName: "Encore" }),
+      makeLegacyFlatCharacter({ id: "char-4", characterId: 104, characterName: "Sanhua" }),
+      makeLegacyFlatCharacter({ id: "char-5", characterId: 105, characterName: "Yangyang" }),
+      makeLegacyFlatCharacter({ id: "char-6", characterId: 106, characterName: "Baizhi" }),
+    ];
+
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 4,
+        app: "wuwa-tracker",
+        savedAt: "2026-01-03T00:00:00.000Z",
+        revision: 4,
+        data: {
+          characters,
+          weaponInventory: makeWeaponInventory(),
+          matrixTeams: makeMatrixTeams(),
+          preferences: DEFAULT_TRACKER_PREFERENCES,
+        },
+      }),
+    );
+
+    const inspection = inspectTrackerStorage();
+
+    expect(inspection.state).toBe("migration-required");
+
+    if (inspection.state !== "migration-required") {
+      throw new Error("Expected v4 migration plan.");
+    }
+
+    expect(inspection.migrationPlan.source.preview.items).toEqual([
+      "Rover",
+      "Verina",
+      "Encore",
+      "Sanhua",
+      "Yangyang",
+      "Baizhi",
+    ]);
+
+    const document = commitStorageMigration(inspection.migrationPlan);
+    const storedCharacter = document.data.characters[0];
+
+    expect(document.schemaVersion).toBe(5);
+    expect(storedCharacter?.characterId).toBe(101);
+    expect(storedCharacter?.characterName).toBe("Rover");
+    expect(storedCharacter?.weaponId).toBe(201);
+    expect(storedCharacter?.weaponName).toBe("Emerald of Genesis");
+    expect("characterIcon" in (storedCharacter ?? {})).toBe(false);
+    expect("weaponQualityId" in (storedCharacter ?? {})).toBe(false);
   });
 
   test("imports old array exports as character-only data", () => {
-    const imported = parseImportedTrackerData(JSON.stringify([makeCharacter()]));
+    const imported = parseImportedTrackerData(
+      JSON.stringify([makeLegacyFlatCharacter()]),
+    );
 
     expect(imported.characters).toHaveLength(1);
     expect(imported.characters[0]?.characterName).toBe("Rover");
+    expect("characterIcon" in (imported.characters[0] ?? {})).toBe(false);
+    expect("weaponQualityId" in (imported.characters[0] ?? {})).toBe(false);
     expect(imported.weaponInventory).toEqual([]);
     expect(imported.matrixTeams).toEqual([
       {
@@ -208,7 +276,7 @@ describe("tracker storage", () => {
     expect(imported.preferences).toBeNull();
   });
 
-  test("round trips exported v4 documents through import", async () => {
+  test("round trips exported v5 documents through import", async () => {
     const preferences = {
       welcomeSeen: true,
       dashboardSortKey: "updated" as const,
@@ -236,13 +304,15 @@ describe("tracker storage", () => {
     const imported = parseImportedTrackerData(await exportedBlob.text());
 
     expect(imported.characters[0]?.id).toBe("char-1");
+    expect("characterIcon" in (imported.characters[0] ?? {})).toBe(false);
+    expect("weaponQualityId" in (imported.characters[0] ?? {})).toBe(false);
     expect(imported.weaponInventory).toEqual(makeWeaponInventory());
     expect(imported.matrixTeams).toEqual(makeMatrixTeams());
     expect(imported.preferences).toEqual(preferences);
   });
 
   test("recovers a corrupt current document from the last-known-good document", () => {
-    const lastKnownGood = createTrackerDocumentV4({
+    const lastKnownGood = createTrackerDocumentV5({
       characters: [makeCharacter()],
       weaponInventory: makeWeaponInventory(),
       matrixTeams: makeMatrixTeams(),

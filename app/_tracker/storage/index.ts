@@ -12,16 +12,16 @@ import type {
 import {
   DEFAULT_TRACKER_PREFERENCES,
   createEmptyMatrixTeam,
-  createTrackerDocumentV4,
+  createTrackerDocumentV5,
   ensureMatrixTeams,
   isDashboardSortKey,
   isDashboardViewMode,
   normalizeCharacters,
   normalizeMatrixTeams,
-  normalizeTrackerDocumentV4,
+  normalizeTrackerDocumentV5,
   normalizeWeaponInventory,
   type ParsedImportedTrackerData,
-  type TrackerDocumentV4,
+  type TrackerDocumentV5,
   type TrackerPreferences,
 } from "./documents";
 import {
@@ -43,7 +43,7 @@ import {
 import {
   parseLegacyArrayExport,
   parseLegacyObjectExport,
-} from "./migrations/legacy-v3-to-v4";
+} from "./migrations/legacy-v3-to-v5";
 import {
   readCurrentTrackerDocument,
   readStoredTrackerDocument,
@@ -61,14 +61,14 @@ export {
   CURRENT_SCHEMA_VERSION,
   DEFAULT_TRACKER_PREFERENCES,
   commitStorageMigration,
-  createTrackerDocumentV4,
+  createTrackerDocumentV5,
   exportStorageMigrationBackup,
   inspectTrackerStorage,
   isDashboardSortKey,
   isDashboardViewMode,
   normalizeCharacters,
   normalizeMatrixTeams,
-  normalizeTrackerDocumentV4,
+  normalizeTrackerDocumentV5,
   normalizeWeaponInventory,
   readStoredTrackerDocument,
   writeStoredTrackerDocument,
@@ -77,7 +77,7 @@ export type {
   ParsedImportedTrackerData,
   ReadTrackerDocumentResult,
   StorageMigrationPlan,
-  TrackerDocumentV4,
+  TrackerDocumentV5,
   TrackerPreferences,
   TrackerStorageStatus,
 };
@@ -98,7 +98,7 @@ export function exportTrackerData(
   revision = 1,
 ) {
   const exportedAt = new Date().toISOString();
-  const trackerDocument = createTrackerDocumentV4({
+  const trackerDocument = createTrackerDocumentV5({
     characters,
     weaponInventory,
     matrixTeams,
@@ -379,7 +379,7 @@ export function parseImportedTrackerData(
   text: string,
 ): ParsedImportedTrackerData {
   const parsed = JSON.parse(text) as unknown;
-  const trackerDocument = normalizeTrackerDocumentV4(parsed);
+  const trackerDocument = normalizeTrackerDocumentV5(parsed);
 
   if (trackerDocument) {
     return {
