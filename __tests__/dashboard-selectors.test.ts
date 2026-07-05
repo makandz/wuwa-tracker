@@ -6,7 +6,7 @@ import {
   getDashboardCharacterCardState,
   getDashboardStats,
   groupDashboardCharacters,
-} from "../app/_tracker/screens/dashboard-selectors";
+} from "../app/_tracker/domain/dashboard-selectors";
 import type {
   Catalog,
   TrackedCharacter,

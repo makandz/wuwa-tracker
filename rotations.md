@@ -14,7 +14,7 @@ The UI renderer is stored in:
 
 The character detail page renders rotations from:
 
-- `app/_tracker/screens/detail.tsx`
+- `app/characters/[id]/page.tsx`
 
 Users cannot edit rotations in the app. Rotations are hardcoded and keyed by normalized character name.
 
