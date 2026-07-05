@@ -26,6 +26,7 @@ import { inspectTrackerStorage } from "../inspection";
 import { readStoredTrackerDocument } from "../recovery";
 import { cleanMatrixTeamsForCharacters } from "../../tracker-data";
 import type {
+  EchoChecker,
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
@@ -144,6 +145,66 @@ function makeLegacyFlatCharacter(overrides: Record<string, unknown> = {}) {
     weaponTypeName: "Sword",
     weaponQualityId: 5,
     ...overrides,
+  };
+}
+
+function makeEchoChecker(): EchoChecker {
+  return {
+    enabled: true,
+    plan: "DPS",
+    echoes: {
+      fourCost: {
+        critRate: null,
+        critDmg: null,
+        hasRelevantStat: true,
+        hasSecondRelevantStat: true,
+        hasThirdRelevantStat: false,
+      },
+      threeCostA: {
+        critRate: null,
+        critDmg: null,
+        hasRelevantStat: true,
+        hasSecondRelevantStat: false,
+        hasThirdRelevantStat: false,
+      },
+      threeCostB: {
+        critRate: null,
+        critDmg: null,
+        hasRelevantStat: true,
+        hasSecondRelevantStat: false,
+        hasThirdRelevantStat: false,
+      },
+      oneCostA: {
+        critRate: null,
+        critDmg: null,
+        hasRelevantStat: true,
+        hasSecondRelevantStat: false,
+        hasThirdRelevantStat: false,
+      },
+      oneCostB: {
+        critRate: null,
+        critDmg: null,
+        hasRelevantStat: true,
+        hasSecondRelevantStat: false,
+        hasThirdRelevantStat: false,
+      },
+    },
+    substatPriority: "",
+    substats: [],
+  };
+}
+
+function removeThirdRelevantStats(echoChecker: EchoChecker) {
+  return {
+    ...echoChecker,
+    echoes: Object.fromEntries(
+      Object.entries(echoChecker.echoes).map(([key, echo]) => {
+        const rest: Record<string, unknown> = { ...echo };
+
+        delete rest.hasThirdRelevantStat;
+        return [key, rest];
+      }),
+    ),
   };
 }
 
@@ -298,6 +359,57 @@ describe("tracker storage", () => {
     expect("weaponQualityId" in (storedCharacter ?? {})).toBe(false);
   });
 
+  test("migrates v4 documents with older echo checker fields", () => {
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 4,
+        app: "wuwa-tracker",
+        savedAt: "2026-01-03T00:00:00.000Z",
+        revision: 4,
+        data: {
+          characters: [
+            makeLegacyFlatCharacter({
+              echoChecker: removeThirdRelevantStats(makeEchoChecker()),
+            }),
+            makeLegacyFlatCharacter({
+              id: "char-2",
+              characterId: 102,
+              characterName: "Verina",
+              weaponQualityId: null,
+            }),
+          ],
+          weaponInventory: makeWeaponInventory(),
+          matrixTeams: makeMatrixTeams(),
+          preferences: DEFAULT_TRACKER_PREFERENCES,
+        },
+      }),
+    );
+
+    const inspection = inspectTrackerStorage();
+
+    expect(inspection.state).toBe("migration-required");
+
+    if (inspection.state !== "migration-required") {
+      throw new Error("Expected v4 migration plan.");
+    }
+
+    const document = commitStorageMigration(inspection.migrationPlan);
+
+    expect(document.schemaVersion).toBe(5);
+    expect(
+      document.data.characters[0]?.echoChecker?.echoes.fourCost
+        .hasThirdRelevantStat,
+    ).toBe(false);
+    expect(
+      document.data.characters[0]?.echoChecker?.echoes.oneCostB
+        .hasThirdRelevantStat,
+    ).toBe(false);
+    expect("weaponQualityId" in (document.data.characters[1] ?? {})).toBe(
+      false,
+    );
+  });
+
   test("offers legacy split migration when current storage is corrupt", () => {
     localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt");
     localStorage.setItem(STORAGE_KEY, JSON.stringify([makeLegacyFlatCharacter()]));
@@ -319,6 +431,24 @@ describe("tracker storage", () => {
     expect(inspection.migrationPlan.steps.map((step) => step.id)).toEqual([
       "v4-to-v5",
     ]);
+  });
+
+  test("reports unsupported versioned documents without parsing them as current", () => {
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify({
+        schemaVersion: 99,
+        app: "wuwa-tracker",
+        data: {},
+      }),
+    );
+
+    const inspection = inspectTrackerStorage();
+
+    expect(inspection.state).toBe("error");
+    expect(inspection.status.message).toBe(
+      "Tracker storage uses unsupported save format v99.",
+    );
   });
 
   test("imports old array exports as character-only data", () => {

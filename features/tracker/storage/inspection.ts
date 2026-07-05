@@ -3,10 +3,12 @@ import {
   type ReadTrackerDocumentResult,
   type TrackerStorageStatus,
 } from "./recovery";
+import { CURRENT_SCHEMA_VERSION } from "./keys";
 import {
   createStorageMigrationPlan,
   type StorageMigrationPlan,
 } from "./migrations/plans";
+import { readCurrentDocumentStorageVersion } from "./migrations/sources";
 
 export type TrackerStorageInspection =
   | (ReadTrackerDocumentResult & {
@@ -47,6 +49,30 @@ function migrationRequiredInspection(
 }
 
 export function inspectTrackerStorage(): TrackerStorageInspection {
+  const currentDocument = readCurrentDocumentStorageVersion();
+
+  if (
+    currentDocument.state === "versioned" &&
+    currentDocument.version !== CURRENT_SCHEMA_VERSION
+  ) {
+    const migration = createStorageMigrationPlan();
+
+    if (migration.state === "ready") {
+      return migrationRequiredInspection(migration.plan);
+    }
+
+    return {
+      document: null,
+      status: errorStatus(
+        migration.state === "error"
+          ? migration.error
+          : `Tracker storage uses unsupported save format v${currentDocument.version}.`,
+      ),
+      state: "error",
+      migrationPlan: null,
+    };
+  }
+
   const result = readStoredTrackerDocument();
 
   if (result.document) {

@@ -28,8 +28,81 @@ const LEGACY_SPLIT_STORAGE_KEYS = [
   BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
 ];
 
+export type CurrentDocumentStorageVersion =
+  | {
+      state: "missing";
+      raw: null;
+      version: null;
+    }
+  | {
+      state: "versioned";
+      raw: string;
+      version: number;
+    }
+  | {
+      state: "invalid";
+      raw: string;
+      version: null;
+    };
+
 function parseJson(raw: string) {
   return JSON.parse(raw) as unknown;
+}
+
+function getSchemaVersion(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const version = (value as { schemaVersion?: unknown }).schemaVersion;
+
+  return typeof version === "number" && Number.isInteger(version)
+    ? version
+    : null;
+}
+
+export function readCurrentDocumentStorageVersion(): CurrentDocumentStorageVersion {
+  if (typeof window === "undefined") {
+    return {
+      state: "missing",
+      raw: null,
+      version: null,
+    };
+  }
+
+  const raw = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
+
+  if (raw === null) {
+    return {
+      state: "missing",
+      raw,
+      version: null,
+    };
+  }
+
+  try {
+    const version = getSchemaVersion(parseJson(raw));
+
+    if (version === null) {
+      return {
+        state: "invalid",
+        raw,
+        version: null,
+      };
+    }
+
+    return {
+      state: "versioned",
+      raw,
+      version,
+    };
+  } catch {
+    return {
+      state: "invalid",
+      raw,
+      version: null,
+    };
+  }
 }
 
 function readLegacyJsonArray(key: string) {
@@ -170,5 +243,11 @@ export function readLegacySplitStorageSource(): MigrationSource | null {
 }
 
 export function readMigrationSource(): MigrationSource | null {
-  return readCurrentDocumentV4Source() ?? readLegacySplitStorageSource();
+  const currentDocument = readCurrentDocumentStorageVersion();
+
+  if (currentDocument.state === "versioned") {
+    return currentDocument.version === 4 ? readCurrentDocumentV4Source() : null;
+  }
+
+  return readLegacySplitStorageSource();
 }
