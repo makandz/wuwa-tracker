@@ -23,10 +23,7 @@ import type {
   WeaponInventoryItem,
 } from "../types";
 import { TRACKER_APP_ID, TRACKER_SCHEMA_VERSION } from "./keys";
-import {
-  rawTrackerDocumentV5Schema,
-  trackerDocumentV5Schema,
-} from "./schemas/v5";
+import { trackerDocumentV5Schema } from "./schemas/v5";
 
 export type TrackerPreferences = {
   welcomeSeen: boolean;
@@ -284,24 +281,13 @@ export function createTrackerDocumentV5({
 export function normalizeTrackerDocumentV5(
   document: unknown,
 ): TrackerDocumentV5 | null {
-  const result = rawTrackerDocumentV5Schema.safeParse(document);
+  const result = trackerDocumentV5Schema.safeParse(document);
 
   if (!result.success) {
     return null;
   }
 
-  try {
-    return createTrackerDocumentV5({
-      characters: result.data.data.characters,
-      weaponInventory: result.data.data.weaponInventory,
-      matrixTeams: result.data.data.matrixTeams,
-      preferences: result.data.data.preferences,
-      revision: result.data.revision,
-      savedAt: result.data.savedAt,
-    });
-  } catch {
-    return null;
-  }
+  return result.data as TrackerDocumentV5;
 }
 
 export function normalizeCharacters(characters: unknown): TrackedCharacter[] {

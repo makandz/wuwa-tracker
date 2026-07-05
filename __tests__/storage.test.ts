@@ -185,6 +185,30 @@ describe("tracker storage", () => {
       throw new Error("Expected migration plan.");
     }
 
+    expect(inspection.migrationPlan.source.version).toBe("legacy-v3");
+    expect(inspection.migrationPlan.source.payloadVersion).toBe(4);
+    expect(inspection.migrationPlan.steps.map((step) => step.id)).toEqual([
+      "v4-to-v5",
+    ]);
+    expect(
+      (inspection.migrationPlan.source.payload as { schemaVersion?: unknown })
+        .schemaVersion,
+    ).toBe(4);
+    expect(
+      (
+        inspection.migrationPlan.source.payload as {
+          data?: { characters?: Array<Record<string, unknown>> };
+        }
+      ).data?.characters?.[0],
+    ).toMatchObject({
+      characterIcon: "/rover.png",
+      qualityId: 5,
+      elementName: "Spectro",
+      weaponTypeId: 1,
+      weaponTypeName: "Sword",
+      weaponQualityId: 5,
+    });
+
     const document = commitStorageMigration(inspection.migrationPlan);
     const storedDocument = JSON.parse(
       localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY) ?? "null",
@@ -247,6 +271,20 @@ describe("tracker storage", () => {
       "Yangyang",
       "Baizhi",
     ]);
+    expect(
+      (
+        inspection.migrationPlan.source.payload as {
+          data?: { characters?: Array<Record<string, unknown>> };
+        }
+      ).data?.characters?.[0],
+    ).toMatchObject({
+      characterIcon: "/rover.png",
+      qualityId: 5,
+      elementName: "Spectro",
+      weaponTypeId: 1,
+      weaponTypeName: "Sword",
+      weaponQualityId: 5,
+    });
 
     const document = commitStorageMigration(inspection.migrationPlan);
     const storedCharacter = document.data.characters[0];
@@ -258,6 +296,29 @@ describe("tracker storage", () => {
     expect(storedCharacter?.weaponName).toBe("Emerald of Genesis");
     expect("characterIcon" in (storedCharacter ?? {})).toBe(false);
     expect("weaponQualityId" in (storedCharacter ?? {})).toBe(false);
+  });
+
+  test("offers legacy split migration when current storage is corrupt", () => {
+    localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt");
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([makeLegacyFlatCharacter()]));
+    localStorage.setItem(INVENTORY_STORAGE_KEY, JSON.stringify(makeWeaponInventory()));
+    localStorage.setItem(MATRIX_STORAGE_KEY, JSON.stringify(makeMatrixTeams()));
+
+    const inspection = inspectTrackerStorage();
+
+    expect(inspection.state).toBe("migration-required");
+
+    if (inspection.state !== "migration-required") {
+      throw new Error("Expected legacy migration plan.");
+    }
+
+    expect(inspection.status.message).toBe(
+      "Current tracker storage could not be recovered, but older tracker data can be migrated.",
+    );
+    expect(inspection.migrationPlan.source.id).toBe("legacy-split-storage");
+    expect(inspection.migrationPlan.steps.map((step) => step.id)).toEqual([
+      "v4-to-v5",
+    ]);
   });
 
   test("imports old array exports as character-only data", () => {

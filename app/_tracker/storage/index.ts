@@ -26,7 +26,7 @@ import {
 import {
   parseLegacyArrayExport,
   parseLegacyObjectExport,
-} from "./migrations/legacy-v3-to-v5";
+} from "./migrations/legacy-imports";
 import {
   TrackerStorageRevisionConflictError,
   hasNewerTrackerDocumentRevision,

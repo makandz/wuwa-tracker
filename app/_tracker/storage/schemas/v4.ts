@@ -14,7 +14,7 @@ import type {
   FourCostMain,
   Role,
 } from "../../types";
-import { TRACKER_APP_ID, TRACKER_SCHEMA_VERSION } from "../keys";
+import { TRACKER_APP_ID } from "../keys";
 
 const finiteNumberSchema = z.number().finite();
 const savedAtSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)));
@@ -42,9 +42,9 @@ const echoChecklistKeySchemas = ECHO_CHECKLIST_ITEMS.reduce(
   {} as Record<EchoChecklistKey, z.ZodType>,
 );
 
-export const trackerDocumentV5Schema = z
+export const trackerDocumentV4Schema = z
   .object({
-    schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+    schemaVersion: z.literal(4),
     app: z.literal(TRACKER_APP_ID),
     savedAt: savedAtSchema,
     revision: z.number().int().positive(),
@@ -56,6 +56,12 @@ export const trackerDocumentV5Schema = z
               id: z.string().min(1),
               characterId: z.number().int().nonnegative(),
               characterName: z.string().min(1),
+              characterIcon: z.string(),
+              qualityId: z.number().int().nonnegative(),
+              elementName: z.string(),
+              weaponTypeId: z.number().int().nonnegative(),
+              weaponTypeName: z.string(),
+              weaponQualityId: z.number().int().nonnegative(),
               roles: z.array(roleSchema).min(1),
               weaponId: finiteNumberSchema.nullable(),
               weaponName: z.string(),
@@ -128,4 +134,5 @@ export const trackerDocumentV5Schema = z
   })
   .strict();
 
-export type ParsedTrackerDocumentV5 = z.infer<typeof trackerDocumentV5Schema>;
+export type TrackerDocumentV4 = z.infer<typeof trackerDocumentV4Schema>;
+export type TrackerCharacterV4 = TrackerDocumentV4["data"]["characters"][number];

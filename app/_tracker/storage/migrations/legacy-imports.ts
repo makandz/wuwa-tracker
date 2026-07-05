@@ -1,25 +1,11 @@
 import {
-  createTrackerDocumentV5,
   ensureMatrixTeams,
   normalizeCharacters,
   normalizeMatrixTeams,
   normalizePreferences,
   normalizeWeaponInventory,
   type ParsedImportedTrackerData,
-  type TrackerDocumentV5,
 } from "../documents";
-import type { LegacySplitStorage } from "../schemas/legacy-v3";
-
-export function migrateLegacySplitStorageToV5(
-  storage: LegacySplitStorage,
-): TrackerDocumentV5 {
-  return createTrackerDocumentV5({
-    characters: storage.characters,
-    weaponInventory: storage.weaponInventory,
-    matrixTeams: storage.matrixTeams,
-    preferences: storage.preferences,
-  });
-}
 
 export function parseLegacyArrayExport(
   characters: unknown[],
