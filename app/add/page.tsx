@@ -3,32 +3,32 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { emptyChecklist } from "../_tracker/constants";
+import { emptyChecklist } from "@/features/tracker/constants";
 import {
   buildWeaponInventoryCountMap,
   getAssignmentCounts,
   getCharacterRarityDisplay,
   getOwnedWeaponsByType,
   getWeaponRarityTone,
-} from "../_tracker/domain";
+} from "@/features/tracker/domain";
 import {
   FourCostMainControl,
   RoleSelectionControl,
-} from "../_tracker/components/build-form-controls";
+} from "@/features/tracker/components/build-form-controls";
 import {
   getFourCostMainSelection,
   getNextNoCrit,
   getNextRolesAfterRoleToggle,
   getRolesAfterMultipleRolesChange,
-} from "../_tracker/components/build-form-state";
+} from "@/features/tracker/components/build-form-state";
 import {
   CharacterPickerModal,
   PickerSummary,
   WeaponPickerModal,
-} from "../_tracker/components/pickers";
-import { TextButton } from "../_tracker/components/ui";
-import { getCharacterHref } from "../_tracker/route-helpers";
-import { useTrackerData } from "../_tracker/tracker-provider";
+} from "@/features/tracker/components/pickers";
+import { TextButton } from "@/features/tracker/components/ui";
+import { getCharacterHref } from "@/features/tracker/route-helpers";
+import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
   ApiCharacter,
   Catalog,
@@ -36,7 +36,7 @@ import type {
   Role,
   TrackedCharacter,
   WeaponInventoryItem,
-} from "../_tracker/types";
+} from "@/features/tracker/types";
 
 export default function AddPage() {
   const router = useRouter();

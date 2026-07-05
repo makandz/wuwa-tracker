@@ -8,7 +8,7 @@ import {
   ECHO_CHECKLIST_ITEMS,
   ECHO_CRIT_DMG_VALUES,
   ECHO_CRIT_RATE_VALUES,
-} from "../../_tracker/constants";
+} from "@/features/tracker/constants";
 import {
   buildWeaponInventoryCountMap,
   characterRoleToneClasses,
@@ -38,25 +38,25 @@ import {
   isEchoCheckerEchoComplete,
   isEchoCheckerEnabled,
   ratingGradeClasses,
-} from "../../_tracker/domain";
+} from "@/features/tracker/domain";
 import {
   ECHO_SUBSTAT_LABELS,
   getMakanEchoEstimate,
   type MakanEchoEstimate,
-} from "../../_tracker/echo-estimates";
-import { getCharacterRotations } from "../../_tracker/rotations";
+} from "@/features/tracker/echo-estimates";
+import { getCharacterRotations } from "@/features/tracker/rotations";
 import {
   FourCostMainControl,
   RoleSelectionControl,
-} from "../../_tracker/components/build-form-controls";
+} from "@/features/tracker/components/build-form-controls";
 import {
   getFourCostMainSelection,
   getNextNoCrit,
   getNextRolesAfterRoleToggle,
   getRolesAfterMultipleRolesChange,
-} from "../../_tracker/components/build-form-state";
-import { PickerSummary, WeaponPickerModal } from "../../_tracker/components/pickers";
-import { CharacterRotationsSection } from "../../_tracker/components/rotations";
+} from "@/features/tracker/components/build-form-state";
+import { PickerSummary, WeaponPickerModal } from "@/features/tracker/components/pickers";
+import { CharacterRotationsSection } from "@/features/tracker/components/rotations";
 import {
   CharacterAvatar,
   ErInput,
@@ -67,8 +67,8 @@ import {
   TextButton,
   TextLink,
   WeaponStatusBadge,
-} from "../../_tracker/components/ui";
-import { useTrackerData } from "../../_tracker/tracker-provider";
+} from "@/features/tracker/components/ui";
+import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
   ApiCharacter,
   ApiWeapon,
@@ -79,7 +79,7 @@ import type {
   Role,
   TrackedCharacter,
   WeaponInventoryItem,
-} from "../../_tracker/types";
+} from "@/features/tracker/types";
 
 export default function CharacterPage({
   params,

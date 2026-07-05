@@ -3,7 +3,7 @@
 import { useMemo, useState, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { ROLES } from "../_tracker/constants";
+import { ROLES } from "@/features/tracker/constants";
 import {
   buildCatalogCharacterLookup,
   getMatrixCharacterMaxUses,
@@ -14,15 +14,15 @@ import {
   ratingGradeClasses,
   rolePillClasses,
   sortDashboardCharacters,
-} from "../_tracker/domain";
-import { CharacterAvatar, SearchInput, TextButton } from "../_tracker/components/ui";
-import { useTrackerData } from "../_tracker/tracker-provider";
+} from "@/features/tracker/domain";
+import { CharacterAvatar, SearchInput, TextButton } from "@/features/tracker/components/ui";
+import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
   ApiCharacter,
   Catalog,
   MatrixTeam,
   TrackedCharacter,
-} from "../_tracker/types";
+} from "@/features/tracker/types";
 
 export default function MatrixPage() {
   const { catalog, characters, matrixTeams, updateMatrixTeams } = useTrackerData();

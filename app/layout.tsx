@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { TrackerProvider } from "./_tracker/tracker-provider";
+import { TrackerProvider } from "@/features/tracker/tracker-provider";
 import "./globals.css";
 
 const geistSans = Geist({

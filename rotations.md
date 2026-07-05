@@ -6,11 +6,11 @@ Use this file as the implementation reference when adding or changing character 
 
 Static rotation data is stored in:
 
-- `app/_tracker/rotations.ts`
+- `features/tracker/rotations.ts`
 
 The UI renderer is stored in:
 
-- `app/_tracker/components/rotations.tsx`
+- `features/tracker/components/rotations.tsx`
 
 The character detail page renders rotations from:
 
@@ -20,7 +20,7 @@ Users cannot edit rotations in the app. Rotations are hardcoded and keyed by nor
 
 ## How To Add A Rotation
 
-Add an entry to `CHARACTER_ROTATIONS` in `app/_tracker/rotations.ts`.
+Add an entry to `CHARACTER_ROTATIONS` in `features/tracker/rotations.ts`.
 
 The key should be the character name normalized the same way `normalizeCharacterName` does it. In practice, use lowercase names without extra punctuation or spacing, for example:
 
@@ -130,4 +130,4 @@ summary:
 
 ## Current Example
 
-Sigrika is the reference implementation in `app/_tracker/rotations.ts`.
+Sigrika is the reference implementation in `features/tracker/rotations.ts`.

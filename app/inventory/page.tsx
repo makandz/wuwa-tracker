@@ -10,16 +10,16 @@ import {
   getWeaponRarityTone,
   getWeaponToneClasses,
   parseWholeNumberInput,
-} from "../_tracker/domain";
+} from "@/features/tracker/domain";
 import {
   ImageFallback,
   SearchInput,
   StarBadge,
   TextButton,
   WeaponStatusBadge,
-} from "../_tracker/components/ui";
-import { useTrackerData } from "../_tracker/tracker-provider";
-import type { ApiWeapon, Catalog, WeaponInventoryItem } from "../_tracker/types";
+} from "@/features/tracker/components/ui";
+import { useTrackerData } from "@/features/tracker/tracker-provider";
+import type { ApiWeapon, Catalog, WeaponInventoryItem } from "@/features/tracker/types";
 
 export default function InventoryPage() {
   const { catalog, characters, weaponInventory, setWeaponCount } = useTrackerData();

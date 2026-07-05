@@ -6,23 +6,23 @@ import { useRouter } from "next/navigation";
 import {
   BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
   BACKUP_NOTICE_INTERVAL_MS,
-} from "./_tracker/constants";
+} from "@/features/tracker/constants";
 import {
   formatPercent,
   formatRoleSummaryValue,
   getAssignmentCounts,
   rolePillClasses,
   roleSectionClasses,
-} from "./_tracker/domain";
+} from "@/features/tracker/domain";
 import {
   buildDashboardCatalogLookups,
   filterDashboardCharacters,
   getDashboardCharacterCardState,
   getDashboardStats,
   groupDashboardCharacters,
-} from "./_tracker/domain/dashboard-selectors";
-import { exportTrackerData, type TrackerStorageStatus } from "./_tracker/storage";
-import { StorageStatusNotice } from "./_tracker/components/storage-status-notice";
+} from "@/features/tracker/domain/dashboard-selectors";
+import { exportTrackerData, type TrackerStorageStatus } from "@/features/tracker/storage";
+import { StorageStatusNotice } from "@/features/tracker/components/storage-status-notice";
 import {
   CharacterAvatar,
   ChecklistProgressSegments,
@@ -31,9 +31,9 @@ import {
   SelectInput,
   TextButton,
   WeaponStatusBadge,
-} from "./_tracker/components/ui";
-import { getCharacterHref, hasTrackerData } from "./_tracker/route-helpers";
-import { useTrackerData } from "./_tracker/tracker-provider";
+} from "@/features/tracker/components/ui";
+import { getCharacterHref, hasTrackerData } from "@/features/tracker/route-helpers";
+import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
   ApiCharacter,
   ApiWeapon,
@@ -43,7 +43,7 @@ import type {
   TrackedCharacter,
   WeaponFilter,
   WeaponInventoryItem,
-} from "./_tracker/types";
+} from "@/features/tracker/types";
 
 export default function Home() {
   const router = useRouter();

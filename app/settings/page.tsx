@@ -3,18 +3,18 @@
 import { useMemo, useRef, type ChangeEvent, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 
-import { getAssignmentCounts } from "../_tracker/domain";
+import { getAssignmentCounts } from "@/features/tracker/domain";
 import {
   exportTrackerData,
   parseImportedTrackerData,
   type TrackerStorageStatus,
-} from "../_tracker/storage";
-import { TRACKER_DOCUMENT_STORAGE_KEY } from "../_tracker/storage/keys";
-import { StorageStatusNotice } from "../_tracker/components/storage-status-notice";
-import { TextButton } from "../_tracker/components/ui";
-import { hasTrackerData } from "../_tracker/route-helpers";
-import { useTrackerData } from "../_tracker/tracker-provider";
-import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "../_tracker/types";
+} from "@/features/tracker/storage";
+import { TRACKER_DOCUMENT_STORAGE_KEY } from "@/features/tracker/storage/keys";
+import { StorageStatusNotice } from "@/features/tracker/components/storage-status-notice";
+import { TextButton } from "@/features/tracker/components/ui";
+import { hasTrackerData } from "@/features/tracker/route-helpers";
+import { useTrackerData } from "@/features/tracker/tracker-provider";
+import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "@/features/tracker/types";
 
 export default function SettingsPage() {
   const router = useRouter();
