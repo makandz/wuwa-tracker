@@ -4,8 +4,8 @@ import {
   findTrackedCharacterByRouteSegment,
   getTrackedCharacterRouteSegment,
   slugifyCharacterName,
-} from "../app/_tracker/domain";
-import type { TrackedCharacter } from "../app/_tracker/types";
+} from "../domain";
+import type { TrackedCharacter } from "../types";
 
 function makeCharacter(overrides: Partial<TrackedCharacter> = {}): TrackedCharacter {
   return {

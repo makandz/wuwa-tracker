@@ -5,7 +5,7 @@ import {
   getNextNoCrit,
   getNextRolesAfterRoleToggle,
   getRolesAfterMultipleRolesChange,
-} from "../app/_tracker/components/build-form-state";
+} from "../build-form-state";
 
 describe("build form state helpers", () => {
   test("single-role toggles replace the selected role", () => {

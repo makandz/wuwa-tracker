@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { DEFAULT_TRACKER_PREFERENCES, type TrackerDocumentV5 } from "../app/_tracker/storage";
+import { DEFAULT_TRACKER_PREFERENCES, type TrackerDocumentV5 } from "../storage";
 import {
   cleanMatrixTeamsForCharacters,
   clearTrackerData,
@@ -11,12 +11,12 @@ import {
   updateCharacterData,
   updateMatrixTeamsData,
   updatePreferencesData,
-} from "../app/_tracker/tracker-data";
+} from "../tracker-data";
 import type {
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
-} from "../app/_tracker/types";
+} from "../types";
 
 type TrackerData = TrackerDocumentV5["data"];
 

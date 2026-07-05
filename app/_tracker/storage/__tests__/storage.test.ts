@@ -10,7 +10,7 @@ import {
   TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
   TRACKER_DOCUMENT_STORAGE_KEY,
   WELCOME_SEEN_STORAGE_KEY,
-} from "../app/_tracker/storage/keys";
+} from "../keys";
 import {
   DEFAULT_TRACKER_PREFERENCES,
   TrackerStorageRevisionConflictError,
@@ -19,17 +19,17 @@ import {
   hasNewerTrackerDocumentRevision,
   parseImportedTrackerData,
   writeStoredTrackerDocumentWithRevisionGuard,
-} from "../app/_tracker/storage";
-import { normalizePreferences } from "../app/_tracker/storage/documents";
-import { commitStorageMigration } from "../app/_tracker/storage/migrations/plans";
-import { inspectTrackerStorage } from "../app/_tracker/storage/inspection";
-import { readStoredTrackerDocument } from "../app/_tracker/storage/recovery";
-import { cleanMatrixTeamsForCharacters } from "../app/_tracker/tracker-data";
+} from "../index";
+import { normalizePreferences } from "../documents";
+import { commitStorageMigration } from "../migrations/plans";
+import { inspectTrackerStorage } from "../inspection";
+import { readStoredTrackerDocument } from "../recovery";
+import { cleanMatrixTeamsForCharacters } from "../../tracker-data";
 import type {
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
-} from "../app/_tracker/types";
+} from "../../types";
 
 class MemoryStorage {
   private values = new Map<string, string>();

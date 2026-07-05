@@ -6,12 +6,12 @@ import {
   getDashboardCharacterCardState,
   getDashboardStats,
   groupDashboardCharacters,
-} from "../app/_tracker/domain/dashboard-selectors";
+} from "../dashboard-selectors";
 import type {
   Catalog,
   TrackedCharacter,
   WeaponInventoryItem,
-} from "../app/_tracker/types";
+} from "../../types";
 
 function makeCharacter(
   overrides: Partial<TrackedCharacter> = {},

@@ -5,8 +5,8 @@ import {
   buildCatalogWeaponLookup,
   buildWeaponInventoryCountMap,
   getOwnedWeaponsByType,
-} from "../app/_tracker/domain";
-import type { ApiCharacter, ApiWeapon, WeaponInventoryItem } from "../app/_tracker/types";
+} from "../domain";
+import type { ApiCharacter, ApiWeapon, WeaponInventoryItem } from "../types";
 
 const characters: ApiCharacter[] = [
   {
