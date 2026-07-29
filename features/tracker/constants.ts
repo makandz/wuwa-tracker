@@ -30,6 +30,7 @@ export const MATRIX_DOUBLE_USE_CHARACTER_IDS = new Set<number>([]);
 export const MATRIX_DOUBLE_USE_CHARACTER_NAMES = new Set<string>([
   "baizhi",
   "buling",
+  "chisa",
   "mornye",
   "shorekeeper",
   "verina",

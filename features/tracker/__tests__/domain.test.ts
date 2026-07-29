@@ -4,9 +4,15 @@ import {
   buildCatalogCharacterLookup,
   buildCatalogWeaponLookup,
   buildWeaponInventoryCountMap,
+  getMatrixCharacterMaxUses,
   getOwnedWeaponsByType,
 } from "../domain";
-import type { ApiCharacter, ApiWeapon, WeaponInventoryItem } from "../types";
+import type {
+  ApiCharacter,
+  ApiWeapon,
+  TrackedCharacter,
+  WeaponInventoryItem,
+} from "../types";
 
 const characters: ApiCharacter[] = [
   {
@@ -55,6 +61,20 @@ const weapons: ApiWeapon[] = [
 ];
 
 describe("domain lookup helpers", () => {
+  test("allows Chisa to be used twice in Matrix teams", () => {
+    const chisa = {
+      characterId: 0,
+      characterName: "Chisa",
+    } as TrackedCharacter;
+    const rover = {
+      characterId: 101,
+      characterName: "Rover",
+    } as TrackedCharacter;
+
+    expect(getMatrixCharacterMaxUses(chisa)).toBe(2);
+    expect(getMatrixCharacterMaxUses(rover)).toBe(1);
+  });
+
   test("builds catalog lookup maps keyed by API ids", () => {
     const characterLookup = buildCatalogCharacterLookup(characters);
     const weaponLookup = buildCatalogWeaponLookup(weapons);
