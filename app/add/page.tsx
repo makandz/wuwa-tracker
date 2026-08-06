@@ -58,7 +58,6 @@ export default function AddPage() {
       <AddScreen
         assignmentCounts={assignmentCounts}
         catalog={catalog}
-        onBack={() => router.push("/")}
         onCreate={addCharacter}
         tracked={characters}
         weaponInventory={weaponInventory}
@@ -72,22 +71,18 @@ function AddScreen({
   tracked,
   weaponInventory,
   assignmentCounts,
-  onBack,
   onCreate,
 }: {
   catalog: Catalog;
   tracked: TrackedCharacter[];
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
-  onBack: () => void;
   onCreate: (character: TrackedCharacter) => void;
 }) {
-  const firstCharacter = catalog.characters.find(
-    (character) => !tracked.some((entry) => entry.characterId === character.Id),
+  const [characterId, setCharacterId] = useState(0);
+  const selectedCharacter = catalog.characters.find(
+    (character) => character.Id === characterId,
   );
-  const [characterId, setCharacterId] = useState(firstCharacter?.Id ?? 0);
-  const selectedCharacter =
-    catalog.characters.find((character) => character.Id === characterId) ?? firstCharacter;
   const selectedCharacterRarity = getCharacterRarityDisplay({
     name: selectedCharacter?.Name,
     qualityId: selectedCharacter?.QualityId,
@@ -186,8 +181,11 @@ function AddScreen({
           <h1 className="text-2xl font-semibold text-app-fg">Add Character</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <TextButton onClick={onBack}>Dashboard</TextButton>
-          <TextButton onClick={createCharacter} variant="primary">
+          <TextButton
+            disabled={!selectedCharacter || roles.length === 0}
+            onClick={createCharacter}
+            variant="primary"
+          >
             Save Character
           </TextButton>
         </div>
@@ -200,21 +198,23 @@ function AddScreen({
           <p className="text-sm text-status-danger-text">{catalog.error}</p>
         ) : (
           <>
-            {selectedCharacter ? (
-              <PickerSummary
-                actionLabel="Choose"
-                image={selectedCharacter.RoleHeadIcon}
-                label="Character"
-                meta={`${selectedCharacter.Element?.Name ?? "Unknown"} / ${
-                  selectedCharacter.WeaponType?.Name ?? "Unknown"
-                }`}
-                onClick={() => setCharacterPickerOpen(true)}
-                quality={selectedCharacterRarity.qualityId}
-                characterBadgeTone={selectedCharacterRarity.badgeTone}
-                animatedBadge={selectedCharacterRarity.animatedBadge}
-                title={selectedCharacter.Name}
-              />
-            ) : null}
+            <PickerSummary
+              actionLabel="Choose"
+              animatedBadge={selectedCharacterRarity.animatedBadge}
+              characterBadgeTone={selectedCharacterRarity.badgeTone}
+              image={selectedCharacter?.RoleHeadIcon}
+              label="Character"
+              meta={
+                selectedCharacter
+                  ? `${selectedCharacter.Element?.Name ?? "Unknown"} / ${
+                      selectedCharacter.WeaponType?.Name ?? "Unknown"
+                    }`
+                  : "Select someone from the catalog"
+              }
+              onClick={() => setCharacterPickerOpen(true)}
+              quality={selectedCharacter ? selectedCharacterRarity.qualityId : undefined}
+              title={selectedCharacter?.Name ?? "Choose a character"}
+            />
 
             <PickerSummary
               actionLabel="Choose"

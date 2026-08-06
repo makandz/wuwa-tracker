@@ -61,6 +61,7 @@ import {
   CharacterAvatar,
   ErInput,
   Field,
+  Modal,
   NumberInput,
   RatingSummaryBlock,
   SelectInput,
@@ -126,7 +127,6 @@ export default function CharacterPage({
         assignmentCounts={assignmentCounts}
         character={selectedCharacter}
         characters={catalog.characters}
-        onBack={() => router.push("/")}
         onDelete={() => confirmDeleteCharacter(selectedCharacter.id)}
         onUpdate={updateCharacter}
         weaponInventory={weaponInventory}
@@ -348,7 +348,6 @@ function DetailScreen({
   weapons,
   weaponInventory,
   assignmentCounts,
-  onBack,
   onDelete,
   onUpdate,
 }: {
@@ -357,7 +356,6 @@ function DetailScreen({
   weapons: ApiWeapon[];
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
-  onBack: () => void;
   onDelete: () => void;
   onUpdate: (character: TrackedCharacter) => void;
 }) {
@@ -382,6 +380,7 @@ function DetailScreen({
   const primaryRole = getPrimaryRole(character.roles);
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
+  const [echoModeConfirmOpen, setEchoModeConfirmOpen] = useState(false);
   const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
   const selectedWeapon = findCatalogWeapon(weapons, character.weaponId);
   const weaponDisplay = getTrackedWeaponDisplay(character, selectedWeapon);
@@ -463,6 +462,19 @@ function DetailScreen({
     });
   }
 
+  function requestEnableEchoChecker() {
+    if (character.noCrit) {
+      return;
+    }
+
+    if (character.critRate > 0 || character.critDmg > 0) {
+      setEchoModeConfirmOpen(true);
+      return;
+    }
+
+    enableEchoChecker();
+  }
+
   function patchEchoChecker(patch: Partial<EchoChecker>) {
     patchCharacter({
       echoChecker: {
@@ -498,7 +510,7 @@ function DetailScreen({
       return;
     }
 
-    enableEchoChecker();
+    requestEnableEchoChecker();
   }
 
   function toggleRole(role: Role) {
@@ -557,7 +569,6 @@ function DetailScreen({
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <TextButton onClick={onBack}>Dashboard</TextButton>
           <TextLink href={prydwenUrl} variant="external">
             Prydwen
           </TextLink>
@@ -600,7 +611,7 @@ function DetailScreen({
         </section>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
           <h2 className="text-lg font-semibold text-app-fg">Build Setup</h2>
           <PickerSummary
@@ -1039,7 +1050,7 @@ function DetailScreen({
                 </p>
               </div>
               {character.noCrit ? null : (
-                <TextButton onClick={enableEchoChecker} variant="primary">
+                <TextButton onClick={requestEnableEchoChecker} variant="primary">
                   Enable Echo Tracker
                 </TextButton>
               )}
@@ -1047,6 +1058,34 @@ function DetailScreen({
           </div>
         ) : null}
       </section>
+
+      {echoModeConfirmOpen ? (
+        <Modal
+          onClose={() => setEchoModeConfirmOpen(false)}
+          subtitle="Your manual Crit Rate and Crit DMG values will remain saved."
+          title="Enable Echo Tracker?"
+        >
+          <div className="grid gap-5">
+            <p className="text-sm leading-6 text-app-muted-subtle">
+              While Echo Tracker is enabled, ratings use values calculated from the five echo
+              cards instead of the manual values above. Switching back to Manual Mode restores
+              those saved values.
+            </p>
+            <div className="flex justify-end gap-2">
+              <TextButton onClick={() => setEchoModeConfirmOpen(false)}>Cancel</TextButton>
+              <TextButton
+                onClick={() => {
+                  enableEchoChecker();
+                  setEchoModeConfirmOpen(false);
+                }}
+                variant="primary"
+              >
+                Enable Echo Tracker
+              </TextButton>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
 
       {character.noCrit ? null : <EchoEstimateSection estimate={makanEchoEstimate} />}
 

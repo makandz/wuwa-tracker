@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, type DragEvent } from "react";
-import { useRouter } from "next/navigation";
 
 import { ROLES } from "@/features/tracker/constants";
 import {
@@ -26,14 +25,12 @@ import type {
 
 export default function MatrixPage() {
   const { catalog, characters, matrixTeams, updateMatrixTeams } = useTrackerData();
-  const router = useRouter();
 
   return (
     <div className="min-h-full bg-app-bg text-app-fg">
       <MatrixScreen
         catalog={catalog}
         characters={characters}
-        onBack={() => router.push("/")}
         onUpdateTeams={updateMatrixTeams}
         teams={matrixTeams}
       />
@@ -155,13 +152,11 @@ function MatrixScreen({
   catalog,
   characters,
   teams,
-  onBack,
   onUpdateTeams,
 }: {
   catalog: Catalog;
   characters: TrackedCharacter[];
   teams: MatrixTeam[];
-  onBack: () => void;
   onUpdateTeams: (teams: MatrixTeam[]) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -420,7 +415,6 @@ function MatrixScreen({
               </h1>
             </div>
             <div className="flex flex-wrap gap-2">
-              <TextButton onClick={onBack}>Build Tracker</TextButton>
               <TextButton onClick={addTeam} variant="primary">
                 Add Team
               </TextButton>
@@ -455,7 +449,9 @@ function MatrixScreen({
             </div>
           ) : availableCharacters.length === 0 ? (
             <div className="rounded-md border border-dashed border-app-border bg-app-subtle p-6 text-center text-sm text-app-muted-subtle">
-              No available characters match that search.
+              {normalizedQuery
+                ? "No available characters match that search."
+                : "All tracked characters are already assigned."}
             </div>
           ) : (
             <div className="grid max-h-[360px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

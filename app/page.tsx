@@ -147,7 +147,6 @@ export default function Home() {
         }
         onExportBackup={exportBackupFromNotice}
         onInventory={() => router.push("/inventory")}
-        onMatrix={() => router.push("/matrix")}
         onOpen={(id) => {
           const character = characters.find((item) => item.id === id);
 
@@ -155,7 +154,6 @@ export default function Home() {
             router.push(getCharacterHref(character, characters));
           }
         }}
-        onSettings={() => router.push("/settings")}
         showBackupNotice={
           backupNoticeCheckedAt !== null &&
           backupNoticeCheckedAt - backupNoticeAcknowledgedAt >= BACKUP_NOTICE_INTERVAL_MS
@@ -183,8 +181,6 @@ function Dashboard({
   onExportBackup,
   onOpen,
   onInventory,
-  onMatrix,
-  onSettings,
   showBackupNotice,
 }: {
   characters: TrackedCharacter[];
@@ -201,8 +197,6 @@ function Dashboard({
   onExportBackup: () => void;
   onOpen: (id: string) => void;
   onInventory: () => void;
-  onMatrix: () => void;
-  onSettings: () => void;
   showBackupNotice: boolean;
 }) {
   const [query, setQuery] = useState("");
@@ -278,11 +272,6 @@ function Dashboard({
                 Add Weapons First
               </TextButton>
             )}
-            <TextButton className="matrix-planner-button" onClick={onMatrix}>
-              Matrix Planner
-            </TextButton>
-            <TextButton onClick={onInventory}>Weapon Inventory</TextButton>
-            <TextButton onClick={onSettings}>Settings</TextButton>
           </div>
         </div>
       </section>

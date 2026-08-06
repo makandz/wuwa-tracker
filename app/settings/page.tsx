@@ -90,7 +90,6 @@ export default function SettingsPage() {
         characters={characters}
         importRef={importRef}
         matrixTeams={matrixTeams}
-        onBack={() => router.push("/")}
         onClear={clearData}
         onExport={exportSettingsBackup}
         onImport={importCharacters}
@@ -109,7 +108,6 @@ function SettingsScreen({
   storageStatus,
   storageVersion,
   assignmentCounts,
-  onBack,
   onExport,
   onImport,
   onClear,
@@ -121,7 +119,6 @@ function SettingsScreen({
   storageStatus: TrackerStorageStatus;
   storageVersion: number | null;
   assignmentCounts: Record<number, number>;
-  onBack: () => void;
   onExport: () => void;
   onImport: (event: ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
@@ -147,7 +144,7 @@ function SettingsScreen({
 
   return (
     <main className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
         <div>
           <h1 className="text-2xl font-semibold text-app-fg">Settings</h1>
           <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
@@ -161,7 +158,6 @@ function SettingsScreen({
             ))}
           </dl>
         </div>
-        <TextButton onClick={onBack}>Dashboard</TextButton>
       </div>
 
       <StorageStatusNotice storageStatus={storageStatus} />

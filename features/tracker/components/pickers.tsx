@@ -9,7 +9,14 @@ import {
   getWeaponToneClasses,
 } from "../domain";
 import type { ApiCharacter, ApiWeapon, CharacterBadgeTone, WeaponRarityTone } from "../types";
-import { ImageFallback, Modal, SearchInput, StarBadge, TextButton } from "./ui";
+import {
+  ImageFallback,
+  Modal,
+  SearchInput,
+  SelectInput,
+  StarBadge,
+  TextButton,
+} from "./ui";
 
 const catalogThumbnailSizes = "128px";
 
@@ -27,7 +34,24 @@ export function CharacterPickerModal({
   onClose: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [elementFilter, setElementFilter] = useState("all");
+  const [weaponFilter, setWeaponFilter] = useState("all");
+  const [rarityFilter, setRarityFilter] = useState("all");
   const normalizedQuery = query.trim().toLowerCase();
+  const elementOptions = [
+    { label: "All elements", value: "all" },
+    ...Array.from(new Set(characters.map((character) => character.Element?.Name)))
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ label: value, value })),
+  ];
+  const weaponOptions = [
+    { label: "All weapon types", value: "all" },
+    ...Array.from(new Set(characters.map((character) => character.WeaponType?.Name)))
+      .filter((value): value is string => Boolean(value))
+      .sort((a, b) => a.localeCompare(b))
+      .map((value) => ({ label: value, value })),
+  ];
   const filteredCharacters = characters.filter((character) => {
     const rarityDisplay = getCharacterRarityDisplay({
       name: character.Name,
@@ -43,7 +67,12 @@ export function CharacterPickerModal({
       .join(" ")
       .toLowerCase();
 
-    return haystack.includes(normalizedQuery);
+    return (
+      haystack.includes(normalizedQuery) &&
+      (elementFilter === "all" || character.Element?.Name === elementFilter) &&
+      (weaponFilter === "all" || character.WeaponType?.Name === weaponFilter) &&
+      (rarityFilter === "all" || String(rarityDisplay.qualityId) === rarityFilter)
+    );
   });
 
   return (
@@ -53,13 +82,40 @@ export function CharacterPickerModal({
       title="Choose Character"
     >
       <div className="grid gap-4">
-        <SearchInput
-          onChange={setQuery}
-          placeholder="Search characters"
-          value={query}
-        />
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
-          {filteredCharacters.map((character) => {
+        <div className="grid gap-2 lg:grid-cols-[minmax(220px,1fr)_150px_170px_130px]">
+          <SearchInput
+            onChange={setQuery}
+            placeholder="Search characters"
+            value={query}
+          />
+          <SelectInput
+            label="Element"
+            onChange={setElementFilter}
+            options={elementOptions}
+            showLabel={false}
+            value={elementFilter}
+          />
+          <SelectInput
+            label="Weapon type"
+            onChange={setWeaponFilter}
+            options={weaponOptions}
+            showLabel={false}
+            value={weaponFilter}
+          />
+          <SelectInput
+            label="Rarity"
+            onChange={setRarityFilter}
+            options={[
+              { label: "All rarities", value: "all" },
+              { label: "5 Star", value: "5" },
+              { label: "4 Star", value: "4" },
+            ]}
+            showLabel={false}
+            value={rarityFilter}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+          {filteredCharacters.map((character, index) => {
             const alreadyTracked = trackedIds.has(character.Id);
             const selected = selectedId === character.Id;
             const rarityDisplay = getCharacterRarityDisplay({
@@ -85,6 +141,7 @@ export function CharacterPickerModal({
                       alt=""
                       className="object-cover"
                       fill
+                      loading={index === 0 ? "eager" : "lazy"}
                       sizes={catalogThumbnailSizes}
                       src={character.RoleHeadIcon}
                     />
@@ -187,7 +244,7 @@ export function WeaponPickerModal({
               </h3>
               <div className="h-px flex-1 bg-app-border/60" />
             </div>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-7">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
               {group.weapons.map((weapon) => {
                 const selected = selectedId === weapon.Id;
                 const ownedCount = inventoryCounts[weapon.Id] ?? 0;
