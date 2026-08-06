@@ -68,12 +68,40 @@ export type Checklist = {
 
 export type EchoChecklistKey = Exclude<keyof Checklist, "skills">;
 
+export type EchoSubstatId =
+  | "crit-rate"
+  | "crit-dmg"
+  | "atk"
+  | "hp"
+  | "def"
+  | "atk-percent"
+  | "hp-percent"
+  | "def-percent"
+  | "energy-regen"
+  | "basic"
+  | "heavy"
+  | "skill"
+  | "liberation";
+
+export type EchoCheckerSubstatId = Exclude<
+  EchoSubstatId,
+  "crit-rate" | "crit-dmg"
+> | "other";
+
+export type EchoCheckerSubstatSlots = [
+  EchoCheckerSubstatId | null,
+  EchoCheckerSubstatId | null,
+  EchoCheckerSubstatId | null,
+];
+
 export type EchoCheckerEcho = {
   critRate: number | null;
   critDmg: number | null;
-  hasRelevantStat: boolean;
-  hasSecondRelevantStat: boolean;
-  hasThirdRelevantStat: boolean;
+  substatIds?: EchoCheckerSubstatSlots;
+  /** Legacy v5 fields, normalized into substatIds when stored data is read. */
+  hasRelevantStat?: boolean;
+  hasSecondRelevantStat?: boolean;
+  hasThirdRelevantStat?: boolean;
 };
 
 export type EchoCheckerSubstat = {

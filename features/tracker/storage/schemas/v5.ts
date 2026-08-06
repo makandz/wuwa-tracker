@@ -28,15 +28,37 @@ const dashboardSortKeySchema = z.custom<DashboardSortKey>((value) =>
 const dashboardViewModeSchema = z.custom<DashboardViewMode>((value) =>
   DASHBOARD_VIEW_MODES.includes(value as DashboardViewMode),
 );
+const echoCheckerSubstatIdSchema = z.union([
+  z.literal("atk"),
+  z.literal("hp"),
+  z.literal("def"),
+  z.literal("atk-percent"),
+  z.literal("hp-percent"),
+  z.literal("def-percent"),
+  z.literal("energy-regen"),
+  z.literal("basic"),
+  z.literal("heavy"),
+  z.literal("skill"),
+  z.literal("liberation"),
+  z.literal("other"),
+]);
+const echoCheckerSubstatSlotSchema = echoCheckerSubstatIdSchema.nullable();
 const echoChecklistKeySchemas = ECHO_CHECKLIST_ITEMS.reduce(
   (schemas, item) => ({
     ...schemas,
     [item.key]: z.object({
       critRate: finiteNumberSchema.nullable(),
       critDmg: finiteNumberSchema.nullable(),
-      hasRelevantStat: z.boolean(),
-      hasSecondRelevantStat: z.boolean(),
-      hasThirdRelevantStat: z.boolean(),
+      substatIds: z
+        .tuple([
+          echoCheckerSubstatSlotSchema,
+          echoCheckerSubstatSlotSchema,
+          echoCheckerSubstatSlotSchema,
+        ])
+        .optional(),
+      hasRelevantStat: z.boolean().optional(),
+      hasSecondRelevantStat: z.boolean().optional(),
+      hasThirdRelevantStat: z.boolean().optional(),
     }),
   }),
   {} as Record<EchoChecklistKey, z.ZodType>,

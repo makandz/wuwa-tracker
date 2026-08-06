@@ -16,6 +16,8 @@ import type {
   EchoCheckerEcho,
   EchoCheckerPlan,
   EchoCheckerSubstat,
+  EchoCheckerSubstatId,
+  EchoCheckerSubstatSlots,
   FourCostMain,
   MatrixTeam,
   Role,
@@ -193,18 +195,43 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     return {
       critRate: null,
       critDmg: null,
-      hasRelevantStat: false,
-      hasSecondRelevantStat: false,
-      hasThirdRelevantStat: false,
+      substatIds: [null, null, null],
     };
   }
+
+  const rawSubstatIds = Array.isArray(echo.substatIds)
+    ? echo.substatIds
+    : null;
+  const allowedSubstatIds = new Set<EchoCheckerSubstatId>([
+    "atk",
+    "hp",
+    "def",
+    "atk-percent",
+    "hp-percent",
+    "def-percent",
+    "energy-regen",
+    "basic",
+    "heavy",
+    "skill",
+    "liberation",
+    "other",
+  ]);
+  const substatIds = rawSubstatIds?.length === 3
+    ? rawSubstatIds.map((stat) =>
+        typeof stat === "string" && allowedSubstatIds.has(stat as EchoCheckerSubstatId)
+          ? stat as EchoCheckerSubstatId
+          : null,
+      ) as EchoCheckerSubstatSlots
+    : [
+        echo.hasRelevantStat === true ? "other" : null,
+        echo.hasSecondRelevantStat === true ? "other" : null,
+        echo.hasThirdRelevantStat === true ? "other" : null,
+      ] as EchoCheckerSubstatSlots;
 
   return {
     critRate: typeof echo.critRate === "number" ? echo.critRate : null,
     critDmg: typeof echo.critDmg === "number" ? echo.critDmg : null,
-    hasRelevantStat: echo.hasRelevantStat === true,
-    hasSecondRelevantStat: echo.hasSecondRelevantStat === true,
-    hasThirdRelevantStat: echo.hasThirdRelevantStat === true,
+    substatIds,
   };
 }
 
@@ -287,7 +314,14 @@ export function normalizeTrackerDocumentV5(
     return null;
   }
 
-  return result.data as TrackerDocumentV5;
+  return createTrackerDocumentV5({
+    characters: result.data.data.characters,
+    weaponInventory: result.data.data.weaponInventory,
+    matrixTeams: result.data.data.matrixTeams,
+    preferences: result.data.data.preferences,
+    revision: result.data.revision,
+    savedAt: result.data.savedAt,
+  });
 }
 
 export function normalizeCharacters(characters: unknown): TrackedCharacter[] {

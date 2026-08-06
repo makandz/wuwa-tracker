@@ -399,12 +399,12 @@ describe("tracker storage", () => {
     expect(document.schemaVersion).toBe(5);
     expect(
       document.data.characters[0]?.echoChecker?.echoes.fourCost
-        .hasThirdRelevantStat,
-    ).toBe(false);
+        .substatIds,
+    ).toEqual(["other", "other", null]);
     expect(
       document.data.characters[0]?.echoChecker?.echoes.oneCostB
-        .hasThirdRelevantStat,
-    ).toBe(false);
+        .substatIds,
+    ).toEqual(["other", null, null]);
     expect("weaponQualityId" in (document.data.characters[1] ?? {})).toBe(
       false,
     );
@@ -503,6 +503,35 @@ describe("tracker storage", () => {
     expect(imported.weaponInventory).toEqual(makeWeaponInventory());
     expect(imported.matrixTeams).toEqual(makeMatrixTeams());
     expect(imported.preferences).toEqual(preferences);
+  });
+
+  test("normalizes legacy v5 target checks into Other substat slots", () => {
+    const legacyDocument = createTrackerDocumentV5({
+      characters: [makeCharacter({ echoChecker: makeEchoChecker() })],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+    });
+    const rawCharacter = makeCharacter({ echoChecker: makeEchoChecker() });
+    const rawLegacyDocument = {
+      ...legacyDocument,
+      data: {
+        ...legacyDocument.data,
+        characters: [rawCharacter],
+      },
+    };
+
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify(rawLegacyDocument),
+    );
+
+    const result = readStoredTrackerDocument();
+
+    expect(
+      result.document?.data.characters[0]?.echoChecker?.echoes.fourCost
+        .substatIds,
+    ).toEqual(["other", "other", null]);
   });
 
   test("recovers a corrupt current document from the last-known-good document", () => {

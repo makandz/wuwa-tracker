@@ -1,9 +1,9 @@
 import {
   CHECKLIST_ITEM_COUNT,
   ECHO_CHECKLIST_ITEMS,
-  ECHO_RELEVANT_SUBSTAT_OPTIONS,
   ROLES,
 } from "../constants";
+import { parseEchoPrioritySubstats } from "../echo-estimates";
 import {
   formatPercent,
   formatPercentInput,
@@ -15,6 +15,8 @@ import type {
   EchoChecker,
   EchoCheckerEcho,
   EchoCheckerPlan,
+  EchoCheckerSubstatId,
+  EchoCheckerSubstatSlots,
   FourCostMain,
   RatingGrade,
   RatingValue,
@@ -27,7 +29,17 @@ const ECHO_CRIT_DMG_BASE = 0.75;
 const FOUR_COST_CRIT_RATE_BONUS = 0.22;
 const FOUR_COST_CRIT_DMG_BONUS = 0.44;
 const ECHO_CHECKER_DPS_TARGET_CRIT_VALUE = 30;
-const ECHO_CHECKER_TARGET_STAT_BONUSES = [-0.08, 0, 0.06, 0.12] as const;
+const ECHO_CHECKER_SUBSTAT_BASE = -0.08;
+const ECHO_CHECKER_ER_BOOST = 0.11;
+const ECHO_CHECKER_OTHER_PRIORITY_BOOST = 0.05;
+const ECHO_CHECKER_OTHER_FALLBACK_BOOST = 0.06;
+const ECHO_CHECKER_PRIORITY_MAX_BOOST = 0.1;
+const ECHO_CHECKER_PRIORITY_MIN_BOOST = 0.06;
+const EMPTY_ECHO_SUBSTAT_SLOTS: EchoCheckerSubstatSlots = [null, null, null];
+type PrioritizedEchoCheckerSubstatId = Exclude<
+  EchoCheckerSubstatId,
+  "energy-regen" | "other"
+>;
 
 export function checklistTotal(checklist: Checklist) {
   return Object.values(checklist).filter(Boolean).length;
@@ -47,14 +59,12 @@ export function createDefaultEchoChecker(roles: Role[]): EchoChecker {
         [item.key]: {
           critRate: null,
           critDmg: null,
-          hasRelevantStat: false,
-          hasSecondRelevantStat: false,
-          hasThirdRelevantStat: false,
+          substatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
         },
       }),
       {} as EchoChecker["echoes"],
     ),
-    substats: ECHO_RELEVANT_SUBSTAT_OPTIONS.map((item) => ({ ...item })),
+    substats: [],
   };
 }
 
@@ -73,33 +83,158 @@ export function getEchoCheckerCritValueRating(echo: EchoCheckerEcho) {
     return null;
   }
 
-  return roundRating(critValue / ECHO_CHECKER_DPS_TARGET_CRIT_VALUE);
+  if (critValue <= ECHO_CHECKER_DPS_TARGET_CRIT_VALUE) {
+    return roundRating(critValue / ECHO_CHECKER_DPS_TARGET_CRIT_VALUE);
+  }
+
+  const excessCritValue = critValue - ECHO_CHECKER_DPS_TARGET_CRIT_VALUE;
+
+  return roundRating(
+    1 + excessCritValue / (ECHO_CHECKER_DPS_TARGET_CRIT_VALUE * 2),
+  );
+}
+
+export function getEchoCheckerSubstatIds(
+  echo: EchoCheckerEcho,
+): EchoCheckerSubstatSlots {
+  if (echo.substatIds) {
+    return [...echo.substatIds];
+  }
+
+  return [
+    echo.hasRelevantStat ? "other" : null,
+    echo.hasSecondRelevantStat ? "other" : null,
+    echo.hasThirdRelevantStat ? "other" : null,
+  ];
 }
 
 export function getEchoCheckerTargetStatCount(echo: EchoCheckerEcho) {
-  return [
-    echo.hasRelevantStat,
-    echo.hasSecondRelevantStat,
-    echo.hasThirdRelevantStat,
-  ].filter(Boolean).length;
+  return getEchoCheckerSubstatIds(echo).filter((stat) => stat !== null).length;
 }
 
-export function getEchoCheckerScore(echo: EchoCheckerEcho) {
-  const critValueRating = getEchoCheckerCritValueRating(echo);
-  const targetStatCount = getEchoCheckerTargetStatCount(echo);
+export function isCharacterErOvercapped(character: TrackedCharacter) {
+  return (
+    character.expectedEr > 0 &&
+    character.actualEr >= character.expectedEr + 10
+  );
+}
 
-  if (critValueRating === null && targetStatCount === 0) {
+export function getEchoCheckerSubstatOptions(
+  substatPriority: string,
+): EchoCheckerSubstatId[] {
+  const parsed = parseEchoPrioritySubstats(substatPriority);
+  const priorityStats = parsed.priorityTiers
+    .flat()
+    .filter(
+      (stat): stat is PrioritizedEchoCheckerSubstatId =>
+        stat !== "crit-rate" &&
+        stat !== "crit-dmg" &&
+        stat !== "energy-regen",
+    );
+
+  return [...priorityStats, "energy-regen", "other"];
+}
+
+export function reconcileEchoCheckerSubstats(
+  echo: EchoCheckerEcho,
+  substatPriority: string,
+): EchoCheckerSubstatSlots {
+  const allowedStats = new Set(getEchoCheckerSubstatOptions(substatPriority));
+  const seenStats = new Set<EchoCheckerSubstatId>();
+
+  return getEchoCheckerSubstatIds(echo).map((stat) => {
+    const normalizedStat =
+      stat !== null && !allowedStats.has(stat) ? "other" : stat;
+
+    if (
+      normalizedStat !== null &&
+      normalizedStat !== "other" &&
+      seenStats.has(normalizedStat)
+    ) {
+      return "other";
+    }
+
+    if (normalizedStat !== null && normalizedStat !== "other") {
+      seenStats.add(normalizedStat);
+    }
+
+    return normalizedStat;
+  }) as EchoCheckerSubstatSlots;
+}
+
+export function getEchoCheckerSubstatBoosts(
+  substatPriority: string,
+  erOvercapped: boolean,
+) {
+  const parsed = parseEchoPrioritySubstats(substatPriority);
+  const priorityTiers = parsed.priorityTiers
+    .map((tier) =>
+      tier.filter(
+        (stat): stat is PrioritizedEchoCheckerSubstatId =>
+          stat !== "crit-rate" &&
+          stat !== "crit-dmg" &&
+          stat !== "energy-regen",
+      ),
+    )
+    .filter((tier) => tier.length > 0);
+  const hasPrioritizedSubstats = priorityTiers.length > 0;
+  const otherBoost = hasPrioritizedSubstats
+    ? ECHO_CHECKER_OTHER_PRIORITY_BOOST
+    : ECHO_CHECKER_OTHER_FALLBACK_BOOST;
+  const boosts = new Map<EchoCheckerSubstatId, number>([
+    ["other", otherBoost],
+    [
+      "energy-regen",
+      erOvercapped ? otherBoost / 2 : ECHO_CHECKER_ER_BOOST,
+    ],
+  ]);
+
+  priorityTiers.forEach((tier, index) => {
+    const boost =
+      priorityTiers.length === 1
+        ? (ECHO_CHECKER_PRIORITY_MAX_BOOST + ECHO_CHECKER_PRIORITY_MIN_BOOST) / 2
+        : ECHO_CHECKER_PRIORITY_MAX_BOOST -
+          (index / (priorityTiers.length - 1)) *
+            (ECHO_CHECKER_PRIORITY_MAX_BOOST - ECHO_CHECKER_PRIORITY_MIN_BOOST);
+
+    tier.forEach((stat) => boosts.set(stat, roundRating(boost)));
+  });
+
+  return boosts;
+}
+
+export function getEchoCheckerScore(
+  echo: EchoCheckerEcho,
+  substatPriority = "",
+  erOvercapped = false,
+) {
+  const critValueRating = getEchoCheckerCritValueRating(echo);
+  const substatIds = getEchoCheckerSubstatIds(echo).filter(
+    (stat): stat is EchoCheckerSubstatId => stat !== null,
+  );
+
+  if (critValueRating === null && substatIds.length === 0) {
     return null;
   }
 
-  const targetBonus = ECHO_CHECKER_TARGET_STAT_BONUSES[targetStatCount] ?? 0;
+  const boosts = getEchoCheckerSubstatBoosts(substatPriority, erOvercapped);
+  const substatBonus = substatIds.reduce(
+    (total, stat) => total + (boosts.get(stat) ?? ECHO_CHECKER_OTHER_PRIORITY_BOOST),
+    0,
+  );
 
-  return roundRating((critValueRating ?? 0) + targetBonus);
+  return roundRating(
+    (critValueRating ?? 0) + ECHO_CHECKER_SUBSTAT_BASE + substatBonus,
+  );
 }
 
 function getEchoCheckerBuildScore(character: TrackedCharacter) {
   const echoScores = ECHO_CHECKLIST_ITEMS.map((item) =>
-    getEchoCheckerScore(getEchoCheckerEcho(character, item.key)),
+    getEchoCheckerScore(
+      getEchoCheckerEcho(character, item.key),
+      character.substatPriority,
+      isCharacterErOvercapped(character),
+    ),
   );
   const validEchoScores = echoScores.filter((value): value is number => value !== null);
 
@@ -147,9 +282,7 @@ export function getEchoCheckerEcho(
     character.echoChecker?.echoes?.[key] ?? {
       critRate: null,
       critDmg: null,
-      hasRelevantStat: false,
-      hasSecondRelevantStat: false,
-      hasThirdRelevantStat: false,
+      substatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
     }
   );
 }
@@ -343,7 +476,7 @@ export function getRatings(character: TrackedCharacter) {
     !crRatingValid ? `Crit Rate must be at least ${formatPercent(critRateBase)}.` : "",
     !cdRatingValid ? `Crit DMG must be at least ${formatPercent(critDmgBase)}.` : "",
     isEchoCheckerEnabled(character) && echoCheckerBuildScore === null
-      ? "Build Score needs at least one crit roll or target stat for every echo."
+      ? "Build Score needs at least one crit roll or selected substat for every echo."
       : "",
   ].filter(Boolean);
 

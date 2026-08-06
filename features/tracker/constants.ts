@@ -78,20 +78,6 @@ export const ECHO_CHECKER_PLAN_OPTIONS: {
 export const ECHO_CRIT_RATE_VALUES = [6.3, 6.9, 7.5, 8.1, 8.7, 9.3, 9.9, 10.5];
 export const ECHO_CRIT_DMG_VALUES = [12.6, 13.8, 15, 16.2, 17.4, 18.6, 19.8, 21];
 
-export const ECHO_RELEVANT_SUBSTAT_OPTIONS = [
-  { id: "er", label: "ER", checked: true },
-  { id: "atk", label: "ATK", checked: true },
-  { id: "atk-percent", label: "ATK%", checked: true },
-  { id: "hp", label: "HP", checked: false },
-  { id: "hp-percent", label: "HP%", checked: false },
-  { id: "def", label: "DEF", checked: false },
-  { id: "def-percent", label: "DEF%", checked: false },
-  { id: "basic", label: "Basic", checked: false },
-  { id: "heavy", label: "Heavy", checked: false },
-  { id: "skill", label: "Skill", checked: false },
-  { id: "liberation", label: "Liberation", checked: false },
-];
-
 export const emptyChecklist: Checklist = {
   skills: false,
   fourCost: false,

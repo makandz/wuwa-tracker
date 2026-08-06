@@ -21,6 +21,8 @@ import {
   getEchoCheckerCritValue,
   getEchoCheckerEcho,
   getEchoCheckerScore,
+  getEchoCheckerSubstatIds,
+  getEchoCheckerSubstatOptions,
   getEchoCheckerTargetStatCount,
   getEchoCritPlaceholders,
   getEffectiveChecklist,
@@ -35,8 +37,10 @@ import {
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   isComplete,
+  isCharacterErOvercapped,
   isEchoCheckerEchoComplete,
   isEchoCheckerEnabled,
+  reconcileEchoCheckerSubstats,
   ratingGradeClasses,
 } from "@/features/tracker/domain";
 import {
@@ -77,6 +81,8 @@ import type {
   EchoChecker,
   EchoCheckerEcho,
   EchoCheckerPlan,
+  EchoCheckerSubstatId,
+  EchoCheckerSubstatSlots,
   Role,
   TrackedCharacter,
   WeaponInventoryItem,
@@ -175,6 +181,113 @@ function EchoRollSelect({
         </span>
       </span>
     </label>
+  );
+}
+
+const ECHO_CHECKER_SUBSTAT_LABELS: Record<EchoCheckerSubstatId, string> = {
+  atk: "ATK",
+  hp: "HP",
+  def: "DEF",
+  "atk-percent": "ATK%",
+  "hp-percent": "HP%",
+  "def-percent": "DEF%",
+  "energy-regen": "ER",
+  basic: "Basic",
+  heavy: "Heavy",
+  skill: "Skill",
+  liberation: "Liberation",
+  other: "Other",
+};
+
+function EchoSubstatPicker({
+  disabledStats,
+  erOvercapped,
+  onChange,
+  options,
+  value,
+}: {
+  disabledStats: Set<EchoCheckerSubstatId>;
+  erOvercapped: boolean;
+  onChange: (value: EchoCheckerSubstatId | null) => void;
+  options: EchoCheckerSubstatId[];
+  value: EchoCheckerSubstatId | null;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5">
+      {options.map((option) => {
+        const checked = value === option;
+        const disabled = !checked && disabledStats.has(option);
+        const erWarning = option === "energy-regen" && erOvercapped;
+
+        return (
+          <label
+            className={`flex min-w-0 items-center gap-1 rounded-md border px-1.5 py-1.5 text-[10px] font-semibold transition-colors ${
+              erWarning
+                ? "border-status-danger-border/70 bg-status-danger-bg/45 text-status-danger-text"
+                : checked
+                  ? "border-app-accent-strong bg-app-accent-soft text-app-fg"
+                  : "border-app-border bg-app-bg text-app-muted"
+            } ${disabled ? "cursor-not-allowed opacity-40" : "cursor-pointer"}`}
+            key={option}
+            title={ECHO_CHECKER_SUBSTAT_LABELS[option]}
+          >
+            <input
+              checked={checked}
+              className={`h-3.5 w-3.5 shrink-0 ${
+                erWarning ? "accent-status-danger-border" : "accent-app-accent"
+              }`}
+              disabled={disabled}
+              onChange={(event) => onChange(event.target.checked ? option : null)}
+              type="checkbox"
+            />
+            <span className="min-w-0 truncate">{ECHO_CHECKER_SUBSTAT_LABELS[option]}</span>
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+function EchoSubstatRow({
+  active,
+  erOvercapped,
+  label,
+  onClick,
+  value,
+}: {
+  active: boolean;
+  erOvercapped: boolean;
+  label: string;
+  onClick: () => void;
+  value: EchoCheckerSubstatId | null;
+}) {
+  const erWarning = value === "energy-regen" && erOvercapped;
+
+  return (
+    <button
+      aria-expanded={active}
+      className={`grid h-7 w-full grid-cols-[0.75rem_minmax(0,1fr)_auto] items-center gap-1 rounded-md border px-2 text-left text-[9px] transition-colors ${
+        erWarning
+          ? "border-status-danger-border bg-status-danger-bg/45 text-status-danger-text"
+          : active
+            ? "border-app-muted-dim bg-app-raised text-app-fg"
+            : "border-app-border bg-app-bg text-app-muted hover:border-app-muted-dim hover:text-app-fg"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="text-[8px] font-semibold text-app-muted-dim">{label}</span>
+      <span
+        className={`truncate text-[12px] font-medium leading-none ${
+          value === null ? "text-app-muted-dim" : ""
+        }`}
+      >
+        {value === null ? "—" : ECHO_CHECKER_SUBSTAT_LABELS[value]}
+      </span>
+      <span aria-hidden="true" className="text-[9px] text-app-muted-dim">
+        {active ? "^" : "v"}
+      </span>
+    </button>
   );
 }
 
@@ -381,6 +494,9 @@ function DetailScreen({
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [echoModeConfirmOpen, setEchoModeConfirmOpen] = useState(false);
+  const [expandedSubstats, setExpandedSubstats] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
   const selectedWeapon = findCatalogWeapon(weapons, character.weaponId);
   const weaponDisplay = getTrackedWeaponDisplay(character, selectedWeapon);
@@ -405,6 +521,66 @@ function DetailScreen({
       }),
     [debouncedSubstatPriority],
   );
+  const echoSubstatOptions = useMemo(
+    () => getEchoCheckerSubstatOptions(debouncedSubstatPriority),
+    [debouncedSubstatPriority],
+  );
+  const erOvercapped = isCharacterErOvercapped(character);
+  const hasTrackedErSubstat = ECHO_CHECKLIST_ITEMS.some((item) =>
+    getEchoCheckerSubstatIds(getEchoCheckerEcho(character, item.key)).includes(
+      "energy-regen",
+    ),
+  );
+
+  useEffect(() => {
+    if (!character.echoChecker) {
+      return;
+    }
+
+    let changed = false;
+    const echoes = ECHO_CHECKLIST_ITEMS.reduce(
+      (nextEchoes, item) => {
+        const echo = character.echoChecker?.echoes[item.key];
+
+        if (!echo) {
+          return nextEchoes;
+        }
+
+        const currentSubstats = getEchoCheckerSubstatIds(echo);
+        const nextSubstats = reconcileEchoCheckerSubstats(
+          echo,
+          debouncedSubstatPriority,
+        );
+
+        if (nextSubstats.some((stat, index) => stat !== currentSubstats[index])) {
+          changed = true;
+        }
+
+        return {
+          ...nextEchoes,
+          [item.key]: {
+            ...echo,
+            substatIds: nextSubstats,
+          },
+        };
+      },
+      {} as EchoChecker["echoes"],
+    );
+
+    if (!changed) {
+      return;
+    }
+
+    onUpdate({
+      ...character,
+      echoChecker: {
+        ...character.echoChecker,
+        echoes,
+      },
+      updatedAt: new Date().toISOString(),
+    });
+  }, [character, debouncedSubstatPriority, onUpdate]);
+
   const planOptions = ECHO_CHECKER_PLAN_OPTIONS.map((option) => ({
     ...option,
     label:
@@ -577,6 +753,14 @@ function DetailScreen({
           </TextButton>
         </div>
       </div>
+
+      {erOvercapped && hasTrackedErSubstat ? (
+        <section className="rounded-md border border-status-danger-border/80 bg-status-danger-bg/45 px-4 py-3 text-sm leading-6 text-status-danger-text">
+          <span className="font-semibold">ER is overcapped.</span>{" "}
+          This build has {character.actualEr}% ER against a {character.expectedEr}% target.
+          ER substats are worth half as much as Other until some ER is swapped out.
+        </section>
+      ) : null}
 
       {character.noCrit ? (
         <section className="rounded-md border border-app-border/80 bg-app-surface p-3">
@@ -866,11 +1050,11 @@ function DetailScreen({
               <h2 className="text-lg font-semibold text-app-fg">Echo Tracker</h2>
               <p className="mt-1 text-sm text-app-muted-subtle">
                 {echoChecker.plan === "DPS"
-                  ? "DPS: double crit, then either 30 CV plus a target stat or two target stats. Echo Score adds target stat bonuses to CV."
-                  : "Hybrid/Support: double crit plus one target stat on each echo. Echo Score adds target stat bonuses to CV."}
+                  ? "DPS: double crit, then either 30 CV plus a useful substat or two useful substats. Echo Score weighs selected substats by priority."
+                  : "Hybrid/Support: double crit plus one useful substat on each echo. Echo Score weighs selected substats by priority."}
               </p>
             </div>
-            <div className="w-full sm:w-80">
+            <div className="w-full sm:w-64">
               <SelectInput<EchoCheckerPlan>
                 label="Checker Plan"
                 onChange={(plan) => patchEchoChecker({ enabled: true, plan })}
@@ -882,21 +1066,26 @@ function DetailScreen({
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {ECHO_CHECKLIST_ITEMS.map((item) => {
               const echo = getEchoCheckerEcho(character, item.key);
+              const substatIds = getEchoCheckerSubstatIds(echo);
               const echoComplete = isEchoCheckerEchoComplete(echo, echoChecker.plan);
               const critValue = getEchoCheckerCritValue(echo);
               const targetStatCount = getEchoCheckerTargetStatCount(echo);
-              const echoScore = getEchoCheckerScore(echo);
+              const echoScore = getEchoCheckerScore(
+                echo,
+                substatPriorityValue,
+                erOvercapped,
+              );
               const echoScoreGrade = echoScore === null ? null : getRatingGrade(echoScore);
 
               return (
                 <div
-                  className={`grid gap-2 rounded-md border p-3 ${
+                  className={`grid gap-2 rounded-md border bg-app-surface p-3 ${
                     echoComplete
-                      ? "border-status-good-border bg-status-good-bg/65"
-                      : "border-app-border bg-app-surface"
+                      ? "border-status-good-border/70"
+                      : "border-app-border"
                   }`}
                   key={item.key}
                 >
@@ -905,7 +1094,7 @@ function DetailScreen({
                     <span
                       className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
                         echoComplete
-                          ? "bg-status-good-border text-app-bg"
+                          ? "border border-status-good-border/70 bg-status-good-bg text-status-good-text"
                           : "bg-app-raised text-app-muted-dim"
                       }`}
                     >
@@ -924,71 +1113,69 @@ function DetailScreen({
                     value={echo.critDmg}
                     values={ECHO_CRIT_DMG_VALUES}
                   />
-                  <div className="grid gap-2">
-                    <label className="flex items-center justify-between gap-2 rounded-md border border-app-border bg-app-surface/70 px-2 py-2 text-xs font-semibold text-app-muted">
-                      Target stat 1
-                      <input
-                        checked={echo.hasRelevantStat}
-                        className="h-4 w-4 accent-app-accent"
-                        onChange={(event) =>
-                          patchEchoCheckerEcho(item.key, {
-                            hasRelevantStat: event.target.checked,
-                            hasSecondRelevantStat: event.target.checked
-                              ? echo.hasSecondRelevantStat
-                              : false,
-                            hasThirdRelevantStat: event.target.checked
-                              ? echo.hasThirdRelevantStat
-                              : false,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between gap-2 rounded-md border border-app-border bg-app-surface/70 px-2 py-2 text-xs font-semibold text-app-muted">
-                      Target stat 2
-                      <input
-                        checked={echo.hasSecondRelevantStat}
-                        className="h-4 w-4 accent-app-accent"
-                        onChange={(event) =>
-                          patchEchoCheckerEcho(item.key, {
-                            hasRelevantStat: event.target.checked
-                              ? true
-                              : echo.hasRelevantStat,
-                            hasSecondRelevantStat: event.target.checked,
-                            hasThirdRelevantStat: event.target.checked
-                              ? echo.hasThirdRelevantStat
-                              : false,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between gap-2 rounded-md border border-app-border bg-app-surface/70 px-2 py-2 text-xs font-semibold text-app-muted">
-                      Target stat 3
-                      <input
-                        checked={echo.hasThirdRelevantStat}
-                        className="h-4 w-4 accent-app-accent"
-                        onChange={(event) =>
-                          patchEchoCheckerEcho(item.key, {
-                            hasRelevantStat: event.target.checked
-                              ? true
-                              : echo.hasRelevantStat,
-                            hasSecondRelevantStat: event.target.checked
-                              ? true
-                              : echo.hasSecondRelevantStat,
-                            hasThirdRelevantStat: event.target.checked,
-                          })
-                        }
-                        type="checkbox"
-                      />
-                    </label>
+                  <div className="grid gap-1.5 border-t border-app-border/70 pt-2">
+                    <div className="text-[11px] font-semibold text-app-muted-subtle">
+                      Substats
+                    </div>
+                    {substatIds.map((substatId, slotIndex) => {
+                      const disabledStats = new Set(
+                        substatIds.filter(
+                          (stat, otherSlotIndex): stat is EchoCheckerSubstatId =>
+                            otherSlotIndex !== slotIndex &&
+                            stat !== null &&
+                            stat !== "other",
+                          ),
+                      );
+                      const pickerKey = `${character.id}:${item.key}:${slotIndex}`;
+                      const pickerActive = expandedSubstats.has(pickerKey);
+
+                      return (
+                        <div className="grid gap-1.5" key={slotIndex}>
+                          <EchoSubstatRow
+                            active={pickerActive}
+                            erOvercapped={erOvercapped}
+                            label={String(slotIndex + 1)}
+                            onClick={() => {
+                              setExpandedSubstats((current) => {
+                                const next = new Set(current);
+
+                                if (next.has(pickerKey)) {
+                                  next.delete(pickerKey);
+                                } else {
+                                  next.add(pickerKey);
+                                }
+
+                                return next;
+                              });
+                            }}
+                            value={substatId}
+                          />
+                          {pickerActive ? (
+                            <EchoSubstatPicker
+                              disabledStats={disabledStats}
+                              erOvercapped={erOvercapped}
+                              onChange={(nextSubstat) => {
+                                const nextSubstats = [
+                                  ...substatIds,
+                                ] as EchoCheckerSubstatSlots;
+
+                                nextSubstats[slotIndex] = nextSubstat;
+                                patchEchoCheckerEcho(item.key, {
+                                  substatIds: nextSubstats,
+                                });
+                              }}
+                              options={echoSubstatOptions}
+                              value={substatId}
+                            />
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="grid gap-2">
-                    <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
-                      <div className="text-[10px] font-medium text-app-muted-subtle">
-                        Echo Score
-                      </div>
-                      <div className="mt-1 flex min-h-6 items-center gap-1.5">
+                  <div className="grid grid-cols-[1.25fr_0.9fr_0.9fr] gap-2 border-t border-app-border/70 pt-2 text-xs">
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-medium text-app-muted-subtle">Score</div>
+                      <div className="mt-1 flex min-h-5 items-center gap-1.5">
                         {echoScoreGrade === null ? (
                           <span className="rounded-sm bg-status-warn-bg px-1.5 py-0.5 text-xs font-bold leading-none text-status-warn-text">
                             Check
@@ -1007,22 +1194,16 @@ function DetailScreen({
                         </span>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
-                        <div className="text-[10px] font-medium text-app-muted-subtle">
-                          Crit Value
-                        </div>
-                        <div className="mt-1 font-semibold leading-none text-app-fg">
-                          {critValue === null ? "-" : critValue}
-                        </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-medium text-app-muted-subtle">CV</div>
+                      <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
+                        {critValue === null ? "-" : critValue}
                       </div>
-                      <div className="rounded-md border border-app-border bg-app-surface/70 px-2 py-2">
-                        <div className="text-[10px] font-medium text-app-muted-subtle">
-                          Targets
-                        </div>
-                        <div className="mt-1 font-semibold leading-none text-app-fg">
-                          {targetStatCount}/3
-                        </div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-medium text-app-muted-subtle">Stats</div>
+                      <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
+                        {targetStatCount}/3
                       </div>
                     </div>
                   </div>

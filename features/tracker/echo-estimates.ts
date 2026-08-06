@@ -1,22 +1,10 @@
-export type EchoSubstatId =
-  | "crit-rate"
-  | "crit-dmg"
-  | "atk"
-  | "hp"
-  | "def"
-  | "atk-percent"
-  | "hp-percent"
-  | "def-percent"
-  | "energy-regen"
-  | "basic"
-  | "heavy"
-  | "skill"
-  | "liberation";
+import type { EchoSubstatId } from "./types";
 
 export type MakanEstimateRowId = "dps" | "hybrid-support";
 
 export type ParsedEchoSubstats = {
   otherTargetStats: EchoSubstatId[];
+  priorityTiers: EchoSubstatId[][];
   usedFallback: boolean;
 };
 
@@ -166,7 +154,9 @@ const ECHO_SUBSTAT_ALIASES: {
   },
   {
     id: "atk",
-    aliases: [/\b(?:atk|attack)\b(?!\s*(?:%|percent|pct))/],
+    aliases: [
+      /(?<!heavy\s)(?<!basic\s)\b(?:atk|attack)\b(?!\s*(?:%|percent|pct))/,
+    ],
   },
   {
     id: "hp",
@@ -178,24 +168,64 @@ const ECHO_SUBSTAT_ALIASES: {
   },
 ];
 
-function normalizePriorityText(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/[()]/g, " ")
-    .replace(/[>=≤≥=,/|+]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function findSubstatsInPrioritySegment(value: string) {
+  const matches = ECHO_SUBSTAT_ALIASES.flatMap((item) => {
+    const firstMatchIndex = item.aliases.reduce<number | null>((matchIndex, alias) => {
+      const match = alias.exec(value);
+
+      if (!match) {
+        return matchIndex;
+      }
+
+      return matchIndex === null ? match.index : Math.min(matchIndex, match.index);
+    }, null);
+
+    return firstMatchIndex === null
+      ? []
+      : [{ id: item.id, index: firstMatchIndex }];
+  });
+
+  return matches
+    .sort((left, right) => left.index - right.index)
+    .map((match) => match.id);
 }
 
 export function parseEchoPrioritySubstats(value: string): ParsedEchoSubstats {
-  const normalizedValue = normalizePriorityText(value);
-  const parsedStats = ECHO_SUBSTAT_ALIASES.reduce<EchoSubstatId[]>((stats, item) => {
-    if (item.aliases.some((alias) => alias.test(normalizedValue))) {
-      return [...stats, item.id];
+  const normalizedValue = value.toLowerCase().replace(/[()]/g, " ");
+  const parts = normalizedValue.split(/\s*(>=|≥|>|=)\s*/).filter(Boolean);
+  const priorityTiers: EchoSubstatId[][] = [];
+  const seenStats = new Set<EchoSubstatId>();
+  let relation: ">" | "=" = ">";
+
+  for (const part of parts) {
+    if (part === "=" || part === ">" || part === ">=" || part === "≥") {
+      relation = part === "=" ? "=" : ">";
+      continue;
     }
 
-    return stats;
-  }, []);
+    const segmentStats = findSubstatsInPrioritySegment(part).filter((stat) => {
+      if (seenStats.has(stat)) {
+        return false;
+      }
+
+      seenStats.add(stat);
+      return true;
+    });
+
+    if (segmentStats.length === 0) {
+      continue;
+    }
+
+    if (relation === "=" && priorityTiers.length > 0) {
+      priorityTiers[priorityTiers.length - 1]?.push(...segmentStats);
+    } else {
+      priorityTiers.push(segmentStats);
+    }
+
+    relation = ">";
+  }
+
+  const parsedStats = priorityTiers.flat();
   const otherTargetStats = parsedStats.filter(
     (stat) => stat !== CRIT_RATE_STAT && stat !== CRIT_DMG_STAT,
   );
@@ -203,12 +233,14 @@ export function parseEchoPrioritySubstats(value: string): ParsedEchoSubstats {
   if (otherTargetStats.length === 0) {
     return {
       otherTargetStats: FALLBACK_OTHER_TARGET_STATS,
+      priorityTiers,
       usedFallback: true,
     };
   }
 
   return {
     otherTargetStats,
+    priorityTiers,
     usedFallback: false,
   };
 }
