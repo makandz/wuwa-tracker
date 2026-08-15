@@ -20,6 +20,7 @@ import {
   getDefaultEchoCheckerPlan,
   getEchoCheckerCritValue,
   getEchoCheckerEcho,
+  getIgnoredErEchoKeys,
   getEchoCheckerScore,
   getEchoCheckerSubstatIds,
   getEchoCheckerSubstatOptions,
@@ -32,12 +33,12 @@ import {
   getPrydwenCharacterUrl,
   getRatingGrade,
   getRatings,
+  getTethysCharacterUrl,
   getTrackedCharacterDisplay,
   getTrackedWeaponDisplay,
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   isComplete,
-  isCharacterErOvercapped,
   isEchoCheckerEchoComplete,
   isEchoCheckerEnabled,
   reconcileEchoCheckerSubstats,
@@ -201,13 +202,13 @@ const ECHO_CHECKER_SUBSTAT_LABELS: Record<EchoCheckerSubstatId, string> = {
 
 function EchoSubstatPicker({
   disabledStats,
-  erOvercapped,
+  erIgnored,
   onChange,
   options,
   value,
 }: {
   disabledStats: Set<EchoCheckerSubstatId>;
-  erOvercapped: boolean;
+  erIgnored: boolean;
   onChange: (value: EchoCheckerSubstatId | null) => void;
   options: EchoCheckerSubstatId[];
   value: EchoCheckerSubstatId | null;
@@ -217,7 +218,7 @@ function EchoSubstatPicker({
       {options.map((option) => {
         const checked = value === option;
         const disabled = !checked && disabledStats.has(option);
-        const erWarning = option === "energy-regen" && erOvercapped;
+        const erWarning = option === "energy-regen" && erIgnored;
 
         return (
           <label
@@ -250,18 +251,18 @@ function EchoSubstatPicker({
 
 function EchoSubstatRow({
   active,
-  erOvercapped,
+  erIgnored,
   label,
   onClick,
   value,
 }: {
   active: boolean;
-  erOvercapped: boolean;
+  erIgnored: boolean;
   label: string;
   onClick: () => void;
   value: EchoCheckerSubstatId | null;
 }) {
-  const erWarning = value === "energy-regen" && erOvercapped;
+  const erWarning = value === "energy-regen" && erIgnored;
 
   return (
     <button
@@ -507,6 +508,7 @@ function DetailScreen({
     assignmentCounts,
   });
   const prydwenUrl = getPrydwenCharacterUrl(characterDisplay.name);
+  const tethysUrl = getTethysCharacterUrl(character.characterId);
   const defaultPlan = getDefaultEchoCheckerPlan(character.roles);
   const substatPriorityValue =
     character.substatPriority ?? character.echoChecker?.substatPriority ?? "";
@@ -525,12 +527,7 @@ function DetailScreen({
     () => getEchoCheckerSubstatOptions(debouncedSubstatPriority),
     [debouncedSubstatPriority],
   );
-  const erOvercapped = isCharacterErOvercapped(character);
-  const hasTrackedErSubstat = ECHO_CHECKLIST_ITEMS.some((item) =>
-    getEchoCheckerSubstatIds(getEchoCheckerEcho(character, item.key)).includes(
-      "energy-regen",
-    ),
-  );
+  const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
 
   useEffect(() => {
     if (!character.echoChecker) {
@@ -748,17 +745,20 @@ function DetailScreen({
           <TextLink href={prydwenUrl} variant="external">
             Prydwen
           </TextLink>
+          <TextLink href={tethysUrl} variant="purple">
+            Tethys
+          </TextLink>
           <TextButton onClick={onDelete} variant="danger">
             Delete
           </TextButton>
         </div>
       </div>
 
-      {erOvercapped && hasTrackedErSubstat ? (
+      {ignoredErEchoKeys.size > 0 ? (
         <section className="rounded-md border border-status-danger-border/80 bg-status-danger-bg/45 px-4 py-3 text-sm leading-6 text-status-danger-text">
           <span className="font-semibold">ER is overcapped.</span>{" "}
           This build has {character.actualEr}% ER against a {character.expectedEr}% target.
-          ER substats are worth half as much as Other until some ER is swapped out.
+          The {ignoredErEchoKeys.size === 1 ? "lowest-rated ER roll is" : `${ignoredErEchoKeys.size} lowest-rated ER rolls are`} ignored for score and completion.
         </section>
       ) : null}
 
@@ -1070,13 +1070,18 @@ function DetailScreen({
             {ECHO_CHECKLIST_ITEMS.map((item) => {
               const echo = getEchoCheckerEcho(character, item.key);
               const substatIds = getEchoCheckerSubstatIds(echo);
-              const echoComplete = isEchoCheckerEchoComplete(echo, echoChecker.plan);
+              const erIgnored = ignoredErEchoKeys.has(item.key);
+              const echoComplete = isEchoCheckerEchoComplete(
+                echo,
+                echoChecker.plan,
+                erIgnored,
+              );
               const critValue = getEchoCheckerCritValue(echo);
-              const targetStatCount = getEchoCheckerTargetStatCount(echo);
+              const targetStatCount = getEchoCheckerTargetStatCount(echo, erIgnored);
               const echoScore = getEchoCheckerScore(
                 echo,
                 substatPriorityValue,
-                erOvercapped,
+                erIgnored,
               );
               const echoScoreGrade = echoScore === null ? null : getRatingGrade(echoScore);
 
@@ -1133,7 +1138,7 @@ function DetailScreen({
                         <div className="grid gap-1.5" key={slotIndex}>
                           <EchoSubstatRow
                             active={pickerActive}
-                            erOvercapped={erOvercapped}
+                            erIgnored={erIgnored}
                             label={String(slotIndex + 1)}
                             onClick={() => {
                               setExpandedSubstats((current) => {
@@ -1153,7 +1158,7 @@ function DetailScreen({
                           {pickerActive ? (
                             <EchoSubstatPicker
                               disabledStats={disabledStats}
-                              erOvercapped={erOvercapped}
+                              erIgnored={erIgnored}
                               onChange={(nextSubstat) => {
                                 const nextSubstats = [
                                   ...substatIds,

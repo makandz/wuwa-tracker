@@ -12,6 +12,7 @@ import {
 import type {
   Checklist,
   DashboardSortKey,
+  EchoChecklistKey,
   EchoChecker,
   EchoCheckerEcho,
   EchoCheckerPlan,
@@ -35,6 +36,7 @@ const ECHO_CHECKER_OTHER_PRIORITY_BOOST = 0.05;
 const ECHO_CHECKER_OTHER_FALLBACK_BOOST = 0.06;
 const ECHO_CHECKER_PRIORITY_MAX_BOOST = 0.1;
 const ECHO_CHECKER_PRIORITY_MIN_BOOST = 0.06;
+export const ECHO_CHECKER_MEDIAN_ER_ROLL = 10.25;
 const EMPTY_ECHO_SUBSTAT_SLOTS: EchoCheckerSubstatSlots = [null, null, null];
 type PrioritizedEchoCheckerSubstatId = Exclude<
   EchoCheckerSubstatId,
@@ -108,15 +110,27 @@ export function getEchoCheckerSubstatIds(
   ];
 }
 
-export function getEchoCheckerTargetStatCount(echo: EchoCheckerEcho) {
-  return getEchoCheckerSubstatIds(echo).filter((stat) => stat !== null).length;
+export function getEchoCheckerTargetStatCount(
+  echo: EchoCheckerEcho,
+  ignoreEnergyRegen = false,
+) {
+  return getEchoCheckerSubstatIds(echo).filter(
+    (stat) => stat !== null && (!ignoreEnergyRegen || stat !== "energy-regen"),
+  ).length;
+}
+
+export function getCharacterRedundantErRollCount(character: TrackedCharacter) {
+  if (character.expectedEr <= 0) {
+    return 0;
+  }
+
+  const excessEr = Math.max(0, character.actualEr - character.expectedEr);
+
+  return Math.floor(excessEr / ECHO_CHECKER_MEDIAN_ER_ROLL);
 }
 
 export function isCharacterErOvercapped(character: TrackedCharacter) {
-  return (
-    character.expectedEr > 0 &&
-    character.actualEr >= character.expectedEr + 10
-  );
+  return getCharacterRedundantErRollCount(character) > 0;
 }
 
 export function getEchoCheckerSubstatOptions(
@@ -164,7 +178,7 @@ export function reconcileEchoCheckerSubstats(
 
 export function getEchoCheckerSubstatBoosts(
   substatPriority: string,
-  erOvercapped: boolean,
+  ignoreEnergyRegen = false,
 ) {
   const parsed = parseEchoPrioritySubstats(substatPriority);
   const priorityTiers = parsed.priorityTiers
@@ -183,10 +197,7 @@ export function getEchoCheckerSubstatBoosts(
     : ECHO_CHECKER_OTHER_FALLBACK_BOOST;
   const boosts = new Map<EchoCheckerSubstatId, number>([
     ["other", otherBoost],
-    [
-      "energy-regen",
-      erOvercapped ? otherBoost / 2 : ECHO_CHECKER_ER_BOOST,
-    ],
+    ["energy-regen", ignoreEnergyRegen ? 0 : ECHO_CHECKER_ER_BOOST],
   ]);
 
   priorityTiers.forEach((tier, index) => {
@@ -206,7 +217,7 @@ export function getEchoCheckerSubstatBoosts(
 export function getEchoCheckerScore(
   echo: EchoCheckerEcho,
   substatPriority = "",
-  erOvercapped = false,
+  ignoreEnergyRegen = false,
 ) {
   const critValueRating = getEchoCheckerCritValueRating(echo);
   const substatIds = getEchoCheckerSubstatIds(echo).filter(
@@ -217,7 +228,10 @@ export function getEchoCheckerScore(
     return null;
   }
 
-  const boosts = getEchoCheckerSubstatBoosts(substatPriority, erOvercapped);
+  const boosts = getEchoCheckerSubstatBoosts(
+    substatPriority,
+    ignoreEnergyRegen,
+  );
   const substatBonus = substatIds.reduce(
     (total, stat) => total + (boosts.get(stat) ?? ECHO_CHECKER_OTHER_PRIORITY_BOOST),
     0,
@@ -228,12 +242,43 @@ export function getEchoCheckerScore(
   );
 }
 
+export function getIgnoredErEchoKeys(character: TrackedCharacter) {
+  const redundantRollCount = getCharacterRedundantErRollCount(character);
+
+  if (redundantRollCount === 0) {
+    return new Set<EchoChecklistKey>();
+  }
+
+  const erEchoes = ECHO_CHECKLIST_ITEMS.flatMap((item, index) => {
+    const echo = getEchoCheckerEcho(character, item.key);
+
+    if (!getEchoCheckerSubstatIds(echo).includes("energy-regen")) {
+      return [];
+    }
+
+    return [
+      {
+        index,
+        key: item.key,
+        score: getEchoCheckerScore(echo, character.substatPriority) ?? 0,
+      },
+    ];
+  });
+
+  erEchoes.sort((left, right) => left.score - right.score || left.index - right.index);
+
+  return new Set(
+    erEchoes.slice(0, redundantRollCount).map(({ key }) => key),
+  );
+}
+
 function getEchoCheckerBuildScore(character: TrackedCharacter) {
+  const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
   const echoScores = ECHO_CHECKLIST_ITEMS.map((item) =>
     getEchoCheckerScore(
       getEchoCheckerEcho(character, item.key),
       character.substatPriority,
-      isCharacterErOvercapped(character),
+      ignoredErEchoKeys.has(item.key),
     ),
   );
   const validEchoScores = echoScores.filter((value): value is number => value !== null);
@@ -248,9 +293,13 @@ function getEchoCheckerBuildScore(character: TrackedCharacter) {
 export function isEchoCheckerEchoComplete(
   echo: EchoCheckerEcho,
   plan: EchoCheckerPlan,
+  ignoreEnergyRegen = false,
 ) {
   const hasDoubleCrit = echo.critRate !== null && echo.critDmg !== null;
-  const targetStatCount = getEchoCheckerTargetStatCount(echo);
+  const targetStatCount = getEchoCheckerTargetStatCount(
+    echo,
+    ignoreEnergyRegen,
+  );
 
   if (!hasDoubleCrit) {
     return false;
@@ -331,10 +380,15 @@ export function getEffectiveChecklist(character: TrackedCharacter): Checklist {
   }
 
   const plan = character.echoChecker?.plan ?? getDefaultEchoCheckerPlan(character.roles);
+  const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
   const echoChecklist = ECHO_CHECKLIST_ITEMS.reduce(
     (checklist, item) => ({
       ...checklist,
-      [item.key]: isEchoCheckerEchoComplete(getEchoCheckerEcho(character, item.key), plan),
+      [item.key]: isEchoCheckerEchoComplete(
+        getEchoCheckerEcho(character, item.key),
+        plan,
+        ignoredErEchoKeys.has(item.key),
+      ),
     }),
     {} as Pick<Checklist, keyof Omit<Checklist, "skills">>,
   );

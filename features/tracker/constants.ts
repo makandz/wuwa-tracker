@@ -25,6 +25,7 @@ export const BACKUP_NOTICE_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000;
 export const PRYDWEN_CHARACTER_BASE_URL =
   "https://www.prydwen.gg/wuthering-waves/characters";
 export const PRYDWEN_CHARACTER_SLUG_OVERRIDES: Record<string, string> = {};
+export const TETHYS_CHARACTER_BASE_URL = "https://tethys.gg/resonators";
 // Prefer IDs when Matrix vigor data is available; names should be lowercase.
 export const MATRIX_DOUBLE_USE_CHARACTER_IDS = new Set<number>([]);
 export const MATRIX_DOUBLE_USE_CHARACTER_NAMES = new Set<string>([
