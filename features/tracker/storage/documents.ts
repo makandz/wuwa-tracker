@@ -195,7 +195,7 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     return {
       critRate: null,
       critDmg: null,
-      substatIds: [null, null, null],
+      substatIds: [null, null, null, null, null],
     };
   }
 
@@ -219,21 +219,28 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     "liberation",
     "crit-rate",
     "crit-dmg",
-    "other",
   ]);
-  const normalizeSubstatIds = (stats: unknown[]) =>
-    stats.map((stat) =>
-      typeof stat === "string" && allowedSubstatIds.has(stat as EchoCheckerSubstatId)
-        ? stat as EchoCheckerSubstatId
-        : null,
-    ) as EchoCheckerSubstatSlots;
-  const substatIds = rawSubstatIds?.length === 3
+  const normalizeSubstatIds = (stats: unknown[]) => {
+    const seenStats = new Set<EchoCheckerSubstatId>();
+
+    return Array.from({ length: 5 }, (_, index) => {
+      const stat = stats[index];
+
+      if (
+        typeof stat !== "string" ||
+        !allowedSubstatIds.has(stat as EchoCheckerSubstatId) ||
+        seenStats.has(stat as EchoCheckerSubstatId)
+      ) {
+        return null;
+      }
+
+      seenStats.add(stat as EchoCheckerSubstatId);
+      return stat as EchoCheckerSubstatId;
+    }) as EchoCheckerSubstatSlots;
+  };
+  const substatIds = rawSubstatIds && [3, 5].includes(rawSubstatIds.length)
     ? normalizeSubstatIds(rawSubstatIds)
-    : [
-        echo.hasRelevantStat === true ? "other" : null,
-        echo.hasSecondRelevantStat === true ? "other" : null,
-        echo.hasThirdRelevantStat === true ? "other" : null,
-      ] as EchoCheckerSubstatSlots;
+    : [null, null, null, null, null] as EchoCheckerSubstatSlots;
 
   return {
     critRate: typeof echo.critRate === "number" ? echo.critRate : null,

@@ -100,18 +100,16 @@ describe("echo substat priorities", () => {
     ]);
   });
 
-  test("builds checkbox options from non-crit priorities with ER and Other last", () => {
+  test("builds checkbox options from prioritized non-crit stats only", () => {
     expect(getEchoCheckerSubstatOptions(priority)).toEqual([
       "atk-percent",
       "heavy",
       "atk",
       "skill",
-      "energy-regen",
-      "other",
     ]);
   });
 
-  test("builds priority-only options with crit and ER in parsed order", () => {
+  test("builds priority-only options from parsed priorities", () => {
     expect(
       getEchoCheckerSubstatOptions(
         "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK",
@@ -123,7 +121,6 @@ describe("echo substat priorities", () => {
       "crit-dmg",
       "atk-percent",
       "atk",
-      "other",
     ]);
   });
 
@@ -134,10 +131,10 @@ describe("echo substat priorities", () => {
       heavy: 0.1,
       atk: 0.08,
       skill: 0.06,
-      other: 0.05,
+      hp: 0.05,
     });
     expect(getEchoCheckerSubstatBoosts(priority, true).get("energy-regen")).toBe(0);
-    expect(getEchoCheckerSubstatBoosts("", false).get("other")).toBe(0.06);
+    expect(getEchoCheckerSubstatBoosts("", false).get("hp")).toBe(0.06);
     expect(getEchoCheckerSubstatBoosts("", true).get("energy-regen")).toBe(0);
   });
 
@@ -156,7 +153,7 @@ describe("echo substat priorities", () => {
     ).toBe(1.2);
   });
 
-  test("adds selected substat boosts to crit value and zeroes ignored ER", () => {
+  test("adds prioritized substat boosts and ignores unprioritized selections", () => {
     const prioritizedEcho: EchoCheckerEcho = {
       critRate: 7.5,
       critDmg: 15,
@@ -169,7 +166,7 @@ describe("echo substat priorities", () => {
     };
 
     expect(getEchoCheckerScore(prioritizedEcho, priority)).toBe(1.16);
-    expect(getEchoCheckerScore(erEcho, priority, false)).toBe(1.03);
+    expect(getEchoCheckerScore(erEcho, priority, false)).toBe(0.92);
     expect(getEchoCheckerScore(erEcho, priority, true)).toBe(0.92);
   });
 
@@ -309,21 +306,7 @@ describe("echo substat priorities", () => {
     });
   });
 
-  test("converts unavailable and duplicate named stats to Other", () => {
-    const echo: EchoCheckerEcho = {
-      critRate: null,
-      critDmg: null,
-      substatIds: ["atk-percent", "atk-percent", "skill"],
-    };
-
-    expect(reconcileEchoCheckerSubstats(echo, "ATK% > ATK")).toEqual([
-      "atk-percent",
-      "other",
-      "other",
-    ]);
-  });
-
-  test("maps legacy checked targets to corresponding Other slots", () => {
+  test("ignores legacy checked targets that have no factual substat identity", () => {
     const echo: EchoCheckerEcho = {
       critRate: null,
       critDmg: null,
@@ -332,9 +315,21 @@ describe("echo substat priorities", () => {
       hasThirdRelevantStat: false,
     };
 
-    expect(reconcileEchoCheckerSubstats(echo, priority)).toEqual([
-      "other",
-      "other",
+    expect(getEchoCheckerScore(echo, priority)).toBeNull();
+  });
+
+  test("clears selected stats that are no longer prioritized", () => {
+    const echo: EchoCheckerEcho = {
+      critRate: null,
+      critDmg: null,
+      substatIds: ["atk-percent", "hp-percent", "skill", null, null],
+    };
+
+    expect(reconcileEchoCheckerSubstats(echo, "ATK% > Skill")).toEqual([
+      "atk-percent",
+      null,
+      "skill",
+      null,
       null,
     ]);
   });

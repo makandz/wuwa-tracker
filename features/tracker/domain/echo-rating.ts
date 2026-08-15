@@ -32,18 +32,35 @@ const FOUR_COST_CRIT_DMG_BONUS = 0.44;
 const ECHO_CHECKER_DPS_TARGET_CRIT_VALUE = 30;
 const ECHO_CHECKER_SUBSTAT_BASE = -0.08;
 const ECHO_CHECKER_ER_BOOST = 0.11;
-const ECHO_CHECKER_OTHER_PRIORITY_BOOST = 0.05;
-const ECHO_CHECKER_OTHER_FALLBACK_BOOST = 0.06;
+const ECHO_CHECKER_UNPRIORITIZED_BOOST = 0.05;
+const ECHO_CHECKER_UNPRIORITIZED_FALLBACK_BOOST = 0.06;
 const ECHO_CHECKER_PRIORITY_MAX_BOOST = 0.1;
 const ECHO_CHECKER_PRIORITY_MIN_BOOST = 0.06;
 const ECHO_CHECKER_PRIORITY_TARGET_STAT_COUNT = 3;
 const ECHO_CHECKER_PRIORITY_STAT_BASE = 0.2;
 export const ECHO_CHECKER_MEDIAN_ER_ROLL = 10.25;
-const EMPTY_ECHO_SUBSTAT_SLOTS: EchoCheckerSubstatSlots = [null, null, null];
-type PrioritizedEchoCheckerSubstatId = Exclude<
-  EchoCheckerSubstatId,
-  "other"
->;
+const EMPTY_ECHO_SUBSTAT_SLOTS: EchoCheckerSubstatSlots = [
+  null,
+  null,
+  null,
+  null,
+  null,
+];
+const ECHO_CHECKER_SUBSTAT_IDS: EchoCheckerSubstatId[] = [
+  "crit-rate",
+  "crit-dmg",
+  "atk-percent",
+  "hp-percent",
+  "def-percent",
+  "energy-regen",
+  "atk",
+  "hp",
+  "def",
+  "basic",
+  "heavy",
+  "skill",
+  "liberation",
+];
 
 export function checklistTotal(checklist: Checklist) {
   return Object.values(checklist).filter(Boolean).length;
@@ -102,28 +119,18 @@ export function getEchoCheckerSubstatIds(
   echo: EchoCheckerEcho,
   priorityOnly = false,
 ): EchoCheckerSubstatSlots {
-  const slotCount = priorityOnly ? 5 : 3;
   const storedSubstats = priorityOnly
     ? echo.prioritySubstatIds
     : echo.substatIds;
 
   if (storedSubstats) {
     return Array.from(
-      { length: slotCount },
+      { length: 5 },
       (_, index) => storedSubstats[index] ?? null,
     );
   }
 
-  const legacySubstats: EchoCheckerSubstatSlots = [
-    echo.hasRelevantStat ? "other" : null,
-    echo.hasSecondRelevantStat ? "other" : null,
-    echo.hasThirdRelevantStat ? "other" : null,
-  ];
-
-  return Array.from(
-    { length: slotCount },
-    (_, index) => legacySubstats[index] ?? null,
-  );
+  return [...EMPTY_ECHO_SUBSTAT_SLOTS];
 }
 
 export function getEchoCheckerTargetStatCount(
@@ -155,25 +162,13 @@ export function getEchoCheckerSubstatOptions(
   includeCrit = false,
 ): EchoCheckerSubstatId[] {
   const parsed = parseEchoPrioritySubstats(substatPriority);
-  const priorityStats = parsed.priorityTiers.flat().filter((stat) => {
-    if (!includeCrit && (stat === "crit-rate" || stat === "crit-dmg")) {
-      return false;
-    }
+  const priorityStats = parsed.priorityTiers
+    .flat()
+    .filter(
+      (stat) => includeCrit || (stat !== "crit-rate" && stat !== "crit-dmg"),
+    );
 
-    return includeCrit || stat !== "energy-regen";
-  });
-
-  if (includeCrit) {
-    const options = [...priorityStats];
-
-    if (!options.includes("energy-regen")) {
-      options.push("energy-regen");
-    }
-
-    return [...options, "other"];
-  }
-
-  return [...priorityStats, "energy-regen", "other"];
+  return [...new Set(priorityStats)];
 }
 
 export function reconcileEchoCheckerSubstats(
@@ -187,23 +182,13 @@ export function reconcileEchoCheckerSubstats(
   const seenStats = new Set<EchoCheckerSubstatId>();
 
   return getEchoCheckerSubstatIds(echo, priorityOnly).map((stat) => {
-    const normalizedStat =
-      stat !== null && !allowedStats.has(stat) ? "other" : stat;
-
-    if (
-      normalizedStat !== null &&
-      normalizedStat !== "other" &&
-      seenStats.has(normalizedStat)
-    ) {
-      return "other";
+    if (stat === null || !allowedStats.has(stat) || seenStats.has(stat)) {
+      return null;
     }
 
-    if (normalizedStat !== null && normalizedStat !== "other") {
-      seenStats.add(normalizedStat);
-    }
-
-    return normalizedStat;
-  }) as EchoCheckerSubstatSlots;
+    seenStats.add(stat);
+    return stat;
+  });
 }
 
 export function getEchoCheckerSubstatBoosts(
@@ -215,7 +200,7 @@ export function getEchoCheckerSubstatBoosts(
   const priorityTiers = parsed.priorityTiers
     .map((tier) =>
       tier.filter(
-        (stat): stat is PrioritizedEchoCheckerSubstatId => {
+        (stat): stat is EchoCheckerSubstatId => {
           if (includeCrit) {
             return true;
           }
@@ -230,20 +215,21 @@ export function getEchoCheckerSubstatBoosts(
     )
     .filter((tier) => tier.length > 0);
   const hasPrioritizedSubstats = priorityTiers.length > 0;
-  const otherBoost = hasPrioritizedSubstats
-    ? ECHO_CHECKER_OTHER_PRIORITY_BOOST
-    : ECHO_CHECKER_OTHER_FALLBACK_BOOST;
-  const boosts = new Map<EchoCheckerSubstatId, number>([
-    ["other", otherBoost],
-    [
-      "energy-regen",
-      ignoreEnergyRegen
-        ? 0
-        : includeCrit
-          ? otherBoost
-          : ECHO_CHECKER_ER_BOOST,
-    ],
-  ]);
+  const unprioritizedBoost = hasPrioritizedSubstats
+    ? ECHO_CHECKER_UNPRIORITIZED_BOOST
+    : ECHO_CHECKER_UNPRIORITIZED_FALLBACK_BOOST;
+  const boosts = new Map<EchoCheckerSubstatId, number>(
+    ECHO_CHECKER_SUBSTAT_IDS.map((stat) => [stat, unprioritizedBoost]),
+  );
+
+  boosts.set(
+    "energy-regen",
+    ignoreEnergyRegen
+      ? 0
+      : includeCrit
+        ? unprioritizedBoost
+        : ECHO_CHECKER_ER_BOOST,
+  );
 
   priorityTiers.forEach((tier, index) => {
     const boost =
@@ -271,8 +257,12 @@ export function getEchoCheckerScore(
   priorityOnly = false,
 ) {
   const critValueRating = priorityOnly ? null : getEchoCheckerCritValueRating(echo);
+  const prioritizedStats = new Set(
+    getEchoCheckerSubstatOptions(substatPriority, priorityOnly),
+  );
   const substatIds = getEchoCheckerSubstatIds(echo, priorityOnly).filter(
-    (stat): stat is EchoCheckerSubstatId => stat !== null,
+    (stat): stat is EchoCheckerSubstatId =>
+      stat !== null && prioritizedStats.has(stat),
   );
 
   if (!priorityOnly && critValueRating === null && substatIds.length === 0) {
@@ -285,7 +275,7 @@ export function getEchoCheckerScore(
     priorityOnly,
   );
   const substatBonus = substatIds.reduce(
-    (total, stat) => total + (boosts.get(stat) ?? ECHO_CHECKER_OTHER_PRIORITY_BOOST),
+    (total, stat) => total + (boosts.get(stat) ?? ECHO_CHECKER_UNPRIORITIZED_BOOST),
     0,
   );
 
@@ -294,7 +284,7 @@ export function getEchoCheckerScore(
       (stat) => !ignoreEnergyRegen || stat !== "energy-regen",
     );
     const priorityBonus = scoredSubstatIds.reduce(
-      (total, stat) => total + (boosts.get(stat) ?? ECHO_CHECKER_OTHER_PRIORITY_BOOST),
+      (total, stat) => total + (boosts.get(stat) ?? ECHO_CHECKER_UNPRIORITIZED_BOOST),
       0,
     );
 

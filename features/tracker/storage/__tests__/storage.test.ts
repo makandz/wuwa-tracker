@@ -400,11 +400,11 @@ describe("tracker storage", () => {
     expect(
       document.data.characters[0]?.echoChecker?.echoes.fourCost
         .substatIds,
-    ).toEqual(["other", "other", null]);
+    ).toEqual([null, null, null, null, null]);
     expect(
       document.data.characters[0]?.echoChecker?.echoes.oneCostB
         .substatIds,
-    ).toEqual(["other", null, null]);
+    ).toEqual([null, null, null, null, null]);
     expect("weaponQualityId" in (document.data.characters[1] ?? {})).toBe(
       false,
     );
@@ -505,7 +505,7 @@ describe("tracker storage", () => {
     expect(imported.preferences).toEqual(preferences);
   });
 
-  test("normalizes legacy v5 target checks into Other substat slots", () => {
+  test("clears legacy v5 target checks without factual substat identities", () => {
     const legacyDocument = createTrackerDocumentV5({
       characters: [makeCharacter({ echoChecker: makeEchoChecker() })],
       weaponInventory: makeWeaponInventory(),
@@ -531,7 +531,48 @@ describe("tracker storage", () => {
     expect(
       result.document?.data.characters[0]?.echoChecker?.echoes.fourCost
         .substatIds,
-    ).toEqual(["other", "other", null]);
+    ).toEqual([null, null, null, null, null]);
+  });
+
+  test("ignores stored Other values while preserving factual substats", () => {
+    const echoChecker = makeEchoChecker();
+    const character = makeCharacter({ echoChecker });
+    const document = createTrackerDocumentV5({
+      characters: [character],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+    });
+    const rawDocument = {
+      ...document,
+      data: {
+        ...document.data,
+        characters: [
+          {
+            ...character,
+            echoChecker: {
+              ...echoChecker,
+              echoes: {
+                ...echoChecker.echoes,
+                fourCost: {
+                  ...echoChecker.echoes.fourCost,
+                  substatIds: ["other", "atk", null],
+                },
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(rawDocument));
+
+    const result = readStoredTrackerDocument();
+
+    expect(
+      result.document?.data.characters[0]?.echoChecker?.echoes.fourCost
+        .substatIds,
+    ).toEqual([null, "atk", null, null, null]);
   });
 
   test("preserves five priority-only substat slots in v5 documents", () => {

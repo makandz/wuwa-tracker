@@ -149,11 +149,13 @@ const FORTE_CHECKLIST_ITEM = {
 } satisfies { key: keyof Checklist; label: string };
 
 function EchoRollSelect({
+  disabled = false,
   label,
   value,
   values,
   onChange,
 }: {
+  disabled?: boolean;
   label: string;
   value: number | null;
   values: number[];
@@ -165,6 +167,7 @@ function EchoRollSelect({
       <span className="relative">
         <select
           className="h-9 w-full appearance-none rounded-md border border-app-border bg-app-bg pl-2.5 pr-7 text-xs font-semibold text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 disabled:cursor-not-allowed disabled:bg-app-raised disabled:text-app-muted-dim"
+          disabled={disabled}
           onChange={(event) =>
             onChange(event.target.value ? Number(event.target.value) : null)
           }
@@ -199,27 +202,28 @@ const ECHO_CHECKER_SUBSTAT_LABELS: Record<EchoCheckerSubstatId, string> = {
   heavy: "Heavy",
   skill: "Skill",
   liberation: "Liberation",
-  other: "Other",
 };
 
-function EchoSubstatPicker({
-  disabledStats,
+function EchoSubstatCheckboxes({
   erIgnored,
   onChange,
   options,
-  value,
+  selectedStats,
+  selectionLimit,
 }: {
-  disabledStats: Set<EchoCheckerSubstatId>;
   erIgnored: boolean;
-  onChange: (value: EchoCheckerSubstatId | null) => void;
+  onChange: (stat: EchoCheckerSubstatId, checked: boolean) => void;
   options: EchoCheckerSubstatId[];
-  value: EchoCheckerSubstatId | null;
+  selectedStats: EchoCheckerSubstatId[];
+  selectionLimit: number;
 }) {
+  const selectedStatSet = new Set(selectedStats);
+
   return (
     <div className="grid grid-cols-3 gap-1.5">
       {options.map((option) => {
-        const checked = value === option;
-        const disabled = !checked && disabledStats.has(option);
+        const checked = selectedStatSet.has(option);
+        const disabled = !checked && selectedStats.length >= selectionLimit;
         const erWarning = option === "energy-regen" && erIgnored;
 
         return (
@@ -240,7 +244,7 @@ function EchoSubstatPicker({
                 erWarning ? "accent-status-danger-border" : "accent-app-accent"
               }`}
               disabled={disabled}
-              onChange={(event) => onChange(event.target.checked ? option : null)}
+              onChange={(event) => onChange(option, event.target.checked)}
               type="checkbox"
             />
             <span className="min-w-0 truncate">{ECHO_CHECKER_SUBSTAT_LABELS[option]}</span>
@@ -248,49 +252,6 @@ function EchoSubstatPicker({
         );
       })}
     </div>
-  );
-}
-
-function EchoSubstatRow({
-  active,
-  erIgnored,
-  label,
-  onClick,
-  value,
-}: {
-  active: boolean;
-  erIgnored: boolean;
-  label: string;
-  onClick: () => void;
-  value: EchoCheckerSubstatId | null;
-}) {
-  const erWarning = value === "energy-regen" && erIgnored;
-
-  return (
-    <button
-      aria-expanded={active}
-      className={`grid h-7 w-full grid-cols-[0.75rem_minmax(0,1fr)_auto] items-center gap-1 rounded-md border px-2 text-left text-[9px] transition-colors ${
-        erWarning
-          ? "border-status-danger-border bg-status-danger-bg/45 text-status-danger-text"
-          : active
-            ? "border-app-muted-dim bg-app-raised text-app-fg"
-            : "border-app-border bg-app-bg text-app-muted hover:border-app-muted-dim hover:text-app-fg"
-      }`}
-      onClick={onClick}
-      type="button"
-    >
-      <span className="text-[8px] font-semibold text-app-muted-dim">{label}</span>
-      <span
-        className={`truncate text-[12px] font-medium leading-none ${
-          value === null ? "text-app-muted-dim" : ""
-        }`}
-      >
-        {value === null ? "—" : ECHO_CHECKER_SUBSTAT_LABELS[value]}
-      </span>
-      <span aria-hidden="true" className="text-[9px] text-app-muted-dim">
-        {active ? "^" : "v"}
-      </span>
-    </button>
   );
 }
 
@@ -497,9 +458,6 @@ function DetailScreen({
   const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const [echoModeConfirmOpen, setEchoModeConfirmOpen] = useState(false);
-  const [expandedSubstats, setExpandedSubstats] = useState<Set<string>>(
-    () => new Set(),
-  );
   const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
   const selectedWeapon = findCatalogWeapon(weapons, character.weaponId);
   const weaponDisplay = getTrackedWeaponDisplay(character, selectedWeapon);
@@ -879,14 +837,6 @@ function DetailScreen({
         <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
           <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
           <div>
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <div className="text-sm font-medium text-app-muted">Character Stats</div>
-              {echoCheckerActive ? (
-                <span className="rounded-sm border border-app-accent/55 bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-fg">
-                  Echo Tracker
-                </span>
-              ) : null}
-            </div>
             {character.noCrit ? (
               <div className="max-w-sm">
                 <Field label="Actual ER">
@@ -1069,6 +1019,15 @@ function DetailScreen({
                 echo,
                 character.noCrit,
               );
+              const selectedSubstats = substatIds.filter(
+                (stat): stat is EchoCheckerSubstatId =>
+                  stat !== null && echoSubstatOptions.includes(stat),
+              );
+              const critStatCount = character.noCrit
+                ? 0
+                : Number(echo.critRate !== null) + Number(echo.critDmg !== null);
+              const selectionLimit = 5 - critStatCount;
+              const totalStatCount = selectedSubstats.length + critStatCount;
               const erIgnored = ignoredErEchoKeys.has(item.key);
               const echoComplete = isEchoCheckerEchoComplete(
                 echo,
@@ -1114,12 +1073,14 @@ function DetailScreen({
                   {!character.noCrit ? (
                     <>
                       <EchoRollSelect
+                        disabled={echo.critRate === null && totalStatCount >= 5}
                         label="CR"
                         onChange={(critRate) => patchEchoCheckerEcho(item.key, { critRate })}
                         value={echo.critRate}
                         values={ECHO_CRIT_RATE_VALUES}
                       />
                       <EchoRollSelect
+                        disabled={echo.critDmg === null && totalStatCount >= 5}
                         label="CD"
                         onChange={(critDmg) => patchEchoCheckerEcho(item.key, { critDmg })}
                         value={echo.critDmg}
@@ -1127,67 +1088,42 @@ function DetailScreen({
                       />
                     </>
                   ) : null}
-                  <div className="grid gap-1.5 border-t border-app-border/70 pt-2">
-                    <div className="text-[11px] font-semibold text-app-muted-subtle">
-                      Substats
+                  {echoSubstatOptions.length > 0 ? (
+                    <div className="grid gap-1.5 border-t border-app-border/70 pt-2">
+                      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-app-muted-subtle">
+                        <span>Substats</span>
+                        <span>{totalStatCount}/5</span>
+                      </div>
+                      <EchoSubstatCheckboxes
+                        erIgnored={erIgnored}
+                        onChange={(stat, checked) => {
+                          const nextSelectedStats = checked
+                            ? [...selectedSubstats, stat]
+                            : selectedSubstats.filter(
+                                (selectedStat) => selectedStat !== stat,
+                              );
+
+                          if (nextSelectedStats.length > selectionLimit) {
+                            return;
+                          }
+
+                          const nextSubstats = Array.from(
+                            { length: 5 },
+                            (_, index) => nextSelectedStats[index] ?? null,
+                          ) as EchoCheckerSubstatSlots;
+
+                          patchEchoCheckerEcho(item.key, {
+                            [character.noCrit
+                              ? "prioritySubstatIds"
+                              : "substatIds"]: nextSubstats,
+                          });
+                        }}
+                        options={echoSubstatOptions}
+                        selectedStats={selectedSubstats}
+                        selectionLimit={selectionLimit}
+                      />
                     </div>
-                    {substatIds.map((substatId, slotIndex) => {
-                      const disabledStats = new Set(
-                        substatIds.filter(
-                          (stat, otherSlotIndex): stat is EchoCheckerSubstatId =>
-                            otherSlotIndex !== slotIndex &&
-                            stat !== null &&
-                            stat !== "other",
-                          ),
-                      );
-                      const pickerKey = `${character.id}:${item.key}:${slotIndex}`;
-                      const pickerActive = expandedSubstats.has(pickerKey);
-
-                      return (
-                        <div className="grid gap-1.5" key={slotIndex}>
-                          <EchoSubstatRow
-                            active={pickerActive}
-                            erIgnored={erIgnored}
-                            label={String(slotIndex + 1)}
-                            onClick={() => {
-                              setExpandedSubstats((current) => {
-                                const next = new Set(current);
-
-                                if (next.has(pickerKey)) {
-                                  next.delete(pickerKey);
-                                } else {
-                                  next.add(pickerKey);
-                                }
-
-                                return next;
-                              });
-                            }}
-                            value={substatId}
-                          />
-                          {pickerActive ? (
-                            <EchoSubstatPicker
-                              disabledStats={disabledStats}
-                              erIgnored={erIgnored}
-                              onChange={(nextSubstat) => {
-                                const nextSubstats = [
-                                  ...substatIds,
-                                ] as EchoCheckerSubstatSlots;
-
-                                nextSubstats[slotIndex] = nextSubstat;
-                                patchEchoCheckerEcho(item.key, {
-                                  [character.noCrit
-                                    ? "prioritySubstatIds"
-                                    : "substatIds"]: nextSubstats,
-                                });
-                              }}
-                              options={echoSubstatOptions}
-                              value={substatId}
-                            />
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  ) : null}
                   <div
                     className={`grid gap-2 border-t border-app-border/70 pt-2 text-xs ${
                       character.noCrit

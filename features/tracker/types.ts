@@ -83,7 +83,7 @@ export type EchoSubstatId =
   | "skill"
   | "liberation";
 
-export type EchoCheckerSubstatId = EchoSubstatId | "other";
+export type EchoCheckerSubstatId = EchoSubstatId;
 
 export type EchoCheckerSubstatSlots = (EchoCheckerSubstatId | null)[];
 
