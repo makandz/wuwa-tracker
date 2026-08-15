@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useRef, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -50,6 +50,7 @@ import {
   type MakanEchoEstimate,
 } from "@/features/tracker/echo-estimates";
 import { getCharacterRotations } from "@/features/tracker/rotations";
+import { getCharacterSubstatPriority } from "@/features/tracker/substat-priorities";
 import {
   FourCostMainControl,
   RoleSelectionControl,
@@ -255,84 +256,6 @@ function EchoSubstatCheckboxes({
   );
 }
 
-function AutoGrowTextarea({
-  id,
-  parsing = false,
-  onChange,
-  placeholder,
-  value,
-}: {
-  id: string;
-  parsing?: boolean;
-  onChange: (value: string) => void;
-  placeholder: string;
-  value: string;
-}) {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  useEffect(() => {
-    const textarea = textareaRef.current;
-
-    if (!textarea) {
-      return;
-    }
-
-    textarea.style.height = "auto";
-    textarea.style.height = `${textarea.scrollHeight}px`;
-  }, [value]);
-
-  return (
-    <textarea
-      className={`substat-priority-textarea min-h-11 resize-none overflow-hidden rounded-md px-3 py-2.5 text-sm font-medium leading-5 text-app-fg outline-none transition-colors placeholder:text-app-muted-dim focus:ring-2 focus:ring-app-accent/20 ${
-        parsing ? "substat-priority-parsing" : ""
-      }`}
-      id={id}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-      ref={textareaRef}
-      rows={1}
-      value={value}
-    />
-  );
-}
-
-function HelpTooltip({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="group relative inline-flex">
-      <button
-        aria-label="Substat priority help"
-        className="grid h-5 w-5 cursor-help place-items-center rounded-md border border-app-border bg-app-bg text-[11px] font-bold text-app-muted-subtle outline-none transition-colors group-hover:border-app-accent group-hover:text-app-fg focus:border-app-accent focus:text-app-fg focus:ring-2 focus:ring-app-accent/20"
-        type="button"
-      >
-        ?
-      </button>
-      <span
-        className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 w-64 -translate-x-1/2 rounded-md border border-app-border bg-app-raised px-3 py-2 text-xs font-medium leading-5 text-app-muted opacity-0 shadow-lg shadow-black/25 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-        role="tooltip"
-      >
-        {children}
-      </span>
-    </span>
-  );
-}
-
-function useDebouncedValue<T>(value: T, delayMs: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedValue(value);
-    }, delayMs);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [delayMs, value]);
-
-  return {
-    debouncedValue,
-    isDebouncing: !Object.is(value, debouncedValue),
-  };
-}
-
 const echoEstimateNumberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 1,
 });
@@ -470,27 +393,23 @@ function DetailScreen({
   const prydwenUrl = getPrydwenCharacterUrl(characterDisplay.name);
   const tethysUrl = getTethysCharacterUrl(character.characterId);
   const defaultPlan = getDefaultEchoCheckerPlan(character.roles);
-  const substatPriorityValue =
-    character.substatPriority ?? character.echoChecker?.substatPriority ?? "";
-  const {
-    debouncedValue: debouncedSubstatPriority,
-    isDebouncing: substatPriorityParsing,
-  } = useDebouncedValue(substatPriorityValue, 3000);
+  const substatPriority = getCharacterSubstatPriority(character.characterId);
+  const substatPriorityValue = substatPriority ?? "";
   const makanEchoEstimate = useMemo(
     () =>
-      getMakanEchoEstimate({
-        substatPriority: debouncedSubstatPriority,
-      }),
-    [debouncedSubstatPriority],
+      substatPriority === null
+        ? null
+        : getMakanEchoEstimate({ substatPriority }),
+    [substatPriority],
   );
   const echoSubstatOptions = useMemo(
-    () => getEchoCheckerSubstatOptions(debouncedSubstatPriority, character.noCrit),
-    [character.noCrit, debouncedSubstatPriority],
+    () => getEchoCheckerSubstatOptions(substatPriorityValue, character.noCrit),
+    [character.noCrit, substatPriorityValue],
   );
   const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
 
   useEffect(() => {
-    if (!character.echoChecker) {
+    if (!character.echoChecker || substatPriority === null) {
       return;
     }
 
@@ -509,7 +428,7 @@ function DetailScreen({
         );
         const nextSubstats = reconcileEchoCheckerSubstats(
           echo,
-          debouncedSubstatPriority,
+          substatPriority,
           character.noCrit,
         );
 
@@ -541,7 +460,7 @@ function DetailScreen({
       },
       updatedAt: new Date().toISOString(),
     });
-  }, [character, debouncedSubstatPriority, onUpdate]);
+  }, [character, onUpdate, substatPriority]);
 
   const planOptions = ECHO_CHECKER_PLAN_OPTIONS.map((option) => ({
     ...option,
@@ -628,10 +547,6 @@ function DetailScreen({
         },
       },
     });
-  }
-
-  function patchSubstatPriority(substatPriority: string) {
-    patchCharacter({ substatPriority });
   }
 
   function toggleEchoMode() {
@@ -960,23 +875,18 @@ function DetailScreen({
 
       <section className="grid gap-3 rounded-md border border-app-border bg-app-surface/70 p-3">
         <div className="grid gap-2 text-sm font-semibold text-app-fg">
-          <div className="flex items-center gap-2">
-            <label htmlFor="character-substat-priority">Substat Priority</label>
-            <HelpTooltip>
-              Paste or type the character&apos;s target substat priority here. This also feeds the
-              Makan estimate below.
-            </HelpTooltip>
-          </div>
-          <AutoGrowTextarea
+          <div>Substat Priority</div>
+          <div
+            className="min-h-11 rounded-md border border-app-border bg-app-bg px-3 py-2.5 text-sm font-medium leading-5 text-app-fg"
             id="character-substat-priority"
-            onChange={patchSubstatPriority}
-            parsing={substatPriorityParsing}
-            placeholder="Energy Regen (Until Satisfied) > CRIT DMG = CRIT Rate > ATK% > Liberation DMG% > ATK"
-            value={substatPriorityValue}
-          />
-          <span className="text-xs font-medium leading-5 text-app-muted-dim">
-            Saved with this character and parsed after typing pauses.
-          </span>
+          >
+            {substatPriorityValue}
+          </div>
+          {substatPriority === null ? (
+            <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs font-medium leading-5 text-status-warn-text">
+              Substat priority is not available for this character.
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -1029,24 +939,32 @@ function DetailScreen({
               const selectionLimit = 5 - critStatCount;
               const totalStatCount = selectedSubstats.length + critStatCount;
               const erIgnored = ignoredErEchoKeys.has(item.key);
-              const echoComplete = isEchoCheckerEchoComplete(
-                echo,
-                echoChecker.plan,
-                erIgnored,
-                character.noCrit,
-              );
+              const echoComplete =
+                substatPriority !== null &&
+                isEchoCheckerEchoComplete(
+                  echo,
+                  echoChecker.plan,
+                  erIgnored,
+                  character.noCrit,
+                );
               const critValue = getEchoCheckerCritValue(echo);
-              const targetStatCount = getEchoCheckerTargetStatCount(
-                echo,
-                erIgnored,
-                character.noCrit,
-              );
-              const echoScore = getEchoCheckerScore(
-                echo,
-                substatPriorityValue,
-                erIgnored,
-                character.noCrit,
-              );
+              const targetStatCount =
+                substatPriority === null
+                  ? 0
+                  : getEchoCheckerTargetStatCount(
+                      echo,
+                      erIgnored,
+                      character.noCrit,
+                    );
+              const echoScore =
+                substatPriority === null
+                  ? null
+                  : getEchoCheckerScore(
+                      echo,
+                      substatPriority,
+                      erIgnored,
+                      character.noCrit,
+                    );
               const echoScoreGrade = echoScore === null ? null : getRatingGrade(echoScore);
 
               return (
@@ -1226,7 +1144,9 @@ function DetailScreen({
         </Modal>
       ) : null}
 
-      {character.noCrit ? null : <EchoEstimateSection estimate={makanEchoEstimate} />}
+      {character.noCrit || makanEchoEstimate === null ? null : (
+        <EchoEstimateSection estimate={makanEchoEstimate} />
+      )}
 
       <CharacterRotationsSection rotations={rotations} />
     </main>

@@ -25,7 +25,7 @@ function makeErCharacter(
 ): TrackedCharacter {
   return {
     id: "character",
-    characterId: 1,
+    characterId: 1202,
     characterName: "Test Character",
     roles: ["Hybrid"],
     weaponId: null,
@@ -303,6 +303,20 @@ describe("echo substat priorities", () => {
     expect(getEffectiveChecklist(character)).toMatchObject({
       fourCost: false,
       threeCostA: true,
+    });
+  });
+
+  test("does not fall back to a legacy stored priority when curated data is missing", () => {
+    expect(
+      getRatings(
+        makeErCharacter({
+          characterId: 999999,
+          substatPriority: priority,
+        }),
+      ),
+    ).toMatchObject({
+      buildScore: null,
+      issue: "",
     });
   });
 
