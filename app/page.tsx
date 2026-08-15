@@ -432,7 +432,7 @@ function Dashboard({
                       Build{" "}
                       {formatRoleSummaryValue(
                         group.summary.averageBuildScore,
-                        group.summary.critCharacterCount,
+                        group.summary.count,
                       )}
                     </span>
                   </div>
@@ -582,13 +582,8 @@ function DashboardListCard({
           </div>
         </div>
         {character.noCrit ? (
-          <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
-            <div className="text-[10px] font-medium text-app-muted-subtle">
-              Rating
-            </div>
-            <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
-              No crit
-            </div>
+          <div className="grid grid-cols-1 gap-1.5">
+            <RatingBlock label="Build" value={ratings.buildScore} />
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-1.5">
@@ -736,18 +731,7 @@ function DashboardGridCard({
       </div>
 
       <div className="grid grid-cols-2 gap-1.5">
-        {character.noCrit ? (
-          <div className="rounded-md border border-app-border/80 bg-app-surface p-2">
-            <div className="text-[10px] font-medium text-app-muted-subtle">
-              Rating
-            </div>
-            <div className="mt-0.5 text-sm font-bold leading-none text-app-muted">
-              No crit
-            </div>
-          </div>
-        ) : (
-          <RatingBlock label="Build" value={ratings.buildScore} />
-        )}
+        <RatingBlock label="Build" value={ratings.buildScore} />
         <div
           className={`rounded-md border p-2 ${
             erBelowTarget

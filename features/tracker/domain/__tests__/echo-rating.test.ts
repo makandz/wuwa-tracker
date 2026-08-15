@@ -8,6 +8,8 @@ import {
   getEchoCheckerSubstatOptions,
   getEffectiveChecklist,
   getIgnoredErEchoKeys,
+  getRatingGrade,
+  getRatings,
   isCharacterErOvercapped,
   isEchoCheckerEchoComplete,
   reconcileEchoCheckerSubstats,
@@ -109,6 +111,22 @@ describe("echo substat priorities", () => {
     ]);
   });
 
+  test("builds priority-only options with crit and ER in parsed order", () => {
+    expect(
+      getEchoCheckerSubstatOptions(
+        "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK",
+        true,
+      ),
+    ).toEqual([
+      "energy-regen",
+      "crit-rate",
+      "crit-dmg",
+      "atk-percent",
+      "atk",
+      "other",
+    ]);
+  });
+
   test("uses fixed boosts for priority tiers and can ignore an ER roll", () => {
     expect(Object.fromEntries(getEchoCheckerSubstatBoosts(priority, false))).toMatchObject({
       "energy-regen": 0.11,
@@ -153,6 +171,101 @@ describe("echo substat priorities", () => {
     expect(getEchoCheckerScore(prioritizedEcho, priority)).toBe(1.16);
     expect(getEchoCheckerScore(erEcho, priority, false)).toBe(1.03);
     expect(getEchoCheckerScore(erEcho, priority, true)).toBe(0.92);
+  });
+
+  test("grades non-crit echoes by prioritized stat presence instead of roll values", () => {
+    const supportPriority =
+      "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK";
+    const echo: EchoCheckerEcho = {
+      critRate: 10.5,
+      critDmg: 21,
+      prioritySubstatIds: [
+        "energy-regen",
+        "crit-rate",
+        "crit-dmg",
+        null,
+        null,
+      ],
+    };
+
+    expect(getEchoCheckerScore(echo, supportPriority, false, true)).toBe(0.88);
+    expect(
+      getEchoCheckerScore(
+        { ...echo, critRate: 6.3, critDmg: 12.6 },
+        supportPriority,
+        false,
+        true,
+      ),
+    ).toBe(0.88);
+    expect(getEchoCheckerScore(echo, supportPriority, true, true)).toBe(0.58);
+    expect(isEchoCheckerEchoComplete(echo, "HybridSupport", false, true)).toBe(true);
+    expect(isEchoCheckerEchoComplete(echo, "HybridSupport", true, true)).toBe(false);
+
+    const fullyTracked = makeErCharacter({
+      noCrit: true,
+      actualEr: 100,
+      substatPriority: supportPriority,
+    });
+
+    for (const trackedEcho of Object.values(fullyTracked.echoChecker!.echoes)) {
+      trackedEcho.critRate = null;
+      trackedEcho.critDmg = null;
+      trackedEcho.prioritySubstatIds = [
+        "energy-regen",
+        "crit-rate",
+        "crit-dmg",
+        null,
+        null,
+      ];
+    }
+
+    expect(getRatings(fullyTracked)).toMatchObject({
+      crRating: null,
+      cdRating: null,
+      critScore: null,
+      buildScore: 0.88,
+      issue: "",
+    });
+  });
+
+  test("rates empty non-crit echoes as zero and five selected stats as S+", () => {
+    const supportPriority =
+      "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK";
+    const emptyEcho: EchoCheckerEcho = {
+      critRate: null,
+      critDmg: null,
+      prioritySubstatIds: [null, null, null, null, null],
+    };
+    const fullEcho: EchoCheckerEcho = {
+      critRate: null,
+      critDmg: null,
+      prioritySubstatIds: [
+        "energy-regen",
+        "crit-rate",
+        "crit-dmg",
+        "atk-percent",
+        "atk",
+      ],
+    };
+    const fullScore = getEchoCheckerScore(
+      fullEcho,
+      supportPriority,
+      false,
+      true,
+    );
+
+    expect(getEchoCheckerScore(emptyEcho, supportPriority, false, true)).toBe(0);
+    expect(fullScore).toBe(1.41);
+    expect(getRatingGrade(fullScore!)).toBe("S+");
+    expect(
+      getRatings(
+        makeErCharacter({
+          noCrit: true,
+          actualEr: 100,
+          substatPriority: supportPriority,
+        }),
+      ),
+    ).toMatchObject({ buildScore: 0, issue: "" });
   });
 
   test("counts one redundant roll per full 10.25 ER above the target", () => {

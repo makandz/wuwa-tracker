@@ -51,8 +51,7 @@ export function getDashboardStats({
   weaponInventory: WeaponInventoryItem[];
 }) {
   const completeCount = characters.filter(isComplete).length;
-  const critScoredCharacters = characters.filter((character) => !character.noCrit);
-  const validBuildScores = critScoredCharacters
+  const validBuildScores = characters
     .map((character) => getRatings(character).buildScore)
     .filter((score): score is number => score !== null);
   const averageBuildScore =
@@ -64,9 +63,7 @@ export function getDashboardStats({
       ? "0.00"
       : averageBuildScore !== null
         ? formatRatingValue(averageBuildScore)
-        : critScoredCharacters.length === 0
-          ? "No crit"
-          : formatRatingValue(null);
+        : formatRatingValue(null);
   const totalWeaponCopies = weaponInventory.reduce((sum, item) => sum + item.count, 0);
 
   return {

@@ -40,6 +40,8 @@ const echoCheckerSubstatIdSchema = z.union([
   z.literal("heavy"),
   z.literal("skill"),
   z.literal("liberation"),
+  z.literal("crit-rate"),
+  z.literal("crit-dmg"),
   z.literal("other"),
 ]);
 const echoCheckerSubstatSlotSchema = echoCheckerSubstatIdSchema.nullable();
@@ -49,13 +51,8 @@ const echoChecklistKeySchemas = ECHO_CHECKLIST_ITEMS.reduce(
     [item.key]: z.object({
       critRate: finiteNumberSchema.nullable(),
       critDmg: finiteNumberSchema.nullable(),
-      substatIds: z
-        .tuple([
-          echoCheckerSubstatSlotSchema,
-          echoCheckerSubstatSlotSchema,
-          echoCheckerSubstatSlotSchema,
-        ])
-        .optional(),
+      substatIds: z.array(echoCheckerSubstatSlotSchema).length(3).optional(),
+      prioritySubstatIds: z.array(echoCheckerSubstatSlotSchema).length(5).optional(),
       hasRelevantStat: z.boolean().optional(),
       hasSecondRelevantStat: z.boolean().optional(),
       hasThirdRelevantStat: z.boolean().optional(),

@@ -202,6 +202,9 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
   const rawSubstatIds = Array.isArray(echo.substatIds)
     ? echo.substatIds
     : null;
+  const rawPrioritySubstatIds = Array.isArray(echo.prioritySubstatIds)
+    ? echo.prioritySubstatIds
+    : null;
   const allowedSubstatIds = new Set<EchoCheckerSubstatId>([
     "atk",
     "hp",
@@ -214,14 +217,18 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     "heavy",
     "skill",
     "liberation",
+    "crit-rate",
+    "crit-dmg",
     "other",
   ]);
+  const normalizeSubstatIds = (stats: unknown[]) =>
+    stats.map((stat) =>
+      typeof stat === "string" && allowedSubstatIds.has(stat as EchoCheckerSubstatId)
+        ? stat as EchoCheckerSubstatId
+        : null,
+    ) as EchoCheckerSubstatSlots;
   const substatIds = rawSubstatIds?.length === 3
-    ? rawSubstatIds.map((stat) =>
-        typeof stat === "string" && allowedSubstatIds.has(stat as EchoCheckerSubstatId)
-          ? stat as EchoCheckerSubstatId
-          : null,
-      ) as EchoCheckerSubstatSlots
+    ? normalizeSubstatIds(rawSubstatIds)
     : [
         echo.hasRelevantStat === true ? "other" : null,
         echo.hasSecondRelevantStat === true ? "other" : null,
@@ -232,6 +239,9 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     critRate: typeof echo.critRate === "number" ? echo.critRate : null,
     critDmg: typeof echo.critDmg === "number" ? echo.critDmg : null,
     substatIds,
+    ...(rawPrioritySubstatIds?.length === 5
+      ? { prioritySubstatIds: normalizeSubstatIds(rawPrioritySubstatIds) }
+      : {}),
   };
 }
 

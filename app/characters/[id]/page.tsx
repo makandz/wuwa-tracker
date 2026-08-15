@@ -186,6 +186,8 @@ function EchoRollSelect({
 }
 
 const ECHO_CHECKER_SUBSTAT_LABELS: Record<EchoCheckerSubstatId, string> = {
+  "crit-rate": "CR",
+  "crit-dmg": "CD",
   atk: "ATK",
   hp: "HP",
   def: "DEF",
@@ -524,8 +526,8 @@ function DetailScreen({
     [debouncedSubstatPriority],
   );
   const echoSubstatOptions = useMemo(
-    () => getEchoCheckerSubstatOptions(debouncedSubstatPriority),
-    [debouncedSubstatPriority],
+    () => getEchoCheckerSubstatOptions(debouncedSubstatPriority, character.noCrit),
+    [character.noCrit, debouncedSubstatPriority],
   );
   const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
 
@@ -543,10 +545,14 @@ function DetailScreen({
           return nextEchoes;
         }
 
-        const currentSubstats = getEchoCheckerSubstatIds(echo);
+        const currentSubstats = getEchoCheckerSubstatIds(
+          echo,
+          character.noCrit,
+        );
         const nextSubstats = reconcileEchoCheckerSubstats(
           echo,
           debouncedSubstatPriority,
+          character.noCrit,
         );
 
         if (nextSubstats.some((stat, index) => stat !== currentSubstats[index])) {
@@ -557,7 +563,8 @@ function DetailScreen({
           ...nextEchoes,
           [item.key]: {
             ...echo,
-            substatIds: nextSubstats,
+            [character.noCrit ? "prioritySubstatIds" : "substatIds"]:
+              nextSubstats,
           },
         };
       },
@@ -621,10 +628,6 @@ function DetailScreen({
   }
 
   function enableEchoChecker() {
-    if (character.noCrit) {
-      return;
-    }
-
     patchCharacter({
       echoChecker: character.echoChecker
         ? {
@@ -636,11 +639,7 @@ function DetailScreen({
   }
 
   function requestEnableEchoChecker() {
-    if (character.noCrit) {
-      return;
-    }
-
-    if (character.critRate > 0 || character.critDmg > 0) {
+    if (!character.noCrit && (character.critRate > 0 || character.critDmg > 0)) {
       setEchoModeConfirmOpen(true);
       return;
     }
@@ -763,11 +762,18 @@ function DetailScreen({
       ) : null}
 
       {character.noCrit ? (
-        <section className="rounded-md border border-app-border/80 bg-app-surface p-3">
-          <div className="text-[11px] font-medium text-app-muted-subtle">
-            Crit Rating
-          </div>
-          <div className="mt-1 text-lg font-semibold leading-none text-app-muted">No crit</div>
+        <section className="max-w-sm">
+          <RatingSummaryBlock
+            label="Build Score"
+            tone={
+              ratings.buildScore === null
+                ? "warn"
+                : ratings.buildScore >= 1
+                  ? "good"
+                  : "neutral"
+            }
+            value={ratings.buildScore}
+          />
         </section>
       ) : (
         <section className="grid gap-3 sm:grid-cols-3">
@@ -875,7 +881,7 @@ function DetailScreen({
           <div>
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <div className="text-sm font-medium text-app-muted">Character Stats</div>
-              {echoCheckerActive && !character.noCrit ? (
+              {echoCheckerActive ? (
                 <span className="rounded-sm border border-app-accent/55 bg-app-accent-soft px-2 py-0.5 text-[11px] font-bold text-app-fg">
                   Echo Tracker
                 </span>
@@ -920,7 +926,9 @@ function DetailScreen({
             )}
             <p className="mt-2 text-xs leading-5 text-app-muted-dim">
               {character.noCrit
-                ? "Use ER from the main character screen."
+                ? echoCheckerActive
+                  ? "Build Score is calculated from the prioritized substats selected in Echo Tracker."
+                  : "Use ER from the main character screen."
                 : echoCheckerActive
                   ? "Crit Rate and Crit DMG are calculated from Echo Tracker rolls plus the selected 4 cost main stat."
                   : "Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main character screen."}
@@ -976,31 +984,15 @@ function DetailScreen({
                 </div>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-app-border/70 pt-3">
-                {character.noCrit ? (
-                  <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs font-medium text-status-warn-text">
-                    Echo Tracker needs a crit-focused 4 cost setup.
-                  </div>
-                ) : (
-                  <div className="text-xs font-medium text-app-muted-dim">
-                    {echoCheckerActive
-                      ? "Echo slots are controlled by the checker."
-                      : "Manual echo tracking is active."}
-                  </div>
-                )}
+                <div className="text-xs font-medium text-app-muted-dim">
+                  {echoCheckerActive
+                    ? "Echo slots are controlled by the checker."
+                    : "Manual echo tracking is active."}
+                </div>
                 <div className="flex flex-wrap gap-2">
-                  {character.noCrit ? (
-                    <button
-                      className="h-8 cursor-not-allowed rounded-md border border-app-border bg-app-surface px-3 text-xs font-semibold text-app-muted-dim opacity-70"
-                      disabled
-                      type="button"
-                    >
-                      Echo Mode
-                    </button>
-                  ) : (
-                    <TextButton compact onClick={toggleEchoMode}>
-                      {echoCheckerActive ? "Manual Mode" : "Echo Mode"}
-                    </TextButton>
-                  )}
+                  <TextButton compact onClick={toggleEchoMode}>
+                    {echoCheckerActive ? "Manual Mode" : "Echo Mode"}
+                  </TextButton>
                 </div>
               </div>
             </div>
@@ -1049,39 +1041,52 @@ function DetailScreen({
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-semibold text-app-fg">Echo Tracker</h2>
               <p className="mt-1 text-sm text-app-muted-subtle">
-                {echoChecker.plan === "DPS"
+                {character.noCrit
+                  ? "Priority grading: select up to five useful substats. Roll values are not graded."
+                  : echoChecker.plan === "DPS"
                   ? "DPS: double crit, then either 30 CV plus a useful substat or two useful substats. Echo Score weighs selected substats by priority."
                   : "Hybrid/Support: double crit plus one useful substat on each echo. Echo Score weighs selected substats by priority."}
               </p>
             </div>
-            <div className="w-full sm:w-64">
-              <SelectInput<EchoCheckerPlan>
-                label="Checker Plan"
-                onChange={(plan) => patchEchoChecker({ enabled: true, plan })}
-                options={planOptions}
-                selectClassName={planSelectClassName}
-                showLabel={false}
-                value={echoChecker.plan}
-              />
-            </div>
+            {!character.noCrit ? (
+              <div className="w-full sm:w-64">
+                <SelectInput<EchoCheckerPlan>
+                  label="Checker Plan"
+                  onChange={(plan) => patchEchoChecker({ enabled: true, plan })}
+                  options={planOptions}
+                  selectClassName={planSelectClassName}
+                  showLabel={false}
+                  value={echoChecker.plan}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {ECHO_CHECKLIST_ITEMS.map((item) => {
               const echo = getEchoCheckerEcho(character, item.key);
-              const substatIds = getEchoCheckerSubstatIds(echo);
+              const substatIds = getEchoCheckerSubstatIds(
+                echo,
+                character.noCrit,
+              );
               const erIgnored = ignoredErEchoKeys.has(item.key);
               const echoComplete = isEchoCheckerEchoComplete(
                 echo,
                 echoChecker.plan,
                 erIgnored,
+                character.noCrit,
               );
               const critValue = getEchoCheckerCritValue(echo);
-              const targetStatCount = getEchoCheckerTargetStatCount(echo, erIgnored);
+              const targetStatCount = getEchoCheckerTargetStatCount(
+                echo,
+                erIgnored,
+                character.noCrit,
+              );
               const echoScore = getEchoCheckerScore(
                 echo,
                 substatPriorityValue,
                 erIgnored,
+                character.noCrit,
               );
               const echoScoreGrade = echoScore === null ? null : getRatingGrade(echoScore);
 
@@ -1106,18 +1111,22 @@ function DetailScreen({
                       {echoComplete ? "Done" : "Open"}
                     </span>
                   </div>
-                  <EchoRollSelect
-                    label="CR"
-                    onChange={(critRate) => patchEchoCheckerEcho(item.key, { critRate })}
-                    value={echo.critRate}
-                    values={ECHO_CRIT_RATE_VALUES}
-                  />
-                  <EchoRollSelect
-                    label="CD"
-                    onChange={(critDmg) => patchEchoCheckerEcho(item.key, { critDmg })}
-                    value={echo.critDmg}
-                    values={ECHO_CRIT_DMG_VALUES}
-                  />
+                  {!character.noCrit ? (
+                    <>
+                      <EchoRollSelect
+                        label="CR"
+                        onChange={(critRate) => patchEchoCheckerEcho(item.key, { critRate })}
+                        value={echo.critRate}
+                        values={ECHO_CRIT_RATE_VALUES}
+                      />
+                      <EchoRollSelect
+                        label="CD"
+                        onChange={(critDmg) => patchEchoCheckerEcho(item.key, { critDmg })}
+                        value={echo.critDmg}
+                        values={ECHO_CRIT_DMG_VALUES}
+                      />
+                    </>
+                  ) : null}
                   <div className="grid gap-1.5 border-t border-app-border/70 pt-2">
                     <div className="text-[11px] font-semibold text-app-muted-subtle">
                       Substats
@@ -1166,7 +1175,9 @@ function DetailScreen({
 
                                 nextSubstats[slotIndex] = nextSubstat;
                                 patchEchoCheckerEcho(item.key, {
-                                  substatIds: nextSubstats,
+                                  [character.noCrit
+                                    ? "prioritySubstatIds"
+                                    : "substatIds"]: nextSubstats,
                                 });
                               }}
                               options={echoSubstatOptions}
@@ -1177,7 +1188,13 @@ function DetailScreen({
                       );
                     })}
                   </div>
-                  <div className="grid grid-cols-[1.25fr_0.9fr_0.9fr] gap-2 border-t border-app-border/70 pt-2 text-xs">
+                  <div
+                    className={`grid gap-2 border-t border-app-border/70 pt-2 text-xs ${
+                      character.noCrit
+                        ? "grid-cols-2"
+                        : "grid-cols-[1.25fr_0.9fr_0.9fr]"
+                    }`}
+                  >
                     <div className="min-w-0">
                       <div className="text-[10px] font-medium text-app-muted-subtle">Score</div>
                       <div className="mt-1 flex min-h-5 items-center gap-1.5">
@@ -1199,16 +1216,18 @@ function DetailScreen({
                         </span>
                       </div>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-medium text-app-muted-subtle">CV</div>
-                      <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
-                        {critValue === null ? "-" : critValue}
+                    {!character.noCrit ? (
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-medium text-app-muted-subtle">CV</div>
+                        <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
+                          {critValue === null ? "-" : critValue}
+                        </div>
                       </div>
-                    </div>
+                    ) : null}
                     <div className="min-w-0">
                       <div className="text-[10px] font-medium text-app-muted-subtle">Stats</div>
                       <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
-                        {targetStatCount}/3
+                        {targetStatCount}/{character.noCrit ? 5 : 3}
                       </div>
                     </div>
                   </div>
@@ -1227,19 +1246,17 @@ function DetailScreen({
             <div className="grid max-w-sm gap-3 rounded-md border border-app-border bg-app-surface px-4 py-4 text-center shadow-lg shadow-black/20">
               <div>
                 <h2 className="text-base font-semibold text-app-fg">
-                  {character.noCrit ? "Echo Tracker unavailable" : "Enable Echo Tracker"}
+                  Enable Echo Tracker
                 </h2>
                 <p className="mt-1 text-sm leading-5 text-app-muted-subtle">
                   {character.noCrit
-                    ? "Echo Tracker needs a crit-focused 4 cost setup."
+                    ? "Enable Echo Tracker to select prioritized substats and use them for grading and completion."
                     : "Enable Echo Tracker to edit echo rolls and use them for completion."}
                 </p>
               </div>
-              {character.noCrit ? null : (
-                <TextButton onClick={requestEnableEchoChecker} variant="primary">
-                  Enable Echo Tracker
-                </TextButton>
-              )}
+              <TextButton onClick={requestEnableEchoChecker} variant="primary">
+                Enable Echo Tracker
+              </TextButton>
             </div>
           </div>
         ) : null}

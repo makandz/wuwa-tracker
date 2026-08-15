@@ -190,7 +190,7 @@ describe("dashboard selectors", () => {
     ]);
   });
 
-  test("shows no-crit and empty-state average build labels", () => {
+  test("shows missing-score and empty-state average build labels", () => {
     expect(
       getDashboardStats({
         characters: [],
@@ -205,7 +205,7 @@ describe("dashboard selectors", () => {
         storageVersion: null,
         weaponInventory: [],
       }).items.map((item) => [item.label, item.value]),
-    ).toContainEqual(["Avg build", "No crit"]);
+    ).toContainEqual(["Avg build", "Check stats"]);
   });
 
   test("filters visible characters by query, weapon state, completion, and attention", () => {

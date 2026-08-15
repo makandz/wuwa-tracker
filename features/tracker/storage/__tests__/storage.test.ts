@@ -534,6 +534,40 @@ describe("tracker storage", () => {
     ).toEqual(["other", "other", null]);
   });
 
+  test("preserves five priority-only substat slots in v5 documents", () => {
+    const echoChecker = makeEchoChecker();
+
+    echoChecker.echoes.fourCost.prioritySubstatIds = [
+      "energy-regen",
+      "crit-rate",
+      "crit-dmg",
+      "atk-percent",
+      null,
+    ];
+    const document = createTrackerDocumentV5({
+      characters: [makeCharacter({ noCrit: true, echoChecker })],
+      weaponInventory: makeWeaponInventory(),
+      matrixTeams: makeMatrixTeams(),
+      preferences: DEFAULT_TRACKER_PREFERENCES,
+    });
+
+    localStorage.setItem(
+      TRACKER_DOCUMENT_STORAGE_KEY,
+      JSON.stringify(document),
+    );
+
+    expect(
+      readStoredTrackerDocument().document?.data.characters[0]?.echoChecker
+        ?.echoes.fourCost.prioritySubstatIds,
+    ).toEqual([
+      "energy-regen",
+      "crit-rate",
+      "crit-dmg",
+      "atk-percent",
+      null,
+    ]);
+  });
+
   test("recovers a corrupt current document from the last-known-good document", () => {
     const lastKnownGood = createTrackerDocumentV5({
       characters: [makeCharacter()],
