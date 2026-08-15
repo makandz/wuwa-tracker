@@ -4,6 +4,7 @@ import {
   ROLES,
 } from "../constants";
 import { parseEchoPrioritySubstats } from "../echo-estimates";
+import { getCharacterSubstatPriority } from "../substat-priorities";
 import {
   formatPercent,
   formatPercentInput,
@@ -297,6 +298,12 @@ export function getEchoCheckerScore(
 }
 
 export function getIgnoredErEchoKeys(character: TrackedCharacter) {
+  const substatPriority = getCharacterSubstatPriority(character.characterId);
+
+  if (substatPriority === null) {
+    return new Set<EchoChecklistKey>();
+  }
+
   const redundantRollCount = getCharacterRedundantErRollCount(character);
 
   if (redundantRollCount === 0) {
@@ -321,7 +328,7 @@ export function getIgnoredErEchoKeys(character: TrackedCharacter) {
         score:
           getEchoCheckerScore(
             echo,
-            character.substatPriority,
+            substatPriority,
             false,
             character.noCrit,
           ) ?? 0,
@@ -337,11 +344,17 @@ export function getIgnoredErEchoKeys(character: TrackedCharacter) {
 }
 
 function getEchoCheckerBuildScore(character: TrackedCharacter) {
+  const substatPriority = getCharacterSubstatPriority(character.characterId);
+
+  if (substatPriority === null) {
+    return null;
+  }
+
   const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
   const echoScores = ECHO_CHECKLIST_ITEMS.map((item) =>
     getEchoCheckerScore(
       getEchoCheckerEcho(character, item.key),
-      character.substatPriority,
+      substatPriority,
       ignoredErEchoKeys.has(item.key),
       character.noCrit,
     ),
@@ -451,16 +464,19 @@ export function getEffectiveChecklist(character: TrackedCharacter): Checklist {
   }
 
   const plan = character.echoChecker?.plan ?? getDefaultEchoCheckerPlan(character.roles);
+  const hasSubstatPriority = getCharacterSubstatPriority(character.characterId) !== null;
   const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
   const echoChecklist = ECHO_CHECKLIST_ITEMS.reduce(
     (checklist, item) => ({
       ...checklist,
-      [item.key]: isEchoCheckerEchoComplete(
-        getEchoCheckerEcho(character, item.key),
-        plan,
-        ignoredErEchoKeys.has(item.key),
-        character.noCrit,
-      ),
+      [item.key]: hasSubstatPriority
+        ? isEchoCheckerEchoComplete(
+            getEchoCheckerEcho(character, item.key),
+            plan,
+            ignoredErEchoKeys.has(item.key),
+            character.noCrit,
+          )
+        : false,
     }),
     {} as Pick<Checklist, keyof Omit<Checklist, "skills">>,
   );
@@ -577,6 +593,9 @@ export function getEchoCritPlaceholders(fourCostMain: FourCostMain) {
 }
 
 export function getRatings(character: TrackedCharacter) {
+  const substatPriorityAvailable =
+    getCharacterSubstatPriority(character.characterId) !== null;
+
   if (character.noCrit) {
     const echoCheckerBuildScore = isEchoCheckerEnabled(character)
       ? getEchoCheckerBuildScore(character)
@@ -605,7 +624,9 @@ export function getRatings(character: TrackedCharacter) {
   const issues = [
     !crRatingValid ? `Crit Rate must be at least ${formatPercent(critRateBase)}.` : "",
     !cdRatingValid ? `Crit DMG must be at least ${formatPercent(critDmgBase)}.` : "",
-    isEchoCheckerEnabled(character) && echoCheckerBuildScore === null
+    isEchoCheckerEnabled(character) &&
+    substatPriorityAvailable &&
+    echoCheckerBuildScore === null
       ? "Build Score needs at least one crit roll or selected substat for every echo."
       : "",
   ].filter(Boolean);
