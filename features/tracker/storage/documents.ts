@@ -195,12 +195,15 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     return {
       critRate: null,
       critDmg: null,
-      substatIds: [null, null, null],
+      substatIds: [null, null, null, null, null],
     };
   }
 
   const rawSubstatIds = Array.isArray(echo.substatIds)
     ? echo.substatIds
+    : null;
+  const rawPrioritySubstatIds = Array.isArray(echo.prioritySubstatIds)
+    ? echo.prioritySubstatIds
     : null;
   const allowedSubstatIds = new Set<EchoCheckerSubstatId>([
     "atk",
@@ -214,24 +217,38 @@ function normalizeEchoCheckerEcho(echo: unknown): EchoCheckerEcho {
     "heavy",
     "skill",
     "liberation",
-    "other",
+    "crit-rate",
+    "crit-dmg",
   ]);
-  const substatIds = rawSubstatIds?.length === 3
-    ? rawSubstatIds.map((stat) =>
-        typeof stat === "string" && allowedSubstatIds.has(stat as EchoCheckerSubstatId)
-          ? stat as EchoCheckerSubstatId
-          : null,
-      ) as EchoCheckerSubstatSlots
-    : [
-        echo.hasRelevantStat === true ? "other" : null,
-        echo.hasSecondRelevantStat === true ? "other" : null,
-        echo.hasThirdRelevantStat === true ? "other" : null,
-      ] as EchoCheckerSubstatSlots;
+  const normalizeSubstatIds = (stats: unknown[]) => {
+    const seenStats = new Set<EchoCheckerSubstatId>();
+
+    return Array.from({ length: 5 }, (_, index) => {
+      const stat = stats[index];
+
+      if (
+        typeof stat !== "string" ||
+        !allowedSubstatIds.has(stat as EchoCheckerSubstatId) ||
+        seenStats.has(stat as EchoCheckerSubstatId)
+      ) {
+        return null;
+      }
+
+      seenStats.add(stat as EchoCheckerSubstatId);
+      return stat as EchoCheckerSubstatId;
+    }) as EchoCheckerSubstatSlots;
+  };
+  const substatIds = rawSubstatIds && [3, 5].includes(rawSubstatIds.length)
+    ? normalizeSubstatIds(rawSubstatIds)
+    : [null, null, null, null, null] as EchoCheckerSubstatSlots;
 
   return {
     critRate: typeof echo.critRate === "number" ? echo.critRate : null,
     critDmg: typeof echo.critDmg === "number" ? echo.critDmg : null,
     substatIds,
+    ...(rawPrioritySubstatIds?.length === 5
+      ? { prioritySubstatIds: normalizeSubstatIds(rawPrioritySubstatIds) }
+      : {}),
   };
 }
 

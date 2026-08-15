@@ -2,6 +2,7 @@ import {
   PRYDWEN_CHARACTER_BASE_URL,
   PRYDWEN_CHARACTER_SLUG_OVERRIDES,
   STANDARD_FIVE_STAR_WEAPONS,
+  TETHYS_CHARACTER_BASE_URL,
 } from "../constants";
 import type {
   ApiCharacter,
@@ -43,6 +44,10 @@ export function getPrydwenCharacterUrl(characterName: string) {
       .replace(/^-+|-+$/g, "");
 
   return `${PRYDWEN_CHARACTER_BASE_URL}/${slug}`;
+}
+
+export function getTethysCharacterUrl(characterId: number) {
+  return `${TETHYS_CHARACTER_BASE_URL}/${characterId}`;
 }
 
 export function slugifyCharacterName(name: string) {

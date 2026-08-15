@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   findTrackedCharacterByRouteSegment,
+  getTethysCharacterUrl,
   getTrackedCharacterRouteSegment,
   slugifyCharacterName,
 } from "../domain";
@@ -37,6 +38,12 @@ function makeCharacter(overrides: Partial<TrackedCharacter> = {}): TrackedCharac
 }
 
 describe("character route segments", () => {
+  test("builds Tethys character links from Encore catalog ids", () => {
+    expect(getTethysCharacterUrl(1203)).toBe(
+      "https://tethys.gg/resonators/1203",
+    );
+  });
+
   test("uses a readable slug from the character name", () => {
     expect(slugifyCharacterName("Rover: Aero")).toBe("rover-aero");
     expect(slugifyCharacterName("Xiangli Yao")).toBe("xiangli-yao");

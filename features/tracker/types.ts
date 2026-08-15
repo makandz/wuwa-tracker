@@ -83,21 +83,15 @@ export type EchoSubstatId =
   | "skill"
   | "liberation";
 
-export type EchoCheckerSubstatId = Exclude<
-  EchoSubstatId,
-  "crit-rate" | "crit-dmg"
-> | "other";
+export type EchoCheckerSubstatId = EchoSubstatId;
 
-export type EchoCheckerSubstatSlots = [
-  EchoCheckerSubstatId | null,
-  EchoCheckerSubstatId | null,
-  EchoCheckerSubstatId | null,
-];
+export type EchoCheckerSubstatSlots = (EchoCheckerSubstatId | null)[];
 
 export type EchoCheckerEcho = {
   critRate: number | null;
   critDmg: number | null;
   substatIds?: EchoCheckerSubstatSlots;
+  prioritySubstatIds?: EchoCheckerSubstatSlots;
   /** Legacy v5 fields, normalized into substatIds when stored data is read. */
   hasRelevantStat?: boolean;
   hasSecondRelevantStat?: boolean;
