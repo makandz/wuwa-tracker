@@ -25,4 +25,10 @@ describe("curated substat priorities", () => {
       "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% = Heavy DMG% > ATK",
     );
   });
+
+  test("includes Heavy Attack DMG% in Zani's priority", () => {
+    expect(getCharacterSubstatPriority(1507)).toBe(
+      "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > Heavy Attack DMG% > ATK",
+    );
+  });
 });
