@@ -35,10 +35,12 @@ const ECHO_CHECKER_SUBSTAT_BASE = -0.08;
 const ECHO_CHECKER_ER_BOOST = 0.11;
 const ECHO_CHECKER_UNPRIORITIZED_BOOST = 0.05;
 const ECHO_CHECKER_UNPRIORITIZED_FALLBACK_BOOST = 0.06;
-const ECHO_CHECKER_PRIORITY_MAX_BOOST = 0.1;
-const ECHO_CHECKER_PRIORITY_MIN_BOOST = 0.06;
+const ECHO_CHECKER_PRIORITY_MAX_BOOST = 0.12;
+const ECHO_CHECKER_PRIORITY_MIN_BOOST = 0.05;
+const ECHO_CHECKER_PRIORITY_ONLY_MAX_BOOST = 0.2;
+const ECHO_CHECKER_PRIORITY_ONLY_MIN_BOOST = 0.12;
 const ECHO_CHECKER_PRIORITY_TARGET_STAT_COUNT = 3;
-const ECHO_CHECKER_PRIORITY_STAT_BASE = 0.2;
+const ECHO_CHECKER_PRIORITY_STAT_BASE = 0.17;
 export const ECHO_CHECKER_MEDIAN_ER_ROLL = 10.25;
 const EMPTY_ECHO_SUBSTAT_SLOTS: EchoCheckerSubstatSlots = [
   null,
@@ -233,12 +235,18 @@ export function getEchoCheckerSubstatBoosts(
   );
 
   priorityTiers.forEach((tier, index) => {
+    const maxBoost = includeCrit
+      ? ECHO_CHECKER_PRIORITY_ONLY_MAX_BOOST
+      : ECHO_CHECKER_PRIORITY_MAX_BOOST;
+    const minBoost = includeCrit
+      ? ECHO_CHECKER_PRIORITY_ONLY_MIN_BOOST
+      : ECHO_CHECKER_PRIORITY_MIN_BOOST;
     const boost =
       priorityTiers.length === 1
-        ? (ECHO_CHECKER_PRIORITY_MAX_BOOST + ECHO_CHECKER_PRIORITY_MIN_BOOST) / 2
-        : ECHO_CHECKER_PRIORITY_MAX_BOOST -
+        ? (maxBoost + minBoost) / 2
+        : maxBoost -
           (index / (priorityTiers.length - 1)) *
-            (ECHO_CHECKER_PRIORITY_MAX_BOOST - ECHO_CHECKER_PRIORITY_MIN_BOOST);
+            (maxBoost - minBoost);
 
     tier.forEach((stat) => {
       boosts.set(
