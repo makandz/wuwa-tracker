@@ -124,14 +124,24 @@ describe("echo substat priorities", () => {
     ]);
   });
 
-  test("uses fixed boosts for priority tiers and can ignore an ER roll", () => {
+  test("uses mode-specific boosts for priority tiers and can ignore an ER roll", () => {
     expect(Object.fromEntries(getEchoCheckerSubstatBoosts(priority, false))).toMatchObject({
       "energy-regen": 0.11,
-      "atk-percent": 0.1,
-      heavy: 0.1,
-      atk: 0.08,
-      skill: 0.06,
+      "atk-percent": 0.12,
+      heavy: 0.12,
+      atk: 0.09,
+      skill: 0.05,
       hp: 0.05,
+    });
+    expect(
+      Object.fromEntries(getEchoCheckerSubstatBoosts(priority, false, true)),
+    ).toMatchObject({
+      "crit-rate": 0.2,
+      "crit-dmg": 0.2,
+      "atk-percent": 0.17,
+      heavy: 0.17,
+      atk: 0.15,
+      skill: 0.12,
     });
     expect(getEchoCheckerSubstatBoosts(priority, true).get("energy-regen")).toBe(0);
     expect(getEchoCheckerSubstatBoosts("", false).get("hp")).toBe(0.06);
@@ -165,7 +175,7 @@ describe("echo substat priorities", () => {
       substatIds: ["energy-regen", null, null],
     };
 
-    expect(getEchoCheckerScore(prioritizedEcho, priority)).toBe(1.16);
+    expect(getEchoCheckerScore(prioritizedEcho, priority)).toBe(1.18);
     expect(getEchoCheckerScore(erEcho, priority, false)).toBe(0.92);
     expect(getEchoCheckerScore(erEcho, priority, true)).toBe(0.92);
   });
@@ -185,7 +195,7 @@ describe("echo substat priorities", () => {
       ],
     };
 
-    expect(getEchoCheckerScore(echo, supportPriority, false, true)).toBe(0.88);
+    expect(getEchoCheckerScore(echo, supportPriority, false, true)).toBe(1.05);
     expect(
       getEchoCheckerScore(
         { ...echo, critRate: 6.3, critDmg: 12.6 },
@@ -193,8 +203,8 @@ describe("echo substat priorities", () => {
         false,
         true,
       ),
-    ).toBe(0.88);
-    expect(getEchoCheckerScore(echo, supportPriority, true, true)).toBe(0.58);
+    ).toBe(1.05);
+    expect(getEchoCheckerScore(echo, supportPriority, true, true)).toBe(0.68);
     expect(isEchoCheckerEchoComplete(echo, "HybridSupport", false, true)).toBe(true);
     expect(isEchoCheckerEchoComplete(echo, "HybridSupport", true, true)).toBe(false);
 
@@ -220,9 +230,50 @@ describe("echo substat priorities", () => {
       crRating: null,
       cdRating: null,
       critScore: null,
-      buildScore: 0.88,
+      buildScore: 1.05,
       issue: "",
     });
+  });
+
+  test("grades three non-crit stats from A- through A+ by priority", () => {
+    const orderedPriority =
+      "Energy Regen > CRIT Rate > CRIT DMG > ATK% > ATK";
+    const score = (prioritySubstatIds: EchoCheckerEcho["prioritySubstatIds"]) =>
+      getEchoCheckerScore(
+        { critRate: null, critDmg: null, prioritySubstatIds },
+        orderedPriority,
+        false,
+        true,
+      );
+
+    const topThree = score([
+      "energy-regen",
+      "crit-rate",
+      "crit-dmg",
+      null,
+      null,
+    ]);
+    const middleThree = score([
+      "crit-rate",
+      "crit-dmg",
+      "atk-percent",
+      null,
+      null,
+    ]);
+    const bottomThree = score([
+      "crit-dmg",
+      "atk-percent",
+      "atk",
+      null,
+      null,
+    ]);
+
+    expect(topThree).toBe(1.05);
+    expect(middleThree).toBe(0.99);
+    expect(bottomThree).toBe(0.93);
+    expect(getRatingGrade(topThree!)).toBe("A+");
+    expect(getRatingGrade(middleThree!)).toBe("A");
+    expect(getRatingGrade(bottomThree!)).toBe("A-");
   });
 
   test("rates empty non-crit echoes as zero and five selected stats as S+", () => {
@@ -252,7 +303,7 @@ describe("echo substat priorities", () => {
     );
 
     expect(getEchoCheckerScore(emptyEcho, supportPriority, false, true)).toBe(0);
-    expect(fullScore).toBe(1.41);
+    expect(fullScore).toBe(1.66);
     expect(getRatingGrade(fullScore!)).toBe("S+");
     expect(
       getRatings(
