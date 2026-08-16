@@ -132,10 +132,6 @@ textarea {
   font: inherit;
 }
 
-.rating-s-plus {
-  background: var(--weapon-gold-text);
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

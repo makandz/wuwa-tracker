@@ -35,7 +35,7 @@
   "1408": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > Skill DMG% > ATK",
   "1607": "Energy Regen (Until Satisfied) > CRIT RATE = CRIT DMG > ATK% > ATK = Basic ATK DMG%",
   "1407": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK",
-  "1507": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK",
+  "1507": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > Heavy Attack DMG% > ATK",
   "1207": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK > Liberation ATK DMG%",
   "1608": "CRIT RATE = CRIT DMG > ATK% > Skill DMG% > ATK",
   "1409": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > HP% > Basic Attack DMG% = Liberation DMG% > HP",

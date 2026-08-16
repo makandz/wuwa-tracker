@@ -3,16 +3,16 @@ import type { RatingGrade, Role, WeaponRarityTone } from "../types";
 
 export function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
-    "S+": "rating-s-plus border border-weapon-gold-strong text-app-bg",
-    S: "border border-weapon-gold-strong bg-weapon-gold-bg text-weapon-gold-text",
-    "S-": "border border-weapon-gold-strong/80 bg-weapon-gold-bg/70 text-weapon-gold-text",
-    "A+": "border border-status-good-border/80 bg-status-good-bg text-status-good-text",
-    A: "border border-status-good-border/80 bg-status-good-bg text-status-good-text",
-    "A-": "border border-status-good-border/70 bg-status-good-bg/75 text-status-good-text",
-    "B+": "border border-app-border bg-app-raised text-app-fg",
-    B: "border border-app-border bg-app-raised text-app-fg",
-    "B-": "border border-app-border bg-app-surface text-app-muted",
-    C: "border border-status-warn-border/80 bg-status-warn-bg text-status-warn-text",
+    "S+": "border border-weapon-gold-text bg-weapon-gold-text text-app-bg",
+    S: "border border-weapon-gold-strong/80 bg-weapon-gold-bg text-weapon-gold-text",
+    "S-": "border border-weapon-gold-strong/80 bg-weapon-gold-bg/70 text-weapon-gold-text/70",
+    "A+": "border border-weapon-purple-strong/80 bg-weapon-purple-strong text-app-bg",
+    A: "border border-weapon-purple-strong/80 bg-weapon-purple-bg text-weapon-purple-text",
+    "A-": "border border-weapon-purple-strong/70 bg-weapon-purple-bg/55 text-weapon-purple-text",
+    "B+": "border border-weapon-blue-strong/80 bg-weapon-blue-strong text-app-bg",
+    B: "border border-weapon-blue-strong/80 bg-weapon-blue-bg text-weapon-blue-text",
+    "B-": "border border-weapon-blue-strong/70 bg-weapon-blue-bg/55 text-weapon-blue-text",
+    C: "border border-status-good-border bg-status-good-bg text-status-good-text",
     D: "border border-weapon-limited-strong/80 bg-weapon-limited-bg text-weapon-limited-text",
     F: "border border-status-danger-border/80 bg-status-danger-bg text-status-danger-text",
   };
