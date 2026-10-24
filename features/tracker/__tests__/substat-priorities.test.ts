@@ -11,7 +11,7 @@ describe("curated substat priorities", () => {
   });
 
   test("contains non-empty, parseable priorities", () => {
-    expect(Object.keys(substatPriorities)).toHaveLength(63);
+    expect(Object.keys(substatPriorities)).toHaveLength(64);
 
     for (const [characterId, priority] of Object.entries(substatPriorities)) {
       expect(Number(characterId)).toBeGreaterThan(0);
@@ -21,6 +21,18 @@ describe("curated substat priorities", () => {
   });
 
   test.each([
+    {
+      characterId: 1312,
+      name: "Suoming",
+      priority: "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > Basic DMG% > ATK",
+      tiers: [
+        ["energy-regen"],
+        ["crit-rate", "crit-dmg"],
+        ["atk-percent"],
+        ["basic"],
+        ["atk"],
+      ],
+    },
     {
       characterId: 1413,
       name: "Qingxiao",
@@ -66,10 +78,6 @@ describe("curated substat priorities", () => {
       otherTargetStats: tiers.flat().filter((stat) => stat !== "crit-rate" && stat !== "crit-dmg"),
       usedFallback: false,
     });
-  });
-
-  test("leaves Suoming unavailable until Prydwen publishes build priorities", () => {
-    expect(getCharacterSubstatPriority(1312)).toBeNull();
   });
 
   test("keeps the corrected separator in character 1610's priority", () => {

@@ -61,5 +61,6 @@
   "1110": "Energy Regen (Until 260%) > CRIT DMG > HP% > CRIT Rate > Basic DMG% > HP",
   "1413": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK > Heavy/Liberation/Basic DMG%",
   "1311": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% = Skill DMG% > ATK",
-  "1212": "Energy Regen (Until Satisfied) > HP (Until 50000) > CRIT Rate = CRIT DMG > Heavy DMG% > ATK% > ATK"
+  "1212": "Energy Regen (Until Satisfied) > HP (Until 50000) > CRIT Rate = CRIT DMG > Heavy DMG% > ATK% > ATK",
+  "1312": "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > Basic DMG% > ATK"
 }
