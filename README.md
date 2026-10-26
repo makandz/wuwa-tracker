@@ -1,10 +1,21 @@
-# Wuwa Tracker
+# WuWa Tracker
 
-A small Next.js app for keeping track of Wuthering Waves character builds.
+A personal build tracker for Wuthering Waves. Keep track of the echoes you're still farming, the ER you're missing, and which characters are sharing a weapon.
 
-It pulls the current character and weapon catalog from Encore, then lets you track the stuff that is easy to lose in notes: assigned weapons, up to three echo sets per character, per-set scoring and ER, checklist progress, and weapon inventory overlap.
+![The build tracker with named echo sets, farming progress, ER targets, and shared weapons](docs/images/homepage.png)
 
-Progress is saved in the browser's local storage. You can also export the tracker data as JSON from the app.
+## What it tracks
+
+- Up to three named echo builds per character, each with its own progress and ER.
+- A quick echo checklist or detailed crit rolls and substats, with scores and farming estimates.
+- Assigned weapons, owned copies, and shared weapons.
+- Skills / Forte completion, build notes, and Matrix teams.
+
+## Your data
+
+Progress is saved in your browser's local storage. No account required.
+
+Export a JSON backup from **Settings** to keep a copy or move to another browser. Importing a backup replaces the current tracker data.
 
 ## Running it
 
@@ -13,8 +24,10 @@ pnpm install
 pnpm dev
 ```
 
-Then open http://localhost:3000.
+Then open [localhost:3000](http://localhost:3000).
 
-## Notes
+## Credits
 
-This is a personal tracker, not an official Wuthering Waves tool. Catalog images and names come from the live Encore API, so the app needs network access for the initial character and weapon lists.
+Character and weapon names and artwork come from [Encore](https://encore.moe). The app needs network access to load the catalog. Substat priorities are curated from [Prydwen](https://www.prydwen.gg/wuthering-waves/).
+
+This is an unofficial fan project. Wuthering Waves and its assets belong to Kuro Games.
