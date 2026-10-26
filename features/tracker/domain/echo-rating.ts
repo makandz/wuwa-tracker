@@ -306,12 +306,14 @@ export function isEchoCheckerEchoComplete(
     return targetStatCount >= ECHO_CHECKER_PRIORITY_TARGET_STAT_COUNT;
   }
 
-  if (!hasDoubleCrit) {
-    return false;
+  if (scoring === "standard-crit") {
+    const hasSingleCrit = echo.critRate !== null || echo.critDmg !== null;
+
+    return (hasDoubleCrit && targetStatCount >= 1) || (hasSingleCrit && targetStatCount >= 4);
   }
 
-  if (scoring === "standard-crit") {
-    return targetStatCount >= 1;
+  if (!hasDoubleCrit) {
+    return false;
   }
 
   const critValue = getEchoCheckerCritValue(echo);

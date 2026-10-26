@@ -289,7 +289,7 @@ describe("echo substat priorities", () => {
     expect(getEchoSetChecklist(1202, 100, second)).toMatchObject({ fourCost: true, threeCostA: true });
   });
 
-  test("keeps Strict and Standard crit formulas equal while changing completion thresholds", () => {
+  test("keeps Damage and Balanced formulas equal while changing completion thresholds", () => {
     const standard = makeErSet({ actualEr: 100 });
     const strict = { ...standard, scoring: "strict-crit" as const };
     const echo = standard.echoes.fourCost;
@@ -304,6 +304,35 @@ describe("echo substat priorities", () => {
     }
     expect(getEchoSetScore(1202, 100, standard)).toBeTypeOf("number");
     expect(getEchoSetScore(1202, 100, strict)).toBe(getEchoSetScore(1202, 100, standard));
+  });
+
+  test.each([
+    { critRate: 6.9, critDmg: null },
+    { critRate: null, critDmg: 15 },
+  ])("completes Balanced with one crit and four contributing stats: $critRate / $critDmg", (crit) => {
+    const echo: EchoCheckerEcho = {
+      ...crit,
+      substatIds: ["energy-regen", "liberation", "atk-percent", "atk", null],
+      prioritySubstatIds: [null, null, null, null, null],
+    };
+
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit")).toBe(true);
+    expect(isEchoCheckerEchoComplete(echo, "strict-crit")).toBe(false);
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit", true)).toBe(false);
+    expect(isEchoCheckerEchoComplete({ ...echo, substatIds: ["liberation", "atk-percent", "atk", null, null] }, "standard-crit")).toBe(false);
+    expect(isEchoCheckerEchoComplete({ ...echo, critRate: null, critDmg: null }, "standard-crit")).toBe(false);
+  });
+
+  test("still requires a priority stat with double crit for Balanced", () => {
+    const echo: EchoCheckerEcho = {
+      critRate: 6.9,
+      critDmg: 15,
+      substatIds: [null, null, null, null, null],
+      prioritySubstatIds: [null, null, null, null, null],
+    };
+
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit")).toBe(false);
+    expect(isEchoCheckerEchoComplete({ ...echo, substatIds: ["atk-percent", null, null, null, null] }, "standard-crit")).toBe(true);
   });
 
   test("keeps manual completion independent of detailed measurements", () => {

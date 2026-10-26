@@ -45,9 +45,9 @@ export const STANDARD_FIVE_STAR_WEAPONS = new Set([
 
 export const MAX_ECHO_SETS = 3;
 export const ECHO_SCORING_OPTIONS: { label: string; value: EchoScoringPreset }[] = [
-  { label: "Strict Crit", value: "strict-crit" },
-  { label: "Standard Crit", value: "standard-crit" },
-  { label: "Priority Stats", value: "priority-stats" },
+  { label: "Damage", value: "strict-crit" },
+  { label: "Balanced", value: "standard-crit" },
+  { label: "Utility", value: "priority-stats" },
 ];
 
 export const ECHO_CRIT_RATE_VALUES = [6.3, 6.9, 7.5, 8.1, 8.7, 9.3, 9.9, 10.5];

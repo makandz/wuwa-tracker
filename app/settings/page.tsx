@@ -138,7 +138,7 @@ function SettingsScreen({
     {
       label: "Storage",
       title: TRACKER_DOCUMENT_STORAGE_KEY,
-      value: storageVersion ? `v${storageVersion}` : "Local",
+      value: storageVersion ? `v${storageVersion} (unified)` : "Local",
     },
   ];
 

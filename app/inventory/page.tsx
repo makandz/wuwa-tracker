@@ -1,301 +1,99 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 
-import {
-  buildWeaponInventoryCountMap,
-  getAssignmentCounts,
-  getWeaponRarityTone,
-  getWeaponToneClasses,
-  parseWholeNumberInput,
-} from "@/features/tracker/domain";
-import {
-  ImageFallback,
-  SearchInput,
-  SelectInput,
-  StarBadge,
-  WeaponStatusBadge,
-} from "@/features/tracker/components/ui";
+import { buildWeaponInventoryCountMap, getAssignmentCounts, getWeaponInventoryGroups } from "@/features/tracker/domain";
+import { SearchInput, TextButton } from "@/features/tracker/components/ui";
+import { WeaponInventoryIdentity, WeaponInventoryModal, WeaponQuantityInput } from "@/features/tracker/components/weapon-inventory";
 import { useTrackerData } from "@/features/tracker/tracker-provider";
-import type { ApiWeapon, Catalog, WeaponInventoryItem } from "@/features/tracker/types";
 
+/**
+ * Displays owned weapon stacks and a catalog picker for changing inventory quantities.
+ * @returns The searchable weapon inventory grouped by weapon type.
+ */
 export default function InventoryPage() {
   const { catalog, characters, weaponInventory, setWeaponCount } = useTrackerData();
+  const [query, setQuery] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const assignmentCounts = useMemo(() => getAssignmentCounts(characters), [characters]);
+  const inventoryCounts = useMemo(() => buildWeaponInventoryCountMap(weaponInventory), [weaponInventory]);
+  const groups = useMemo(() => getWeaponInventoryGroups(catalog.weapons, weaponInventory, query), [catalog.weapons, weaponInventory, query]);
+  const totalCopies = weaponInventory.reduce((sum, item) => sum + item.count, 0);
+  const sharedWeapons = weaponInventory.filter((item) => (assignmentCounts[item.weaponId] ?? 0) > item.count).length;
 
   return (
     <div className="min-h-full bg-app-bg text-app-fg">
-      <WeaponInventoryScreen
-        assignmentCounts={assignmentCounts}
-        catalog={catalog}
-        inventory={weaponInventory}
-        onSetWeaponCount={setWeaponCount}
-      />
+      <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-medium text-app-fg">Weapons</h1>
+            <p className="mt-1 text-xs text-app-muted-subtle">
+              {weaponInventory.length} weapons · {totalCopies} copies
+              {sharedWeapons > 0 ? <span className="ml-3 text-status-warn-text">{sharedWeapons} shared</span> : null}
+            </p>
+          </div>
+          <TextButton disabled={catalog.loading || catalog.weapons.length === 0} onClick={() => setPickerOpen(true)} variant="primary">+ Add weapons</TextButton>
+        </header>
+
+        <SearchInput ariaLabel="Search owned weapons" placeholder="Search your weapons" value={query} onChange={setQuery} />
+
+        {catalog.error ? <p className="text-sm text-status-warn-text">{catalog.error}</p> : null}
+        {catalog.loading ? <p className="text-sm text-app-muted-subtle">Loading weapon catalog…</p> : null}
+
+        {groups.map((group) => (
+          <section className="grid gap-3" key={group.type}>
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-medium text-app-muted-subtle">{group.name}</h2>
+              <div className="h-px flex-1 bg-app-border" />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {group.weapons.map((weapon) => {
+                const count = inventoryCounts[weapon.Id] ?? 0;
+                const assigned = assignmentCounts[weapon.Id] ?? 0;
+                const shared = assigned > count;
+                const allAssigned = count > 0 && assigned === count;
+                const meta = weapon.QualityId ? `${weapon.QualityId}★ · ${assigned} assigned` : "Catalog details unavailable";
+                let borderClasses = "border-app-border";
+
+                if (shared) {
+                  borderClasses = "border-status-warn-border";
+                } else if (allAssigned) {
+                  borderClasses = "border-status-good-border";
+                }
+
+                return (
+                  <div className={`flex min-w-0 flex-col gap-3 rounded-lg border bg-app-surface p-3 ${borderClasses}`} key={weapon.Id}>
+                    <div className="flex items-start justify-between gap-2">
+                      <WeaponInventoryIdentity weapon={weapon} meta={meta} />
+                      {shared ? (
+                        <span className="shrink-0 rounded-sm bg-status-warn-bg px-1.5 py-0.5 text-xs text-status-warn-text">Shared</span>
+                      ) : null}
+                      {allAssigned ? (
+                        <span className="shrink-0 whitespace-nowrap rounded-sm bg-status-good-bg px-1.5 py-0.5 text-xs text-status-good-text">All assigned</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-auto flex items-center justify-between gap-3">
+                      <span className="text-xs text-app-muted-subtle">Copies</span>
+                      <WeaponQuantityInput name={weapon.Name} count={count} onChange={(nextCount) => setWeaponCount(weapon.Id, nextCount)} />
+                    </div>
+                    {shared ? <p className="text-xs text-status-warn-text">Shared across {assigned} characters with {count} {count === 1 ? "copy" : "copies"}.</p> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
+        {!catalog.loading && groups.length === 0 ? (
+          <p className="py-10 text-center text-sm text-app-muted-subtle">
+            {weaponInventory.length === 0 ? "No weapons yet. Add your first weapon to start your inventory." : "No owned weapons match that search."}
+          </p>
+        ) : null}
+      </main>
+
+      {pickerOpen ? (
+        <WeaponInventoryModal weapons={catalog.weapons} inventoryCounts={inventoryCounts} onSetWeaponCount={setWeaponCount} onClose={() => setPickerOpen(false)} />
+      ) : null}
     </div>
-  );
-}
-
-const catalogThumbnailSizes = "128px";
-
-function compareWeaponsByType(a: ApiWeapon, b: ApiWeapon) {
-  return (
-    a.Type - b.Type ||
-    a.TypeName.localeCompare(b.TypeName) ||
-    a.Name.localeCompare(b.Name)
-  );
-}
-
-function WeaponInventoryScreen({
-  catalog,
-  inventory,
-  assignmentCounts,
-  onSetWeaponCount,
-}: {
-  catalog: Catalog;
-  inventory: WeaponInventoryItem[];
-  assignmentCounts: Record<number, number>;
-  onSetWeaponCount: (weaponId: number, count: number) => void;
-}) {
-  const [query, setQuery] = useState("");
-  const [rarityFilter, setRarityFilter] = useState("all");
-  const [weaponTypeFilter, setWeaponTypeFilter] = useState("all");
-  const [ownedOnly, setOwnedOnly] = useState(false);
-  const inventoryCounts = useMemo(
-    () => buildWeaponInventoryCountMap(inventory),
-    [inventory],
-  );
-  const normalizedQuery = query.trim().toLowerCase();
-  const weaponTypeOptions = useMemo(
-    () => [
-      { label: "All weapon types", value: "all" },
-      ...Array.from(new Set(catalog.weapons.map((weapon) => weapon.TypeName)))
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b))
-        .map((typeName) => ({ label: typeName, value: typeName })),
-    ],
-    [catalog.weapons],
-  );
-  const filteredWeapons = catalog.weapons.filter((weapon) => {
-    const haystack = [weapon.Name, weapon.TypeName, String(weapon.QualityId)]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    const matchesRarity =
-      rarityFilter === "all" ||
-      (rarityFilter === "other"
-        ? weapon.QualityId < 4
-        : String(weapon.QualityId) === rarityFilter);
-    const matchesWeaponType =
-      weaponTypeFilter === "all" || weapon.TypeName === weaponTypeFilter;
-    const matchesOwnership = !ownedOnly || (inventoryCounts[weapon.Id] ?? 0) > 0;
-
-    return (
-      haystack.includes(normalizedQuery) &&
-      matchesRarity &&
-      matchesWeaponType &&
-      matchesOwnership
-    );
-  });
-  const weaponGroups = [
-    {
-      title: "5 Star",
-      weapons: filteredWeapons
-        .filter((weapon) => weapon.QualityId === 5)
-        .sort(compareWeaponsByType),
-    },
-    {
-      title: "4 Star",
-      weapons: filteredWeapons
-        .filter((weapon) => weapon.QualityId === 4)
-        .sort(compareWeaponsByType),
-    },
-    {
-      title: "Other",
-      weapons: filteredWeapons
-        .filter((weapon) => weapon.QualityId < 4)
-        .sort(compareWeaponsByType),
-    },
-  ].filter((group) => group.weapons.length > 0);
-  const overSharedCount = inventory.filter(
-    (item) => (assignmentCounts[item.weaponId] ?? 0) > item.count,
-  ).length;
-  const totalCopies = inventory.reduce((sum, item) => sum + item.count, 0);
-  const inventoryStats = [
-    { label: "Unique weapons", value: String(inventory.length) },
-    { label: "Total copies", value: String(totalCopies) },
-    { label: "Over shared", value: String(overSharedCount), warn: overSharedCount > 0 },
-  ];
-
-  function setWeaponCount(weaponId: number, count: number) {
-    onSetWeaponCount(weaponId, count);
-  }
-
-  function renderWeaponCard(weapon: ApiWeapon, loadEagerly = false) {
-    const count = inventoryCounts[weapon.Id] ?? 0;
-    const assigned = assignmentCounts[weapon.Id] ?? 0;
-    const status = assigned > count && count > 0 ? "Shared" : null;
-    const unowned = count === 0;
-    const tone = getWeaponRarityTone({
-      name: weapon.Name,
-      qualityId: weapon.QualityId,
-    });
-    const toneClasses = getWeaponToneClasses(tone);
-
-    return (
-      <div
-        className={`grid overflow-hidden rounded-md border text-left transition ${
-          unowned
-            ? `${toneClasses.card} opacity-55`
-            : toneClasses.card
-        }`}
-        key={weapon.Id}
-      >
-        <div className={`relative h-24 border-b sm:h-28 ${toneClasses.image}`}>
-          {weapon.Icon ? (
-            <Image
-              alt=""
-                  className="object-contain p-2"
-                  fill
-                  loading={loadEagerly ? "eager" : "lazy"}
-                  sizes={catalogThumbnailSizes}
-              src={weapon.Icon}
-            />
-          ) : (
-            <ImageFallback label={weapon.Name} />
-          )}
-          <div className="absolute left-1.5 top-1.5 flex flex-wrap gap-1">
-            <StarBadge quality={weapon.QualityId} tone={tone} />
-            <WeaponStatusBadge status={status} />
-          </div>
-        </div>
-
-        <div className="grid gap-2 p-2">
-          <div className="min-w-0">
-            <div className="truncate text-xs font-semibold text-app-fg">
-              {weapon.Name}
-            </div>
-            <div className="truncate text-[11px] text-app-muted-subtle">
-              {weapon.TypeName} / Used {assigned}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-[2rem_1fr_2rem] items-center gap-1">
-            <button
-              aria-label={`Decrease ${weapon.Name}`}
-              className="h-8 rounded-md border border-app-border bg-app-surface text-base font-semibold text-app-muted transition hover:bg-app-raised disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={count === 0}
-              onClick={() => setWeaponCount(weapon.Id, count - 1)}
-              type="button"
-            >
-              -
-            </button>
-            <input
-              aria-label={`${weapon.Name} copies`}
-              className="h-8 min-w-0 rounded-md border border-app-border bg-app-surface text-center text-sm font-semibold text-app-fg outline-none focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/25"
-              inputMode="numeric"
-              onChange={(event) =>
-                setWeaponCount(weapon.Id, parseWholeNumberInput(event.target.value))
-              }
-              type="text"
-              value={count ? String(count) : ""}
-            />
-            <button
-              aria-label={`Increase ${weapon.Name}`}
-              className="h-8 rounded-md border border-app-border bg-app-surface text-base font-semibold text-app-muted transition hover:bg-app-raised"
-              onClick={() => setWeaponCount(weapon.Id, count + 1)}
-              type="button"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
-      <div>
-        <div>
-          <h1 className="text-2xl font-semibold text-app-fg">Weapon Inventory</h1>
-          <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
-            {inventoryStats.map((stat) => (
-              <div className="flex items-center gap-1.5" key={stat.label}>
-                <dt className="text-app-muted-dim">{stat.label}</dt>
-                <dd
-                  className={`font-semibold ${
-                    stat.warn ? "text-status-warn-text" : "text-app-muted"
-                  }`}
-                >
-                  {stat.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      </div>
-
-      <section className="grid gap-4 rounded-md border border-app-border/80 bg-app-surface p-4 sm:p-5">
-        <div className="grid gap-2 lg:grid-cols-[minmax(260px,1fr)_180px_180px_auto] lg:items-end">
-          <SearchInput onChange={setQuery} placeholder="Search weapons" value={query} />
-          <SelectInput
-            label="Rarity"
-            onChange={setRarityFilter}
-            options={[
-              { label: "All rarities", value: "all" },
-              { label: "5 Star", value: "5" },
-              { label: "4 Star", value: "4" },
-              { label: "3 Star and below", value: "other" },
-            ]}
-            showLabel={false}
-            value={rarityFilter}
-          />
-          <SelectInput
-            label="Weapon type"
-            onChange={setWeaponTypeFilter}
-            options={weaponTypeOptions}
-            showLabel={false}
-            value={weaponTypeFilter}
-          />
-          <label className="flex h-11 items-center gap-2 whitespace-nowrap rounded-md border border-app-border bg-app-bg px-3 text-sm font-medium text-app-muted">
-            <input
-              checked={ownedOnly}
-              className="h-4 w-4 accent-app-accent"
-              onChange={(event) => setOwnedOnly(event.target.checked)}
-              type="checkbox"
-            />
-            Owned only
-          </label>
-        </div>
-
-        {catalog.loading ? (
-          <p className="text-sm text-app-muted-subtle">Loading weapon catalog...</p>
-        ) : weaponGroups.length === 0 ? (
-          <div className="rounded-md border border-dashed border-app-border p-6 text-center text-sm text-app-muted-subtle">
-            No weapons match that search.
-          </div>
-        ) : (
-          <div className="grid gap-5">
-            {weaponGroups.map((group) => (
-              <section className="grid gap-3" key={group.title}>
-                <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-app-muted">
-                    {group.title}
-                  </h2>
-                  <div className="h-px flex-1 bg-app-border/60" />
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-                  {group.weapons.map((weapon, index) =>
-                    renderWeaponCard(weapon, group.title === "5 Star" && index === 0),
-                  )}
-                </div>
-              </section>
-            ))}
-          </div>
-        )}
-      </section>
-    </main>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 import {
   BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
@@ -438,13 +439,23 @@ function DashboardGridCard({
         ))}
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-2.5 text-xs">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-2.5 text-xs">
         <span className="flex min-w-0 max-w-full items-center gap-1.5">
           <span
-            className={`min-w-0 truncate rounded-sm px-1.5 py-0.5 font-medium ${weaponToneClasses.badge}`}
+            className={`inline-flex min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 font-medium ${weaponToneClasses.badge}`}
             title={weaponDisplay.name}
           >
-            {weaponDisplay.name || "No weapon"}
+            {weaponDisplay.icon ? (
+              <Image
+                alt=""
+                className="h-4 w-4 shrink-0 object-contain"
+                height={16}
+                sizes="16px"
+                src={weaponDisplay.icon}
+                width={16}
+              />
+            ) : null}
+            <span className="truncate">{weaponDisplay.name || "No weapon"}</span>
           </span>
           <WeaponStatusBadge status={weaponStatus} />
         </span>

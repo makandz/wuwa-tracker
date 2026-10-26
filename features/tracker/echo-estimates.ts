@@ -298,17 +298,18 @@ function getDpsSuccessChanceForSequence(
   return 0;
 }
 
-function getHybridSupportSuccessChanceForSequence(
+/** Checks whether a completed sequence meets either Balanced completion path. */
+function getBalancedSuccessChanceForSequence(
   stats: EchoSubstatId[],
   otherTargetStats: Set<EchoSubstatId>,
 ) {
-  if (!hasDoubleCrit(stats)) {
-    return 0;
-  }
-
   const otherTargetStatCount = countOtherTargetStats(stats, otherTargetStats);
 
-  return otherTargetStatCount >= 1 ? 1 : 0;
+  if (hasDoubleCrit(stats)) {
+    return otherTargetStatCount >= 1 ? 1 : 0;
+  }
+
+  return hasCrit(stats) && otherTargetStatCount >= 4 ? 1 : 0;
 }
 
 function createEstimateRow({
@@ -367,7 +368,7 @@ export function getMakanEchoEstimate({
   let passFiveChance = 0;
   let passTwentyChance = 0;
   let dpsChance = 0;
-  let hybridSupportChance = 0;
+  let balancedChance = 0;
 
   for (const firstStat of ECHO_SUBSTATS) {
     for (const secondStat of ECHO_SUBSTATS) {
@@ -430,9 +431,9 @@ export function getMakanEchoEstimate({
               critValuePassChance,
             );
             dpsChance += pathChance * sequenceDpsChance;
-            hybridSupportChance +=
+            balancedChance +=
               pathChance *
-              getHybridSupportSuccessChanceForSequence(allStats, otherTargetStats);
+              getBalancedSuccessChanceForSequence(allStats, otherTargetStats);
           }
         }
       }
@@ -454,16 +455,16 @@ export function getMakanEchoEstimate({
         chance: dpsChance,
         emphasized: false,
         id: "dps",
-        label: "DPS (2Crit + 1T + 30CV or 2Crit + 2T)",
+        label: "Damage (2Crit + 1T + 30CV or 2Crit + 2T)",
         passFiveChance,
         passTwentyChance,
         tunersPerAttempt,
       }),
       createEstimateRow({
-        chance: hybridSupportChance,
+        chance: balancedChance,
         emphasized: false,
         id: "hybrid-support",
-        label: "Hybrid/Support (2Crit + 1T)",
+        label: "Balanced (2Crit + 1T or 1Crit + 4T)",
         passFiveChance,
         passTwentyChance,
         tunersPerAttempt,

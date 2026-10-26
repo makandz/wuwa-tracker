@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
 
 import {
   getPrydwenCharacterUrl,
@@ -37,7 +36,6 @@ export function CharacterOverview({
   onDelete: () => void;
   onPatch: (patch: Partial<TrackedCharacter>) => void;
 }) {
-  const [notesOpen, setNotesOpen] = useState(Boolean(character.notes.trim()));
   const display = getTrackedCharacterDisplay(character, catalogCharacter);
   const weaponDisplay = getTrackedWeaponDisplay(character, weapon);
   const weaponTone = getWeaponToneClasses(getWeaponRarityTone({
@@ -73,17 +71,29 @@ export function CharacterOverview({
         </div>
         <div className="flex items-center gap-3">
           <a
-            className="rounded-sm py-1 text-xs text-app-muted-subtle hover:text-app-fg focus-visible:outline-2 focus-visible:outline-app-accent"
+            className="inline-flex items-center gap-1 rounded-sm py-1 text-xs text-app-muted-subtle hover:text-app-fg focus-visible:outline-2 focus-visible:outline-app-accent"
             href={getPrydwenCharacterUrl(display.name)}
             target="_blank"
             rel="noreferrer"
-          >Prydwen <span aria-hidden="true">↗</span></a>
+          >
+            Prydwen
+            <svg aria-hidden="true" className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h6v6m0-6L10 14" />
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            </svg>
+          </a>
           <a
-            className="rounded-sm py-1 text-xs text-app-muted-subtle hover:text-app-fg focus-visible:outline-2 focus-visible:outline-app-accent"
+            className="inline-flex items-center gap-1 rounded-sm py-1 text-xs text-app-muted-subtle hover:text-app-fg focus-visible:outline-2 focus-visible:outline-app-accent"
             href={getTethysCharacterUrl(character.characterId)}
             target="_blank"
             rel="noreferrer"
-          >Tethys <span aria-hidden="true">↗</span></a>
+          >
+            Tethys
+            <svg aria-hidden="true" className="h-3 w-3 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h6v6m0-6L10 14" />
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            </svg>
+          </a>
           <details
             className="relative"
             onBlur={(event) => {
@@ -167,28 +177,16 @@ export function CharacterOverview({
             </label>
           </div>
         </div>
-        <details
-          className="group border-t border-app-border"
-          open={notesOpen}
-          onToggle={(event) => setNotesOpen(event.currentTarget.open)}
-        >
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-b-lg px-3.5 py-2.5 text-xs text-app-muted-subtle hover:text-app-fg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-app-accent [&::-webkit-details-marker]:hidden">
-            <svg aria-hidden="true" className="h-3 w-3 transition-transform group-open:rotate-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m9 6 6 6-6 6" />
-            </svg>
-            Character notes
-          </summary>
-          <div className="px-3.5 pb-3.5">
-            <textarea
-              aria-label="Character notes"
-              className="block min-h-16 w-full resize-y rounded-md border border-app-border bg-app-bg p-2.5 text-sm text-app-fg outline-none focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
-              placeholder="Add a note…"
-              rows={2}
-              value={character.notes}
-              onChange={(event) => onPatch({ notes: event.target.value })}
-            />
-          </div>
-        </details>
+        <label className="block border-t border-app-border p-3.5">
+          <span className="mb-2 block text-xs text-app-muted-subtle">Character notes</span>
+          <textarea
+            className="block min-h-16 w-full resize-y rounded-md border border-app-border bg-app-bg p-2.5 text-sm text-app-fg outline-none focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
+            placeholder="Add a note…"
+            rows={2}
+            value={character.notes}
+            onChange={(event) => onPatch({ notes: event.target.value })}
+          />
+        </label>
       </section>
     </div>
   );

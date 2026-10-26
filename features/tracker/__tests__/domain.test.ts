@@ -6,6 +6,7 @@ import {
   buildWeaponInventoryCountMap,
   getMatrixCharacterMaxUses,
   getOwnedWeaponsByType,
+  getWeaponInventoryGroups,
 } from "../domain";
 import type {
   ApiCharacter,
@@ -61,6 +62,37 @@ const weapons: ApiWeapon[] = [
 ];
 
 describe("domain lookup helpers", () => {
+  test("shows one owned stack per weapon grouped by type and sorted by rarity", () => {
+    const groups = getWeaponInventoryGroups(weapons, [
+      { weaponId: 203, count: 2 },
+      { weaponId: 202, count: 3 },
+      { weaponId: 201, count: 1 },
+    ]);
+
+    expect(groups.map((group) => group.name)).toEqual(["Sword", "Rectifier"]);
+    expect(groups.map((group) => group.weapons.map((weapon) => weapon.Id))).toEqual([[201], [202, 203]]);
+    expect(weapons.map((weapon) => weapon.Id)).toEqual([201, 202, 203]);
+  });
+
+  test("searches owned names and types while excluding unowned or zero-count entries", () => {
+    const inventory = [{ weaponId: 201, count: 0 }, { weaponId: 202, count: 2 }];
+
+    expect(getWeaponInventoryGroups(weapons, inventory, "  STRING  ")[0].weapons.map((weapon) => weapon.Id)).toEqual([202]);
+    expect(getWeaponInventoryGroups(weapons, inventory, "rectifier")[0].weapons.map((weapon) => weapon.Id)).toEqual([202]);
+    expect(getWeaponInventoryGroups(weapons, inventory, "emerald")).toEqual([]);
+    expect(getWeaponInventoryGroups(weapons, inventory, "variation")).toEqual([]);
+    expect(getWeaponInventoryGroups(weapons, [])).toEqual([]);
+  });
+
+  test("keeps missing catalog entries visible and editable in an Other group", () => {
+    const inventory = [{ weaponId: 999, count: 3 }, { weaponId: 202, count: 1 }];
+    const groups = getWeaponInventoryGroups(weapons, inventory);
+
+    expect(groups.map((group) => group.name)).toEqual(["Rectifier", "Other"]);
+    expect(groups[1].weapons[0]).toMatchObject({ Id: 999, Name: "Weapon 999" });
+    expect(getWeaponInventoryGroups([], inventory).flatMap((group) => group.weapons)).toHaveLength(2);
+  });
+
   test("allows Chisa to be used twice in Matrix teams", () => {
     const chisa = {
       characterId: 0,

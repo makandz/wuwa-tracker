@@ -298,6 +298,11 @@ export function ImageFallback({ label }: { label: string }) {
   );
 }
 
+/**
+ * Displays a dialog that closes through its close button or backdrop.
+ * @param props - The dialog content, heading, and dismissal handler.
+ * @returns The modal and its dismissible backdrop.
+ */
 export function Modal({
   title,
   subtitle,
@@ -311,9 +316,16 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-app-bg/75 p-3 sm:p-6">
+      <button
+        aria-label="Close modal"
+        className="absolute inset-0 h-full w-full cursor-default"
+        onClick={onClose}
+        tabIndex={-1}
+        type="button"
+      />
       <div
         aria-modal="true"
-        className="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-lg shadow-black/30"
+        className="relative grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-lg shadow-black/30"
         role="dialog"
       >
         <div className="flex items-start justify-between gap-4 border-b border-app-border/80 px-4 py-4 sm:px-5">
@@ -427,17 +439,19 @@ export function SelectInput<TValue extends string>({
 
 /**
  * Edits an optional ER percentage while retaining an empty value as unknown.
- * @param props - The percentage, change handler, and placeholder.
+ * @param props - The percentage, change handler, placeholder, and compact display option.
  * @returns The ER input.
  */
 export function ErInput({
   value,
   onChange,
   placeholder,
+  compact = false,
 }: {
   value: number | null;
   onChange: (value: number | null) => void;
   placeholder?: string;
+  compact?: boolean;
 }) {
   const [draftValue, setDraftValue] = useState(() => value === null ? "" : formatDecimalInputValue(value));
   const [focused, setFocused] = useState(false);
@@ -447,7 +461,7 @@ export function ErInput({
   return (
     <div className="relative">
       <input
-        className="h-10 w-full rounded-md border border-app-border bg-app-bg px-3 pr-9 text-sm text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
+        className={`w-full rounded-md border border-app-border bg-app-bg px-3 pr-9 text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 ${compact ? "h-9 text-xs" : "h-10 text-sm"}`}
         inputMode="decimal"
         onBlur={() => setFocused(false)}
         onChange={(event) => {
