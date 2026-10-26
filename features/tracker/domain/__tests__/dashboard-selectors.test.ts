@@ -35,7 +35,6 @@ function makeCharacter(
       oneCostA: true,
       oneCostB: false,
     },
-    substatPriority: "Crit Rate > Crit DMG",
     expectedEr: 120,
     actualEr: 118,
     notes: "main team",

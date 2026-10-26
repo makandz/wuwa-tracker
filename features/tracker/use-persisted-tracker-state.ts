@@ -5,21 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_TRACKER_PREFERENCES,
   TrackerStorageRevisionConflictError,
-  commitStorageMigration,
-  createTrackerDocumentV5,
-  inspectTrackerStorage,
-  normalizeTrackerDocumentV5,
+  createTrackerDocument,
+  parseTrackerDocument,
   readStoredTrackerDocument,
   writeStoredTrackerDocumentWithRevisionGuard,
   type ParsedImportedTrackerData,
-  type StorageMigrationPlan,
-  type TrackerDocumentV5,
+  type TrackerDocument,
   type TrackerPreferences,
   type TrackerStorageStatus,
 } from "./storage";
 import { TRACKER_DOCUMENT_STORAGE_KEY } from "./storage/keys";
 import {
-  cleanMatrixTeamsForCharacters,
   clearTrackerData as clearTrackerDataValue,
   createCharacterData,
   deleteCharacterData,
@@ -37,40 +33,12 @@ import type {
   WeaponInventoryItem,
 } from "./types";
 
-type TrackerData = TrackerDocumentV5["data"];
+type TrackerData = TrackerDocument["data"];
 
-function createInvariantTrackerDocument({
-  characters,
-  weaponInventory,
-  matrixTeams,
-  preferences,
-  revision,
-  savedAt,
-}: TrackerData & {
-  revision: number;
-  savedAt?: string;
-}) {
-  const normalizedDocument = createTrackerDocumentV5({
-    characters,
-    weaponInventory,
-    matrixTeams,
-    preferences,
-    revision,
-    savedAt,
-  });
-  const cleanedMatrixTeams = cleanMatrixTeamsForCharacters(
-    normalizedDocument.data.matrixTeams,
-    normalizedDocument.data.characters,
-  );
-
-  return createTrackerDocumentV5({
-    ...normalizedDocument.data,
-    matrixTeams: cleanedMatrixTeams,
-    revision: normalizedDocument.revision,
-    savedAt: normalizedDocument.savedAt,
-  });
-}
-
+/**
+ * Connects validated unified storage to the tracker UI and saves user edits.
+ * @returns Tracker data, storage status, and editing actions.
+ */
 export function usePersistedTrackerState() {
   const [characters, setCharacters] = useState<TrackedCharacter[]>([]);
   const [weaponInventory, setWeaponInventory] = useState<WeaponInventoryItem[]>([]);
@@ -92,8 +60,6 @@ export function usePersistedTrackerState() {
     state: "ready",
     message: "Tracker storage has not loaded yet.",
   });
-  const [storageMigrationPlan, setStorageMigrationPlan] =
-    useState<StorageMigrationPlan | null>(null);
   const [storageVersion, setStorageVersion] = useState<number | null>(null);
   const storageWritableRef = useRef(false);
   const revisionRef = useRef(0);
@@ -104,6 +70,7 @@ export function usePersistedTrackerState() {
     preferences: DEFAULT_TRACKER_PREFERENCES,
   });
 
+  /** Updates React state after a successful load or save. */
   function applyDataToState(data: TrackerData) {
     trackerDataRef.current = data;
     setCharacters(data.characters);
@@ -115,19 +82,15 @@ export function usePersistedTrackerState() {
     setBackupNoticeAcknowledgedAt(data.preferences.backupNoticeAcknowledgedAt);
   }
 
-  function applyDocumentToState(document: TrackerDocumentV5, writable: boolean) {
-    const normalizedDocument = createInvariantTrackerDocument({
-      ...document.data,
-      revision: document.revision,
-      savedAt: document.savedAt,
-    });
-
-    revisionRef.current = normalizedDocument.revision;
+  /** Applies validated document data and its revision. */
+  function applyDocumentToState(document: TrackerDocument, writable: boolean) {
+    revisionRef.current = document.revision;
     storageWritableRef.current = writable;
-    setStorageVersion(normalizedDocument.schemaVersion);
-    applyDataToState(normalizedDocument.data);
+    setStorageVersion(document.schemaVersion);
+    applyDataToState(document.data);
   }
 
+  /** Disables further writes after a failed save. */
   function setStorageSaveError() {
     storageWritableRef.current = false;
     setStorageStatus({
@@ -136,6 +99,7 @@ export function usePersistedTrackerState() {
     });
   }
 
+  /** Requires a reload before an outdated tab can edit. */
   function setStorageStale() {
     storageWritableRef.current = false;
     setStorageStatus({
@@ -144,6 +108,7 @@ export function usePersistedTrackerState() {
     });
   }
 
+  /** Disables writes when stored data cannot be read. */
   function setStorageReadError(message: string) {
     storageWritableRef.current = false;
     setStorageStatus({
@@ -152,18 +117,20 @@ export function usePersistedTrackerState() {
     });
   }
 
+  /** Validates data received from another browser tab. */
   function parseStorageEventDocument(raw: string | null) {
     if (!raw) {
       return null;
     }
 
     try {
-      return normalizeTrackerDocumentV5(JSON.parse(raw) as unknown);
+      return parseTrackerDocument(JSON.parse(raw) as unknown);
     } catch {
       return null;
     }
   }
 
+  /** Validates and persists an edit before updating React state. */
   function commitTrackerData(
     nextData: TrackerData,
     {
@@ -180,7 +147,7 @@ export function usePersistedTrackerState() {
     }
 
     const baseRevision = revisionRef.current;
-    const nextDocument = createInvariantTrackerDocument({
+    const nextDocument = createTrackerDocument({
       ...nextData,
       revision: baseRevision + 1,
     });
@@ -210,7 +177,6 @@ export function usePersistedTrackerState() {
         message: statusMessage,
       });
       setStorageVersion(result.document.schemaVersion);
-      setStorageMigrationPlan(null);
 
       return true;
     } catch (error) {
@@ -223,6 +189,7 @@ export function usePersistedTrackerState() {
     }
   }
 
+  /** Applies an editing action to the latest in-memory data. */
   function commitTrackerDataUpdate(
     getNextData: (currentData: TrackerData) => TrackerData | null,
     options?: Parameters<typeof commitTrackerData>[1],
@@ -234,28 +201,19 @@ export function usePersistedTrackerState() {
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      const result = inspectTrackerStorage();
+      const result = readStoredTrackerDocument();
       const { document } = result;
 
       setStorageStatus(result.status);
 
-      if (result.state === "migration-required") {
-        setStorageMigrationPlan(result.migrationPlan);
-        storageWritableRef.current = false;
-        setStorageLoaded(true);
-        return;
-      }
-
       if (document) {
-        setStorageMigrationPlan(null);
         applyDocumentToState(document, true);
-      } else if (result.state === "ready") {
-        setStorageMigrationPlan(null);
+      } else if (result.status.state === "ready") {
         applyDocumentToState(
-          createTrackerDocumentV5({
+          createTrackerDocument({
             characters: [],
             weaponInventory: [],
-            matrixTeams: [],
+            matrixTeams: [{ id: "team-1", slots: [null, null, null] }],
             preferences: DEFAULT_TRACKER_PREFERENCES,
           }),
           true,
@@ -268,7 +226,7 @@ export function usePersistedTrackerState() {
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-    // Storage inspection must only run once when the client provider mounts.
+    // Load storage only once when the client provider mounts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -277,8 +235,9 @@ export function usePersistedTrackerState() {
       return;
     }
 
+    /** Detects edits or clearing of storage in another tab. */
     function handleStorageEvent(event: StorageEvent) {
-      if (event.key !== TRACKER_DOCUMENT_STORAGE_KEY) {
+      if (event.key !== null && event.key !== TRACKER_DOCUMENT_STORAGE_KEY) {
         return;
       }
 
@@ -301,6 +260,7 @@ export function usePersistedTrackerState() {
     return () => window.removeEventListener("storage", handleStorageEvent);
   }, [storageLoaded]);
 
+  /** Adds a tracked character. */
   function createCharacter(character: TrackedCharacter) {
     const now = new Date().toISOString();
 
@@ -309,6 +269,7 @@ export function usePersistedTrackerState() {
     );
   }
 
+  /** Saves a character build update. */
   function updateCharacter(character: TrackedCharacter) {
     const now = new Date().toISOString();
 
@@ -317,18 +278,21 @@ export function usePersistedTrackerState() {
     );
   }
 
+  /** Deletes a character and clears its team references. */
   function deleteCharacter(id: string) {
     commitTrackerDataUpdate((currentData) =>
       deleteCharacterData(currentData, id),
     );
   }
 
+  /** Updates an inventory count. */
   function setWeaponCount(weaponId: number, count: number) {
     commitTrackerDataUpdate((currentData) =>
       setWeaponCountData(currentData, weaponId, count),
     );
   }
 
+  /** Replaces tracker data with validated imported data. */
   function replaceAllData(imported: ParsedImportedTrackerData) {
     commitTrackerDataUpdate(
       (currentData) => replaceAllTrackerData(currentData, imported),
@@ -338,6 +302,7 @@ export function usePersistedTrackerState() {
     );
   }
 
+  /** Clears builds while retaining preferences. */
   function clearTrackerData() {
     commitTrackerDataUpdate(
       (currentData) => clearTrackerDataValue(currentData),
@@ -347,48 +312,21 @@ export function usePersistedTrackerState() {
     );
   }
 
+  /** Updates the saved teams. */
   function updateMatrixTeams(matrixTeams: TrackerData["matrixTeams"]) {
     commitTrackerDataUpdate((currentData) =>
       updateMatrixTeamsData(currentData, matrixTeams),
     );
   }
 
+  /** Updates tracker preferences. */
   function updatePreferences(preferences: Partial<TrackerPreferences>) {
     commitTrackerDataUpdate((currentData) =>
       updatePreferencesData(currentData, preferences),
     );
   }
 
-  function commitPendingStorageMigration() {
-    if (!storageMigrationPlan) {
-      return;
-    }
-
-    try {
-      const document = commitStorageMigration(storageMigrationPlan);
-
-      setStorageMigrationPlan(null);
-      applyDocumentToState(document, true);
-      setStorageStatus({
-        state: "ready",
-        message: `Tracker storage migrated to v${document.schemaVersion}.`,
-      });
-    } catch (error) {
-      if (error instanceof TrackerStorageRevisionConflictError) {
-        setStorageMigrationPlan(null);
-        setStorageStale();
-        return;
-      }
-
-      storageWritableRef.current = false;
-      setStorageStatus({
-        state: "error",
-        message: "Tracker storage migration could not be completed.",
-      });
-      throw new Error("Tracker storage migration could not be completed.");
-    }
-  }
-
+  /** Reloads data after a storage conflict. */
   function reloadStoredTrackerData() {
     const result = readStoredTrackerDocument();
 
@@ -401,7 +339,6 @@ export function usePersistedTrackerState() {
       return;
     }
 
-    setStorageMigrationPlan(null);
     applyDocumentToState(result.document, true);
     setStorageStatus(result.status);
   }
@@ -424,9 +361,7 @@ export function usePersistedTrackerState() {
     updatePreferences,
     storageLoaded,
     storageStatus,
-    storageMigrationPlan,
     storageVersion,
-    commitPendingStorageMigration,
     reloadStoredTrackerData,
   };
 }

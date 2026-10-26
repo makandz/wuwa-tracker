@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { DEFAULT_TRACKER_PREFERENCES, type TrackerDocumentV5 } from "../storage";
+import { DEFAULT_TRACKER_PREFERENCES, type TrackerDocument } from "../storage";
 import {
   cleanMatrixTeamsForCharacters,
   clearTrackerData,
@@ -18,7 +18,7 @@ import type {
   WeaponInventoryItem,
 } from "../types";
 
-type TrackerData = TrackerDocumentV5["data"];
+type TrackerData = TrackerDocument["data"];
 
 function makeCharacter(
   overrides: Partial<TrackedCharacter> = {},
@@ -42,7 +42,6 @@ function makeCharacter(
       oneCostA: true,
       oneCostB: false,
     },
-    substatPriority: "Crit Rate > Crit DMG",
     expectedEr: 120,
     actualEr: 118,
     notes: "main team",

@@ -145,6 +145,7 @@ function AddScreen({
     setCharacterPickerOpen(false);
   }
 
+  /** Creates a character using the canonical saved fields. */
   function createCharacter() {
     if (!selectedCharacter || roles.length === 0) {
       return;
@@ -165,7 +166,6 @@ function AddScreen({
       critRate: 0,
       critDmg: 0,
       checklist: { ...emptyChecklist },
-      substatPriority: "",
       expectedEr: 0,
       actualEr: 0,
       notes: "",

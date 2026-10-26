@@ -73,6 +73,11 @@ export function getDefaultEchoCheckerPlan(roles: Role[]): EchoCheckerPlan {
   return getPrimaryRole(roles) === "DPS" ? "DPS" : "HybridSupport";
 }
 
+/**
+ * Creates empty factual and priority-only echo selections.
+ * @param roles - The character roles used to choose the default plan.
+ * @returns An enabled checker with five slots per selection mode.
+ */
 export function createDefaultEchoChecker(roles: Role[]): EchoChecker {
   return {
     enabled: true,
@@ -84,11 +89,11 @@ export function createDefaultEchoChecker(roles: Role[]): EchoChecker {
           critRate: null,
           critDmg: null,
           substatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
+          prioritySubstatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
         },
       }),
       {} as EchoChecker["echoes"],
     ),
-    substats: [],
   };
 }
 
@@ -415,6 +420,12 @@ export function isEchoCheckerEnabled(character: TrackedCharacter) {
   return character.echoChecker?.enabled === true;
 }
 
+/**
+ * Reads a saved echo or supplies empty selections for the UI.
+ * @param character - The tracked character.
+ * @param key - The echo position.
+ * @returns The saved or empty echo.
+ */
 export function getEchoCheckerEcho(
   character: TrackedCharacter,
   key: keyof Omit<Checklist, "skills">,
@@ -424,6 +435,7 @@ export function getEchoCheckerEcho(
       critRate: null,
       critDmg: null,
       substatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
+      prioritySubstatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
     }
   );
 }

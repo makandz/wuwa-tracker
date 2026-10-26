@@ -10,6 +10,7 @@ import type { TrackedCharacter } from "../types";
 
 function makeCharacter(overrides: Partial<TrackedCharacter> = {}): TrackedCharacter {
   return {
+    noCrit: false,
     id: "char-1",
     characterId: 1210,
     characterName: "Aemeath",
@@ -27,7 +28,6 @@ function makeCharacter(overrides: Partial<TrackedCharacter> = {}): TrackedCharac
       oneCostA: false,
       oneCostB: false,
     },
-    substatPriority: "",
     expectedEr: 0,
     actualEr: 0,
     notes: "",

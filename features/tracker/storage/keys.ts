@@ -1,15 +1,14 @@
-export {
-  BACKUP_NOTICE_ACKNOWLEDGED_AT_STORAGE_KEY,
-  DASHBOARD_SORT_STORAGE_KEY,
-  DASHBOARD_VIEW_STORAGE_KEY,
-  INVENTORY_STORAGE_KEY,
-  MATRIX_STORAGE_KEY,
-  STORAGE_KEY,
-  TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
-  TRACKER_DOCUMENT_STORAGE_KEY,
-  WELCOME_SEEN_STORAGE_KEY,
-} from "../constants";
+export const TRACKER_DOCUMENT_STORAGE_KEY = "wuwa-tracker.unified";
+export const TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY =
+  "wuwa-tracker.unified.lastKnownGood";
+export const LEGACY_TRACKER_DOCUMENT_STORAGE_KEY = "wuwa-tracker.document.v4";
+export const CURRENT_SCHEMA_VERSION = 1;
 
-export const TRACKER_APP_ID = "wuwa-tracker";
-export const TRACKER_SCHEMA_VERSION = 5;
-export const CURRENT_SCHEMA_VERSION = TRACKER_SCHEMA_VERSION;
+/**
+ * Identifies the frozen snapshot made before upgrading a unified version.
+ * @param version - The source unified schema version.
+ * @returns The storage key for that version's backup.
+ */
+export function getVersionBackupKey(version: number) {
+  return `wuwa-tracker.unified.backup.v${version}`;
+}

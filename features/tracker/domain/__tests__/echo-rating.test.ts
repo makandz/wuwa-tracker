@@ -24,6 +24,7 @@ function makeErCharacter(
   overrides: Partial<TrackedCharacter> = {},
 ): TrackedCharacter {
   return {
+    noCrit: false,
     id: "character",
     characterId: 1202,
     characterName: "Test Character",
@@ -46,34 +47,37 @@ function makeErCharacter(
       plan: "HybridSupport",
       echoes: {
         fourCost: {
+          prioritySubstatIds: [null, null, null, null, null],
           critRate: 6.3,
           critDmg: 12.6,
-          substatIds: ["energy-regen", null, null],
+          substatIds: ["energy-regen", null, null, null, null],
         },
         threeCostA: {
+          prioritySubstatIds: [null, null, null, null, null],
           critRate: 10.5,
           critDmg: 21,
-          substatIds: ["energy-regen", null, null],
+          substatIds: ["energy-regen", null, null, null, null],
         },
         threeCostB: {
+          prioritySubstatIds: [null, null, null, null, null],
           critRate: null,
           critDmg: null,
-          substatIds: [null, null, null],
+          substatIds: [null, null, null, null, null],
         },
         oneCostA: {
+          prioritySubstatIds: [null, null, null, null, null],
           critRate: null,
           critDmg: null,
-          substatIds: [null, null, null],
+          substatIds: [null, null, null, null, null],
         },
         oneCostB: {
+          prioritySubstatIds: [null, null, null, null, null],
           critRate: null,
           critDmg: null,
-          substatIds: [null, null, null],
+          substatIds: [null, null, null, null, null],
         },
       },
-      substats: [],
     },
-    substatPriority: priority,
     expectedEr: 100,
     actualEr: 111,
     notes: "",
@@ -151,12 +155,16 @@ describe("echo substat priorities", () => {
   test("soft-caps crit value above the 30 CV target", () => {
     expect(
       getEchoCheckerCritValueRating({
+        substatIds: [null, null, null, null, null],
+        prioritySubstatIds: [null, null, null, null, null],
         critRate: 7.5,
         critDmg: 15,
       }),
     ).toBe(1);
     expect(
       getEchoCheckerCritValueRating({
+        substatIds: [null, null, null, null, null],
+        prioritySubstatIds: [null, null, null, null, null],
         critRate: 10.5,
         critDmg: 21,
       }),
@@ -165,14 +173,16 @@ describe("echo substat priorities", () => {
 
   test("adds prioritized substat boosts and ignores unprioritized selections", () => {
     const prioritizedEcho: EchoCheckerEcho = {
+      prioritySubstatIds: [null, null, null, null, null],
       critRate: 7.5,
       critDmg: 15,
-      substatIds: ["atk-percent", "atk", "skill"],
+      substatIds: ["atk-percent", "atk", "skill", null, null],
     };
     const erEcho: EchoCheckerEcho = {
+      prioritySubstatIds: [null, null, null, null, null],
       critRate: 7.5,
       critDmg: 15,
-      substatIds: ["energy-regen", null, null],
+      substatIds: ["energy-regen", null, null, null, null],
     };
 
     expect(getEchoCheckerScore(prioritizedEcho, priority)).toBe(1.18);
@@ -184,6 +194,7 @@ describe("echo substat priorities", () => {
     const supportPriority =
       "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK";
     const echo: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
       critRate: 10.5,
       critDmg: 21,
       prioritySubstatIds: [
@@ -211,7 +222,6 @@ describe("echo substat priorities", () => {
     const fullyTracked = makeErCharacter({
       noCrit: true,
       actualEr: 100,
-      substatPriority: supportPriority,
     });
 
     for (const trackedEcho of Object.values(fullyTracked.echoChecker!.echoes)) {
@@ -240,7 +250,12 @@ describe("echo substat priorities", () => {
       "Energy Regen > CRIT Rate > CRIT DMG > ATK% > ATK";
     const score = (prioritySubstatIds: EchoCheckerEcho["prioritySubstatIds"]) =>
       getEchoCheckerScore(
-        { critRate: null, critDmg: null, prioritySubstatIds },
+        {
+          critRate: null,
+          critDmg: null,
+          substatIds: [null, null, null, null, null],
+          prioritySubstatIds,
+        },
         orderedPriority,
         false,
         true,
@@ -280,11 +295,13 @@ describe("echo substat priorities", () => {
     const supportPriority =
       "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK";
     const emptyEcho: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
       critRate: null,
       critDmg: null,
       prioritySubstatIds: [null, null, null, null, null],
     };
     const fullEcho: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
       critRate: null,
       critDmg: null,
       prioritySubstatIds: [
@@ -310,7 +327,6 @@ describe("echo substat priorities", () => {
         makeErCharacter({
           noCrit: true,
           actualEr: 100,
-          substatPriority: supportPriority,
         }),
       ),
     ).toMatchObject({ buildScore: 0, issue: "" });
@@ -357,12 +373,11 @@ describe("echo substat priorities", () => {
     });
   });
 
-  test("does not fall back to a legacy stored priority when curated data is missing", () => {
+  test("does not rate characters when curated priority data is missing", () => {
     expect(
       getRatings(
         makeErCharacter({
           characterId: 999999,
-          substatPriority: priority,
         }),
       ),
     ).toMatchObject({
@@ -371,13 +386,12 @@ describe("echo substat priorities", () => {
     });
   });
 
-  test("ignores legacy checked targets that have no factual substat identity", () => {
+  test("does not score echoes without factual measurements or selections", () => {
     const echo: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
+      prioritySubstatIds: [null, null, null, null, null],
       critRate: null,
       critDmg: null,
-      hasRelevantStat: true,
-      hasSecondRelevantStat: true,
-      hasThirdRelevantStat: false,
     };
 
     expect(getEchoCheckerScore(echo, priority)).toBeNull();
@@ -385,6 +399,7 @@ describe("echo substat priorities", () => {
 
   test("clears selected stats that are no longer prioritized", () => {
     const echo: EchoCheckerEcho = {
+      prioritySubstatIds: [null, null, null, null, null],
       critRate: null,
       critDmg: null,
       substatIds: ["atk-percent", "hp-percent", "skill", null, null],

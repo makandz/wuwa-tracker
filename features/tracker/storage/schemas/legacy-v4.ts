@@ -1,51 +1,38 @@
 import { z } from "zod";
 
-import {
-  DASHBOARD_SORT_KEYS,
-  DASHBOARD_VIEW_MODES,
-  ECHO_CHECKLIST_ITEMS,
-  FOUR_COST_OPTIONS,
-  ROLES,
-} from "../../constants";
-import type {
-  DashboardSortKey,
-  DashboardViewMode,
-  EchoChecklistKey,
-  FourCostMain,
-  Role,
-} from "../../types";
-import { TRACKER_APP_ID } from "../keys";
-
 const finiteNumberSchema = z.number().finite();
 const savedAtSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)));
-const roleSchema = z.custom<Role>((value) => ROLES.includes(value as Role));
-const fourCostMainSchema = z.custom<FourCostMain>((value) =>
-  FOUR_COST_OPTIONS.some((option) => option.value === value),
-);
-const dashboardSortKeySchema = z.custom<DashboardSortKey>((value) =>
-  DASHBOARD_SORT_KEYS.includes(value as DashboardSortKey),
-);
-const dashboardViewModeSchema = z.custom<DashboardViewMode>((value) =>
-  DASHBOARD_VIEW_MODES.includes(value as DashboardViewMode),
-);
-const echoChecklistKeySchemas = ECHO_CHECKLIST_ITEMS.reduce(
-  (schemas, item) => ({
-    ...schemas,
-    [item.key]: z.object({
-      critRate: finiteNumberSchema.nullable(),
-      critDmg: finiteNumberSchema.nullable(),
-      hasRelevantStat: z.boolean(),
-      hasSecondRelevantStat: z.boolean(),
-      hasThirdRelevantStat: z.boolean().catch(false),
-    }),
-  }),
-  {} as Record<EchoChecklistKey, z.ZodType>,
-);
+const roleSchema = z.enum(["DPS", "Hybrid", "Support"]);
+const fourCostMainSchema = z.enum(["CR", "CD", "BOTH"]);
+const dashboardSortKeySchema = z.enum([
+  "updated",
+  "name",
+  "completionDesc",
+  "completionAsc",
+  "weightDesc",
+  "weightAsc",
+]);
+const dashboardViewModeSchema = z.enum(["list", "grid"]);
+
+const legacyEchoSchema = z.object({
+  critRate: finiteNumberSchema.nullable(),
+  critDmg: finiteNumberSchema.nullable(),
+  hasRelevantStat: z.boolean(),
+  hasSecondRelevantStat: z.boolean(),
+  hasThirdRelevantStat: z.boolean().catch(false),
+});
+const legacyEchoesSchema = z.object({
+  fourCost: legacyEchoSchema,
+  threeCostA: legacyEchoSchema,
+  threeCostB: legacyEchoSchema,
+  oneCostA: legacyEchoSchema,
+  oneCostB: legacyEchoSchema,
+});
 
 export const trackerDocumentV4Schema = z
   .object({
     schemaVersion: z.literal(4),
-    app: z.literal(TRACKER_APP_ID),
+    app: z.literal("wuwa-tracker"),
     savedAt: savedAtSchema,
     revision: z.number().int().positive(),
     data: z
@@ -81,7 +68,7 @@ export const trackerDocumentV4Schema = z
                 .object({
                   enabled: z.boolean(),
                   plan: z.union([z.literal("DPS"), z.literal("HybridSupport")]),
-                  echoes: z.object(echoChecklistKeySchemas),
+                  echoes: legacyEchoesSchema,
                   substatPriority: z.string().optional(),
                   substats: z.array(
                     z.object({

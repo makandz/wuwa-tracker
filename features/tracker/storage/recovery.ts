@@ -1,112 +1,99 @@
 import {
-  createTrackerDocumentV5,
-  normalizeTrackerDocumentV5,
-  type TrackerDocumentV5,
+  createTrackerDocument,
+  parseTrackerDocument,
+  type TrackerDocument,
   type TrackerPreferences,
 } from "./documents";
 import {
+  LEGACY_TRACKER_DOCUMENT_STORAGE_KEY,
   TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
   TRACKER_DOCUMENT_STORAGE_KEY,
 } from "./keys";
+import { convertLegacyV5Document } from "./imports";
+import {
+  InvalidTrackerDocumentError,
+  loadUnifiedTrackerDocument,
+  saveTrackerUpgrade,
+  UnsupportedTrackerVersionError,
+} from "./upgrades";
 
 export type TrackerStorageStatus = {
   state: "ready" | "recovered" | "stale" | "error";
   message: string;
 };
-
 export type ReadTrackerDocumentResult = {
-  document: TrackerDocumentV5 | null;
+  document: TrackerDocument | null;
   status: TrackerStorageStatus;
 };
-
 export type GuardedWriteTrackerDocumentResult =
-  | {
-      state: "written";
-      document: TrackerDocumentV5;
-    }
-  | {
-      state: "stale";
-      currentDocument: TrackerDocumentV5;
-    };
+  | { state: "written"; document: TrackerDocument }
+  | { state: "stale"; currentDocument: TrackerDocument };
 
 export class TrackerStorageRevisionConflictError extends Error {
-  currentDocument: TrackerDocumentV5;
+  currentDocument: TrackerDocument;
 
-  constructor(currentDocument: TrackerDocumentV5) {
+  /**
+   * Identifies a save attempted from an outdated tab.
+   * @param currentDocument - The newer stored document.
+   */
+  constructor(currentDocument: TrackerDocument) {
     super("Tracker storage has a newer revision.");
     this.name = "TrackerStorageRevisionConflictError";
     this.currentDocument = currentDocument;
   }
 }
 
-export function parseTrackerDocument(raw: string | null) {
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return normalizeTrackerDocumentV5(JSON.parse(raw));
-  } catch {
-    return null;
-  }
-}
-
+/**
+ * Reads the active unified document without performing recovery or conversion.
+ * @returns The current document, or null when missing or invalid.
+ */
 export function readCurrentTrackerDocument() {
   if (typeof window === "undefined") {
     return null;
   }
 
-  return parseTrackerDocument(localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY));
+  const raw = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
+
+  try {
+    return raw === null ? null : parseTrackerDocument(JSON.parse(raw));
+  } catch {
+    return null;
+  }
 }
 
+/**
+ * Checks whether stored data supersedes a tab's last loaded revision.
+ * @param document - The stored document.
+ * @param baseRevision - The tab's last loaded revision.
+ * @returns Whether the stored revision is newer.
+ */
 export function hasNewerTrackerDocumentRevision(
-  document: TrackerDocumentV5,
+  document: TrackerDocument,
   baseRevision: number,
 ) {
   return document.revision > baseRevision;
 }
 
-export function writeCurrentTrackerDocument(document: TrackerDocumentV5) {
-  localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(document));
-}
+/**
+ * Saves a validated document after preserving the previous valid save.
+ * @param document - The next document.
+ * @returns The validated document that was saved.
+ */
+export function writeStoredTrackerDocument(document: TrackerDocument) {
+  const validated = parseTrackerDocument(document);
 
-export function updateCurrentTrackerDocumentData(
-  updater: (document: TrackerDocumentV5) => {
-    characters?: TrackerDocumentV5["data"]["characters"];
-    weaponInventory?: TrackerDocumentV5["data"]["weaponInventory"];
-    matrixTeams?: TrackerDocumentV5["data"]["matrixTeams"];
-    preferences?: TrackerPreferences;
-  },
-) {
-  const currentDocument = readCurrentTrackerDocument();
-
-  if (!currentDocument) {
-    return false;
-  }
-
-  const updatedData = updater(currentDocument);
-  const nextDocument = createTrackerDocumentV5({
-    characters: updatedData.characters ?? currentDocument.data.characters,
-    weaponInventory:
-      updatedData.weaponInventory ?? currentDocument.data.weaponInventory,
-    matrixTeams: updatedData.matrixTeams ?? currentDocument.data.matrixTeams,
-    preferences: updatedData.preferences ?? currentDocument.data.preferences,
-    revision: currentDocument.revision + 1,
-  });
-
-  writeStoredTrackerDocument(nextDocument);
-
-  return true;
-}
-
-export function writeStoredTrackerDocument(document: TrackerDocumentV5) {
-  const normalizedDocument = normalizeTrackerDocumentV5(document);
-
-  if (!normalizedDocument) {
+  if (!validated) {
     throw new Error("Tracker document is invalid.");
   }
 
+  const currentRaw = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
   const currentDocument = readCurrentTrackerDocument();
+
+  if (currentRaw !== null && !currentDocument) {
+    throw new Error(
+      "The existing unified save is unreadable. Reload before saving.",
+    );
+  }
 
   if (currentDocument) {
     localStorage.setItem(
@@ -115,118 +102,152 @@ export function writeStoredTrackerDocument(document: TrackerDocumentV5) {
     );
   }
 
-  writeCurrentTrackerDocument(normalizedDocument);
+  localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(validated));
+
+  return validated;
 }
 
+/**
+ * Refuses a stale tab's save before changing the active document or its backup.
+ * @param document - The next document.
+ * @param baseRevision - The revision used to produce the edit.
+ * @returns The written document, or the newer document that prevented saving.
+ */
 export function writeStoredTrackerDocumentWithRevisionGuard(
-  document: TrackerDocumentV5,
+  document: TrackerDocument,
   baseRevision: number,
 ): GuardedWriteTrackerDocumentResult {
-  const normalizedDocument = normalizeTrackerDocumentV5(document);
-
-  if (!normalizedDocument) {
-    throw new Error("Tracker document is invalid.");
-  }
-
   const currentDocument = readCurrentTrackerDocument();
 
   if (
     currentDocument &&
     hasNewerTrackerDocumentRevision(currentDocument, baseRevision)
   ) {
-    return {
-      state: "stale",
-      currentDocument,
-    };
+    return { state: "stale", currentDocument };
   }
 
-  if (currentDocument) {
-    localStorage.setItem(
-      TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
-      JSON.stringify(currentDocument),
+  const written = writeStoredTrackerDocument(document);
+
+  return { state: "written", document: written };
+}
+
+/**
+ * Updates a stored document using the same validation and revision guard as UI edits.
+ * @param updater - The changes to apply to the current document.
+ * @returns Whether a document was updated.
+ */
+export function updateCurrentTrackerDocumentData(
+  updater: (document: TrackerDocument) => {
+    characters?: TrackerDocument["data"]["characters"];
+    weaponInventory?: TrackerDocument["data"]["weaponInventory"];
+    matrixTeams?: TrackerDocument["data"]["matrixTeams"];
+    preferences?: TrackerPreferences;
+  },
+) {
+  const current = readCurrentTrackerDocument();
+
+  if (!current) {
+    return false;
+  }
+
+  const document = createTrackerDocument({
+    ...current.data,
+    ...updater(current),
+    revision: current.revision + 1,
+  });
+
+  const result = writeStoredTrackerDocumentWithRevisionGuard(document, current.revision);
+
+  return result.state === "written";
+}
+
+/** Builds a consistent storage result for startup and recovery. */
+function storageResult(
+  document: TrackerDocument | null,
+  state: TrackerStorageStatus["state"],
+  message: string,
+): ReadTrackerDocumentResult {
+  return { document, status: { state, message } };
+}
+
+/**
+ * Loads unified storage, recovering locally or copying legacy v5 only on first use.
+ * @returns The loaded document and its storage status.
+ */
+export function readStoredTrackerDocument(): ReadTrackerDocumentResult {
+  if (typeof window === "undefined") {
+    return storageResult(
+      null,
+      "ready",
+      "Storage is unavailable during server rendering.",
     );
   }
 
-  writeCurrentTrackerDocument(normalizedDocument);
-
-  return {
-    state: "written",
-    document: normalizedDocument,
-  };
-}
-
-export function readStoredTrackerDocument(): ReadTrackerDocumentResult {
   try {
-    if (typeof window === "undefined") {
-      return {
-        document: null,
-        status: {
-          state: "ready",
-          message: "Storage is not available during server rendering.",
-        },
-      };
-    }
+    const raw = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
+    const backup = localStorage.getItem(
+      TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
+    );
 
-    const rawDocument = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
-
-    if (rawDocument) {
-      const currentDocument = parseTrackerDocument(rawDocument);
-
-      if (currentDocument) {
-        return {
-          document: currentDocument,
-          status: {
-            state: "ready",
-            message: "Tracker document loaded.",
-          },
-        };
-      }
-
-      const recoveredDocument = parseTrackerDocument(
-        localStorage.getItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY),
-      );
-
-      if (recoveredDocument) {
-        try {
-          writeCurrentTrackerDocument(recoveredDocument);
-        } catch {
-          // The recovered document is still safe to use for this session.
+    if (raw !== null) {
+      try {
+        return storageResult(
+          loadUnifiedTrackerDocument(raw),
+          "ready",
+          "Tracker document loaded.",
+        );
+      } catch (error) {
+        // A newer format must never be replaced with an older recovery copy.
+        if (error instanceof UnsupportedTrackerVersionError) {
+          return storageResult(null, "error", error.message);
         }
 
-        return {
-          document: recoveredDocument,
-          status: {
-            state: "recovered",
-            message:
-              "Tracker storage was recovered from the last known good backup.",
-          },
-        };
+        // Failed upgrade writes must preserve the active save rather than recover over it.
+        if (
+          !(error instanceof InvalidTrackerDocumentError) &&
+          !(error instanceof SyntaxError)
+        ) {
+          throw error;
+        }
       }
-
-      return {
-        document: null,
-        status: {
-          state: "error",
-          message:
-            "Tracker storage is corrupt and no last known good backup was available.",
-        },
-      };
     }
 
-    return {
-      document: null,
-      status: {
-        state: "ready",
-        message: "No current tracker document was found.",
-      },
-    };
+    if (backup !== null) {
+      const recovered = loadUnifiedTrackerDocument(backup);
+      localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(recovered));
+      return storageResult(
+        recovered,
+        "recovered",
+        "Tracker storage was recovered from the last known good backup.",
+      );
+    }
+
+    if (raw !== null) {
+      return storageResult(
+        null,
+        "error",
+        "Tracker storage is invalid and no recovery backup was available.",
+      );
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_TRACKER_DOCUMENT_STORAGE_KEY);
+
+    if (legacyRaw !== null) {
+      const document = convertLegacyV5Document(JSON.parse(legacyRaw));
+      saveTrackerUpgrade(document);
+      return storageResult(
+        document,
+        "ready",
+        "Tracker data copied to unified storage. The legacy save is unchanged.",
+      );
+    }
+
+    return storageResult(null, "ready", "No tracker document was found.");
   } catch {
-    return {
-      document: null,
-      status: {
-        state: "error",
-        message: "Tracker storage could not be read from this browser.",
-      },
-    };
+    return storageResult(
+      null,
+      "error",
+      "Tracker storage could not be loaded or saved. Existing data has been preserved.",
+    );
   }
 }
