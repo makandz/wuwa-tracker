@@ -1,5 +1,28 @@
 @import "tailwindcss";
 
+.dashboard-character-card {
+  --card-art-surface: var(--surface);
+}
+
+.dashboard-character-card:hover {
+  --card-art-surface: var(--surface-raised);
+}
+
+.dashboard-character-art-image {
+  position: absolute;
+  right: -12px;
+  bottom: -12px;
+  height: 90%;
+  aspect-ratio: 1;
+  opacity: 0.38;
+  filter: saturate(0.8);
+}
+
+.dashboard-character-art-fade {
+  background:
+    linear-gradient(90deg, var(--card-art-surface) 0%, color-mix(in srgb, var(--card-art-surface) 92%, transparent) 23%, color-mix(in srgb, var(--card-art-surface) 55%, transparent) 50%, transparent 80%);
+}
+
 :root {
   --background: #0f1114;
   --foreground: #f2f4f2;

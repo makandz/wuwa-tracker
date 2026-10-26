@@ -22,6 +22,7 @@ import {
 } from "@/features/tracker/domain/dashboard-selectors";
 import { exportTrackerData, type TrackerStorageStatus } from "@/features/tracker/storage";
 import { StorageStatusNotice } from "@/features/tracker/components/storage-status-notice";
+import { CharacterCardArtwork } from "@/features/tracker/components/character-card-artwork";
 import {
   CharacterAvatar,
   SearchInput,
@@ -391,11 +392,12 @@ function DashboardGridCard({
 
   return (
     <button
-      className={`grid content-start gap-3 rounded-lg border bg-app-surface p-3.5 text-left transition-colors hover:bg-app-raised ${borderClasses}`}
+      className={`dashboard-character-card relative isolate grid content-start gap-3 overflow-hidden rounded-lg border bg-app-surface p-3.5 text-left transition-colors hover:bg-app-raised ${borderClasses}`}
       onClick={() => onOpen(character.id)}
       type="button"
     >
-      <div className="flex min-w-0 items-center gap-2.5">
+      <CharacterCardArtwork characterId={character.characterId} />
+      <div className="relative flex min-w-0 items-center gap-2.5">
         <CharacterAvatar
           character={character}
           catalogCharacter={catalogCharacter}
@@ -415,10 +417,10 @@ function DashboardGridCard({
         </div>
       </div>
 
-      <div className="grid min-w-0 grid-cols-3 items-start gap-1.5">
+      <div className="relative grid min-w-0 grid-cols-3 items-start gap-1.5">
         {sets.map((set) => (
           <div
-            className="min-w-0 rounded-md border border-app-border bg-app-subtle px-2 py-2.5"
+            className="min-w-0 rounded-md border border-app-border bg-app-subtle/75 px-2 py-2.5"
             key={set.id}
           >
             <div
@@ -439,7 +441,7 @@ function DashboardGridCard({
         ))}
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-2.5 text-xs">
+      <div className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-3.5 text-xs">
         <span className="flex min-w-0 max-w-full items-center gap-1.5">
           <span
             className={`inline-flex min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 font-medium ${weaponToneClasses.badge}`}
