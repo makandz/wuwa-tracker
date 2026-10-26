@@ -7,6 +7,7 @@ import {
   parseImportedTrackerData,
   parseTrackerDocument,
   readStoredTrackerDocument,
+  restoreStoredTrackerDocument,
   writeStoredTrackerDocument,
   writeStoredTrackerDocumentWithRevisionGuard,
   type TrackerDocument,
@@ -14,6 +15,7 @@ import {
 import {
   getVersionBackupKey,
   LEGACY_TRACKER_DOCUMENT_STORAGE_KEY,
+  TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY,
   TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
   TRACKER_DOCUMENT_STORAGE_KEY,
 } from "../keys";
@@ -365,6 +367,107 @@ describe("recovery and saves", () => {
     vi.spyOn(storage, "setItem").mockImplementation(() => { throw new Error("Quota exceeded"); });
     expect(() => saveTrackerUpgrade(makeDocument(3), { schemaVersion: 1, raw })).toThrow();
     expect(storage.getItem(TRACKER_DOCUMENT_STORAGE_KEY)).toBe(raw);
+  });
+});
+
+describe("explicit recovery", () => {
+  test.each(["{corrupt", "", JSON.stringify({ ...makeDocument(), data: null })])(
+    "restores a validated import over damaged storage (%s) without losing its original bytes",
+    (raw) => {
+      storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, raw);
+      storage.setItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY, "previous recovery bytes");
+      storage.setItem(LEGACY_TRACKER_DOCUMENT_STORAGE_KEY, "legacy bytes");
+      storage.setItem(legacyBackupKey, "legacy recovery bytes");
+      storage.setItem(getVersionBackupKey(1), "frozen version bytes");
+      const imported = parseImportedTrackerData(JSON.stringify(makeDocument()));
+      const replacement = createTrackerDocument({ ...imported, preferences: imported.preferences!, revision: 3 });
+
+      expect(restoreStoredTrackerDocument(replacement, 2)).toEqual({ state: "written", document: replacement });
+      expect(readStoredTrackerDocument().document).toEqual(replacement);
+      expect(storage.getItem(TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY)).toBe(raw);
+      expect(storage.getItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY)).toBe("previous recovery bytes");
+      expect(storage.getItem(LEGACY_TRACKER_DOCUMENT_STORAGE_KEY)).toBe("legacy bytes");
+      expect(storage.getItem(legacyBackupKey)).toBe("legacy recovery bytes");
+      expect(storage.getItem(getVersionBackupKey(1))).toBe("frozen version bytes");
+    },
+  );
+
+  test("resets damaged storage even when the replacement contains no tracker data", () => {
+    storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt");
+    const empty = createTrackerDocument({
+      characters: [], weaponInventory: [], matrixTeams: [], preferences: DEFAULT_TRACKER_PREFERENCES,
+    });
+
+    expect(restoreStoredTrackerDocument(empty, 0).state).toBe("written");
+    expect(readStoredTrackerDocument().document).toEqual(empty);
+    expect(storage.getItem(TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY)).toBe("{corrupt");
+  });
+
+  test("allows recovery from damaged legacy data without changing any legacy key", () => {
+    storage.setItem(LEGACY_TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt legacy");
+    storage.setItem(legacyBackupKey, "legacy recovery bytes");
+    expect(readStoredTrackerDocument().status.state).toBe("error");
+
+    expect(restoreStoredTrackerDocument(makeDocument(), 0).state).toBe("written");
+    expect(readStoredTrackerDocument().document).toEqual(makeDocument());
+    expect(storage.getItem(LEGACY_TRACKER_DOCUMENT_STORAGE_KEY)).toBe("{corrupt legacy");
+    expect(storage.getItem(legacyBackupKey)).toBe("legacy recovery bytes");
+  });
+
+  test("uses ordinary backups and revision protection when restoring over a valid document", () => {
+    storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(makeDocument(2)));
+    expect(restoreStoredTrackerDocument(makeDocument(3), 2).state).toBe("written");
+    expect(JSON.parse(storage.getItem(TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY)!)).toEqual(makeDocument(2));
+    expect(storage.getItem(TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY)).toBeNull();
+
+    const writes = vi.spyOn(storage, "setItem");
+    expect(restoreStoredTrackerDocument(makeDocument(4), 2)).toEqual({ state: "stale", currentDocument: makeDocument(3) });
+    expect(writes).not.toHaveBeenCalled();
+  });
+
+  test("does not replace unsupported newer saves through explicit recovery", () => {
+    const raw = JSON.stringify({ ...makeDocument(), schemaVersion: 99 });
+    storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, raw);
+    const writes = vi.spyOn(storage, "setItem");
+
+    expect(() => restoreStoredTrackerDocument(makeDocument(), 0)).toThrow("Unsupported unified save version");
+    expect(writes).not.toHaveBeenCalled();
+    expect(storage.getItem(TRACKER_DOCUMENT_STORAGE_KEY)).toBe(raw);
+  });
+
+  test("validates the replacement before changing any recovery copy", () => {
+    storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt");
+    const invalid = makeDocument();
+    Reflect.set(invalid.data, "extra", true);
+    const writes = vi.spyOn(storage, "setItem");
+
+    expect(() => restoreStoredTrackerDocument(invalid, 0)).toThrow();
+    expect(writes).not.toHaveBeenCalled();
+  });
+
+  test("leaves the active save untouched if its pre-restore backup cannot be written", () => {
+    storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt");
+    vi.spyOn(storage, "setItem").mockImplementation(() => { throw new Error("Quota exceeded"); });
+
+    expect(() => restoreStoredTrackerDocument(makeDocument(), 0)).toThrow("Quota exceeded");
+    expect(storage.getItem(TRACKER_DOCUMENT_STORAGE_KEY)).toBe("{corrupt");
+    expect(storage.getItem(TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY)).toBeNull();
+  });
+
+  test("retains both the original save and its snapshot if the replacement write fails", () => {
+    storage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, "{corrupt");
+    const setItem = storage.setItem.bind(storage);
+    vi.spyOn(storage, "setItem").mockImplementation((key, value) => {
+      if (key === TRACKER_DOCUMENT_STORAGE_KEY) {
+        throw new Error("Quota exceeded");
+      }
+
+      setItem(key, value);
+    });
+
+    expect(() => restoreStoredTrackerDocument(makeDocument(), 0)).toThrow("Quota exceeded");
+    expect(storage.getItem(TRACKER_DOCUMENT_STORAGE_KEY)).toBe("{corrupt");
+    expect(storage.getItem(TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY)).toBe("{corrupt");
   });
 });
 

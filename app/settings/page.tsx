@@ -178,7 +178,7 @@ function SettingsScreen({
               Download your characters, weapon inventory, and matrix teams as a JSON file.
             </p>
             <div className="mt-4">
-              <TextButton onClick={onExport} variant="primary">
+              <TextButton disabled={storageStatus.state === "error" && storageVersion === null} onClick={onExport} variant="primary">
                 Export Data
               </TextButton>
             </div>

@@ -41,6 +41,12 @@ disabled detailed measurements are kept.
 
 - Ordinary saves preserve the previous validated document at
   `wuwa-tracker.unified.lastKnownGood` before replacing the active save.
+- Settings remains available after load failures. Explicit imports and resets can
+  replace damaged unified data after saving its exact bytes at
+  `wuwa-tracker.unified.beforeRestore`. If that backup fails, stop the restore.
+  Keep the existing recovery copy and legacy keys untouched. Supported active
+  documents still use the revision guard and ordinary backup path; unsupported
+  newer versions cannot be replaced through recovery.
 - Version transitions preserve the exact source JSON at
   `wuwa-tracker.unified.backup.vN`. Existing version snapshots are never replaced
   by retries or ordinary saves. A failed backup write must stop the upgrade.

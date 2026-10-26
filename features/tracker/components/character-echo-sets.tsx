@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   ECHO_CHECKLIST_ITEMS,
@@ -414,7 +414,10 @@ function EchoSetEditor({
 function EchoSetReferences({ characterId, echoSet }: { characterId: number; echoSet: EchoSet }) {
   const priority = getCharacterSubstatPriority(characterId);
   const priorityOnly = echoSet.scoring === "priority-stats";
-  const estimate = priority === null || priorityOnly ? null : getMakanEchoEstimate({ substatPriority: priority });
+  const estimate = useMemo(
+    () => priority === null || priorityOnly ? null : getMakanEchoEstimate({ substatPriority: priority }),
+    [priority, priorityOnly],
+  );
 
   return (
     <>

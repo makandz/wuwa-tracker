@@ -6,6 +6,7 @@ import {
 } from "./documents";
 import {
   LEGACY_TRACKER_DOCUMENT_STORAGE_KEY,
+  TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY,
   TRACKER_DOCUMENT_LAST_KNOWN_GOOD_STORAGE_KEY,
   TRACKER_DOCUMENT_STORAGE_KEY,
 } from "./keys";
@@ -15,6 +16,7 @@ import {
   loadUnifiedTrackerDocument,
   saveTrackerUpgrade,
   UnsupportedTrackerVersionError,
+  upgradeTrackerDocument,
 } from "./upgrades";
 
 export type TrackerStorageStatus = {
@@ -129,6 +131,43 @@ export function writeStoredTrackerDocumentWithRevisionGuard(
   const written = writeStoredTrackerDocument(document);
 
   return { state: "written", document: written };
+}
+
+/**
+ * Restores an explicit import or reset, preserving unreadable data before replacement.
+ * @param document - The validated replacement document.
+ * @param baseRevision - The revision loaded by the tab requesting the restore.
+ * @returns The restored document, or the newer document that prevented saving.
+ */
+export function restoreStoredTrackerDocument(
+  document: TrackerDocument,
+  baseRevision: number,
+): GuardedWriteTrackerDocumentResult {
+  const validated = upgradeTrackerDocument(document);
+  const currentRaw = localStorage.getItem(TRACKER_DOCUMENT_STORAGE_KEY);
+
+  if (currentRaw === null) {
+    return writeStoredTrackerDocumentWithRevisionGuard(validated, baseRevision);
+  }
+
+  try {
+    upgradeTrackerDocument(JSON.parse(currentRaw));
+  } catch (error) {
+    // Explicit recovery may replace damaged data, but never an unsupported version.
+    if (
+      !(error instanceof InvalidTrackerDocumentError) &&
+      !(error instanceof SyntaxError)
+    ) {
+      throw error;
+    }
+
+    localStorage.setItem(TRACKER_DOCUMENT_BEFORE_RESTORE_STORAGE_KEY, currentRaw);
+    localStorage.setItem(TRACKER_DOCUMENT_STORAGE_KEY, JSON.stringify(validated));
+
+    return { state: "written", document: validated };
+  }
+
+  return writeStoredTrackerDocumentWithRevisionGuard(validated, baseRevision);
 }
 
 /**

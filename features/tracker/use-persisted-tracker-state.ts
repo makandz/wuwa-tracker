@@ -8,6 +8,7 @@ import {
   createTrackerDocument,
   parseTrackerDocument,
   readStoredTrackerDocument,
+  restoreStoredTrackerDocument,
   writeStoredTrackerDocumentWithRevisionGuard,
   type ParsedImportedTrackerData,
   type TrackerDocument,
@@ -124,14 +125,14 @@ export function usePersistedTrackerState() {
   function commitTrackerData(
     nextData: TrackerData,
     {
-      forceWritable = false,
+      restore = false,
       statusMessage = "Tracker document saved.",
     }: {
-      forceWritable?: boolean;
+      restore?: boolean;
       statusMessage?: string;
     } = {},
   ) {
-    if (!forceWritable && !storageWritableRef.current) {
+    if (!restore && !storageWritableRef.current) {
       setStorageSaveError();
       throw new Error("Tracker storage is not writable.");
     }
@@ -143,16 +144,16 @@ export function usePersistedTrackerState() {
     });
 
     if (
+      !restore &&
       JSON.stringify(nextDocument.data) === JSON.stringify(trackerDataRef.current)
     ) {
       return false;
     }
 
     try {
-      const result = writeStoredTrackerDocumentWithRevisionGuard(
-        nextDocument,
-        baseRevision,
-      );
+      const result = restore
+        ? restoreStoredTrackerDocument(nextDocument, baseRevision)
+        : writeStoredTrackerDocumentWithRevisionGuard(nextDocument, baseRevision);
 
       if (result.state === "stale") {
         setStorageStale();
@@ -287,7 +288,7 @@ export function usePersistedTrackerState() {
     commitTrackerDataUpdate(
       (currentData) => replaceAllTrackerData(currentData, imported),
       {
-        forceWritable: true,
+        restore: true,
       },
     );
   }
@@ -297,7 +298,7 @@ export function usePersistedTrackerState() {
     commitTrackerDataUpdate(
       (currentData) => clearTrackerDataValue(currentData),
       {
-        forceWritable: true,
+        restore: true,
       },
     );
   }

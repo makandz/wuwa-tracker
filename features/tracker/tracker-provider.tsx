@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import {
   type ParsedImportedTrackerData,
@@ -47,6 +48,8 @@ const TrackerContext = createContext<TrackerContextValue | null>(null);
  * @returns The tracker provider and its current content.
  */
 export function TrackerProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const catalog = useCatalog();
   const {
     characters,
@@ -96,15 +99,18 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  if (storageStatus.state === "error" && storageVersion === null) {
+  if (storageStatus.state === "error" && storageVersion === null && pathname !== "/settings") {
     return (
       <TrackerContext.Provider value={value}>
         <div className="min-h-screen bg-app-bg text-app-fg">
           <main className="mx-auto grid w-full max-w-2xl gap-4 px-4 py-6 sm:px-6 lg:px-8">
             <StorageStatusNotice storageStatus={storageStatus} />
-            <div>
+            <div className="flex flex-wrap gap-2">
               <TextButton onClick={reloadStoredTrackerData} variant="primary">
                 Retry Loading
+              </TextButton>
+              <TextButton onClick={() => router.push("/settings")}>
+                Open Settings
               </TextButton>
             </div>
           </main>

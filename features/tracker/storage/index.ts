@@ -21,6 +21,7 @@ export { CURRENT_SCHEMA_VERSION } from "./keys";
 export {
   hasNewerTrackerDocumentRevision,
   readStoredTrackerDocument,
+  restoreStoredTrackerDocument,
   TrackerStorageRevisionConflictError,
   writeStoredTrackerDocument,
   writeStoredTrackerDocumentWithRevisionGuard,
