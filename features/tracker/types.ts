@@ -1,6 +1,7 @@
-export type Role = "DPS" | "Hybrid" | "Support";
-export type FourCostMain = "CR" | "CD" | "BOTH";
-export type EchoCheckerPlan = "DPS" | "HybridSupport";
+import type { TrackerDocumentV1 } from "./storage/schemas/v1";
+
+type TrackerData = TrackerDocumentV1["data"];
+
 export type WeaponRarityTone = "blue" | "purple" | "standardGold" | "limitedGold" | "neutral";
 export type CharacterBadgeTone = "blue";
 export type RatingGrade =
@@ -16,16 +17,8 @@ export type RatingGrade =
   | "C"
   | "D"
   | "F";
-export type DashboardSortKey =
-  | "updated"
-  | "name"
-  | "completionDesc"
-  | "completionAsc"
-  | "weightDesc"
-  | "weightAsc";
-export type DashboardViewMode = "list" | "grid";
-export type WeaponFilter = "all" | "selected" | "missing" | "attention";
 export type RatingValue = number | null;
+export type ErStatus = "unknown" | "below" | "met";
 
 export type ApiCharacter = {
   Id: number;
@@ -57,88 +50,15 @@ export type Catalog = {
   error: string;
 };
 
-export type Checklist = {
-  skills: boolean;
-  fourCost: boolean;
-  threeCostA: boolean;
-  threeCostB: boolean;
-  oneCostA: boolean;
-  oneCostB: boolean;
-};
+export type TrackedCharacter = TrackerData["characters"][number];
+export type EchoSet = TrackedCharacter["echoSets"][number];
+export type EchoScoringPreset = EchoSet["scoring"];
+export type Checklist = EchoSet["checklist"];
+export type EchoChecklistKey = keyof Checklist;
+export type EchoCheckerEcho = EchoSet["echoes"][EchoChecklistKey];
+export type EchoCheckerSubstatSlots = EchoCheckerEcho["substatIds"];
+export type EchoCheckerSubstatId = NonNullable<EchoCheckerSubstatSlots[number]>;
+export type WeaponInventoryItem = TrackerData["weaponInventory"][number];
+export type MatrixTeam = TrackerData["matrixTeams"][number];
 
-export type EchoChecklistKey = Exclude<keyof Checklist, "skills">;
-
-export type EchoSubstatId =
-  | "crit-rate"
-  | "crit-dmg"
-  | "atk"
-  | "hp"
-  | "def"
-  | "atk-percent"
-  | "hp-percent"
-  | "def-percent"
-  | "energy-regen"
-  | "basic"
-  | "heavy"
-  | "skill"
-  | "liberation";
-
-export type EchoCheckerSubstatId = EchoSubstatId;
-
-export type EchoCheckerSubstatSlots = (EchoCheckerSubstatId | null)[];
-
-export type EchoCheckerEcho = {
-  critRate: number | null;
-  critDmg: number | null;
-  substatIds?: EchoCheckerSubstatSlots;
-  prioritySubstatIds?: EchoCheckerSubstatSlots;
-  /** Legacy v5 fields, normalized into substatIds when stored data is read. */
-  hasRelevantStat?: boolean;
-  hasSecondRelevantStat?: boolean;
-  hasThirdRelevantStat?: boolean;
-};
-
-export type EchoCheckerSubstat = {
-  id: string;
-  label: string;
-  checked: boolean;
-};
-
-export type EchoChecker = {
-  enabled: boolean;
-  plan: EchoCheckerPlan;
-  echoes: Record<EchoChecklistKey, EchoCheckerEcho>;
-  substatPriority?: string;
-  substats: EchoCheckerSubstat[];
-};
-
-export type TrackedCharacter = {
-  id: string;
-  characterId: number;
-  characterName: string;
-  roles: Role[];
-  weaponId: number | null;
-  weaponName: string;
-  fourCostMain: FourCostMain;
-  noCrit?: boolean;
-  critRate: number;
-  critDmg: number;
-  checklist: Checklist;
-  echoChecker?: EchoChecker;
-  substatPriority: string;
-  expectedEr: number;
-  actualEr: number;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type WeaponInventoryItem = {
-  weaponId: number;
-  count: number;
-};
-
-export type MatrixTeam = {
-  id: string;
-  slots: [string | null, string | null, string | null];
-};
+export type EchoSubstatId = EchoCheckerSubstatId;

@@ -1,6 +1,7 @@
+import { makeTrackedCharacter as makeCharacter } from "./fixtures";
 import { describe, expect, test } from "vitest";
 
-import { DEFAULT_TRACKER_PREFERENCES, type TrackerDocumentV5 } from "../storage";
+import { DEFAULT_TRACKER_PREFERENCES, type TrackerDocument } from "../storage";
 import {
   cleanMatrixTeamsForCharacters,
   clearTrackerData,
@@ -14,43 +15,11 @@ import {
 } from "../tracker-data";
 import type {
   MatrixTeam,
-  TrackedCharacter,
   WeaponInventoryItem,
 } from "../types";
 
-type TrackerData = TrackerDocumentV5["data"];
+type TrackerData = TrackerDocument["data"];
 
-function makeCharacter(
-  overrides: Partial<TrackedCharacter> = {},
-): TrackedCharacter {
-  return {
-    id: "char-1",
-    characterId: 101,
-    characterName: "Rover",
-    roles: ["DPS"],
-    weaponId: 201,
-    weaponName: "Emerald of Genesis",
-    fourCostMain: "CR",
-    noCrit: false,
-    critRate: 70,
-    critDmg: 240,
-    checklist: {
-      skills: true,
-      fourCost: false,
-      threeCostA: true,
-      threeCostB: false,
-      oneCostA: true,
-      oneCostB: false,
-    },
-    substatPriority: "Crit Rate > Crit DMG",
-    expectedEr: 120,
-    actualEr: 118,
-    notes: "main team",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 function makeMatrixTeams(): MatrixTeam[] {
   return [
@@ -191,12 +160,10 @@ describe("tracker data helpers", () => {
     const preferences = {
       ...DEFAULT_TRACKER_PREFERENCES,
       welcomeSeen: true,
-      dashboardViewMode: "grid" as const,
     };
     const data = makeTrackerData({ preferences });
     const importedPreferences = {
       ...DEFAULT_TRACKER_PREFERENCES,
-      dashboardSortKey: "name" as const,
     };
 
     expect(
@@ -236,12 +203,10 @@ describe("tracker data helpers", () => {
     expect(
       updatePreferencesData(data, {
         welcomeSeen: true,
-        dashboardSortKey: "name",
       }).preferences,
     ).toEqual({
       ...DEFAULT_TRACKER_PREFERENCES,
       welcomeSeen: true,
-      dashboardSortKey: "name",
     });
   });
 });

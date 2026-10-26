@@ -2,7 +2,7 @@
 
 A small Next.js app for keeping track of Wuthering Waves character builds.
 
-It pulls the current character and weapon catalog from Encore, then lets you track the stuff that is easy to lose in notes: roles, assigned weapons, echo crit stats, ER targets, build checklist progress, and weapon inventory overlap.
+It pulls the current character and weapon catalog from Encore, then lets you track the stuff that is easy to lose in notes: assigned weapons, up to three echo sets per character, per-set scoring and ER, checklist progress, and weapon inventory overlap.
 
 Progress is saved in the browser's local storage. You can also export the tracker data as JSON from the app.
 

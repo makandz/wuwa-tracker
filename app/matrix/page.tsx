@@ -2,17 +2,12 @@
 
 import { useMemo, useState, type DragEvent } from "react";
 
-import { ROLES } from "@/features/tracker/constants";
+import { compareCharacterReleaseOrder } from "@/features/tracker/character-release-order";
 import {
   buildCatalogCharacterLookup,
   getMatrixCharacterMaxUses,
-  getRatingGrade,
-  getRatings,
   getTrackedCharacterDisplay,
   normalizeCharacterName,
-  ratingGradeClasses,
-  rolePillClasses,
-  sortDashboardCharacters,
 } from "@/features/tracker/domain";
 import { CharacterAvatar, SearchInput, TextButton } from "@/features/tracker/components/ui";
 import { useTrackerData } from "@/features/tracker/tracker-provider";
@@ -48,12 +43,6 @@ function createTeam(): MatrixTeam {
         : `team-${Date.now()}`,
     slots: [...EMPTY_SLOTS],
   };
-}
-
-function getLetterScore(character: TrackedCharacter) {
-  const buildScore = getRatings(character).buildScore;
-
-  return buildScore === null ? null : getRatingGrade(buildScore);
 }
 
 function getUsageCounts(teams: MatrixTeam[]) {
@@ -99,13 +88,6 @@ function getTeamElementDiversity(
   });
 
   return elements;
-}
-
-function getRoleSortIndex(character: TrackedCharacter) {
-  const firstRole = character.roles[0];
-  const roleIndex = firstRole ? ROLES.indexOf(firstRole) : -1;
-
-  return roleIndex === -1 ? ROLES.length : roleIndex;
 }
 
 function getNextOpenSlot(
@@ -191,8 +173,8 @@ function MatrixScreen({
   const usageCounts = useMemo(() => getUsageCounts(cleanedTeams), [cleanedTeams]);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleCharacters = useMemo(() => {
-    const sorted = sortDashboardCharacters(characters, "weightDesc").sort(
-      (a, b) => getRoleSortIndex(a) - getRoleSortIndex(b),
+    const sorted = [...characters].sort((a, b) =>
+      compareCharacterReleaseOrder(a.characterId, b.characterId),
     );
 
     if (!normalizedQuery) {
@@ -209,7 +191,6 @@ function MatrixScreen({
         characterDisplay.name,
         characterDisplay.elementName,
         characterDisplay.weaponTypeName,
-        character.roles.join(" "),
       ]
         .filter(Boolean)
         .join(" ")
@@ -456,7 +437,6 @@ function MatrixScreen({
           ) : (
             <div className="grid max-h-[360px] gap-2 overflow-y-auto pr-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {availableCharacters.map((character) => {
-                const letterScore = getLetterScore(character);
                 const maxUses = getMatrixCharacterMaxUses(character);
                 const usedCount = usageCounts.get(character.id) ?? 0;
                 const disabled = !canPlaceCharacter(character);
@@ -499,15 +479,6 @@ function MatrixScreen({
                         <span className="rounded-sm bg-app-bg/60 px-1.5 py-0.5 text-[10px] font-semibold text-app-muted">
                           {usedCount}/{maxUses}
                         </span>
-                        {character.roles[0] ? (
-                          <span
-                            className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold ${rolePillClasses(
-                              character.roles[0],
-                            )}`}
-                          >
-                            {character.roles[0]}
-                          </span>
-                        ) : null}
                         {maxUses > 1 ? (
                           <span className="rounded-sm bg-status-good-bg px-1.5 py-0.5 text-[10px] font-semibold text-status-good-text">
                             2 vigor
@@ -515,15 +486,6 @@ function MatrixScreen({
                         ) : null}
                       </div>
                     </div>
-                    {letterScore ? (
-                      <span
-                        className={`rounded-sm px-2 py-1 text-sm font-bold leading-none ${ratingGradeClasses(
-                          letterScore,
-                        )}`}
-                      >
-                        {letterScore}
-                      </span>
-                    ) : null}
                   </button>
                 );
               })}
@@ -604,7 +566,6 @@ function MatrixScreen({
                 <div className="grid gap-2 md:grid-cols-3">
                   {team.slots.map((characterId, slotIndex) => {
                     const character = characterId ? characterById.get(characterId) : null;
-                    const letterScore = character ? getLetterScore(character) : null;
                     const catalogCharacter = character
                       ? catalogCharacterById.get(character.characterId) ?? null
                       : null;
@@ -646,17 +607,6 @@ function MatrixScreen({
                                   .filter(Boolean)
                                   .join(" / ") || "Catalog data unavailable"}
                               </span>
-                            </span>
-                            <span className="grid gap-1 justify-items-end">
-                              {letterScore ? (
-                                <span
-                                  className={`rounded-sm px-2 py-1 text-sm font-bold leading-none ${ratingGradeClasses(
-                                    letterScore,
-                                  )}`}
-                                >
-                                  {letterScore}
-                                </span>
-                              ) : null}
                             </span>
                           </span>
                         ) : (

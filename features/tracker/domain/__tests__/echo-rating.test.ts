@@ -1,86 +1,37 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  getCharacterRedundantErRollCount,
-  getEchoCheckerCritValueRating,
-  getEchoCheckerScore,
-  getEchoCheckerSubstatBoosts,
-  getEchoCheckerSubstatOptions,
-  getEffectiveChecklist,
-  getIgnoredErEchoKeys,
-  getRatingGrade,
-  getRatings,
-  isCharacterErOvercapped,
-  isEchoCheckerEchoComplete,
-  reconcileEchoCheckerSubstats,
+  getRedundantErRollCount, getEchoCheckerCritValueRating, getEchoCheckerScore,
+  getEchoCheckerSubstatBoosts, getEchoCheckerSubstatOptions, getEchoSetChecklist,
+  getIgnoredErEchoKeys, getRatingGrade, getEchoSetScore, getErStatus,
+  isEchoCheckerEchoComplete, reconcileEchoCheckerSubstats, isComplete,
 } from "../echo-rating";
 import { parseEchoPrioritySubstats } from "../../echo-estimates";
-import type { EchoCheckerEcho, TrackedCharacter } from "../../types";
+import { createEchoSet } from "../../echo-sets";
+import { makeTrackedCharacter } from "../../__tests__/fixtures";
+import type { EchoCheckerEcho, EchoSet } from "../../types";
 
 const priority =
   "CRIT Rate = CRIT DMG > ATK% = Heavy Attack DMG% > ATK > Resonance Skill DMG%";
 
-function makeErCharacter(
-  overrides: Partial<TrackedCharacter> = {},
-): TrackedCharacter {
-  return {
-    id: "character",
-    characterId: 1202,
-    characterName: "Test Character",
-    roles: ["Hybrid"],
-    weaponId: null,
-    weaponName: "",
-    fourCostMain: "CR",
-    critRate: 0,
-    critDmg: 0,
-    checklist: {
-      skills: true,
-      fourCost: false,
-      threeCostA: false,
-      threeCostB: false,
-      oneCostA: false,
-      oneCostB: false,
-    },
-    echoChecker: {
-      enabled: true,
-      plan: "HybridSupport",
-      echoes: {
-        fourCost: {
-          critRate: 6.3,
-          critDmg: 12.6,
-          substatIds: ["energy-regen", null, null],
-        },
-        threeCostA: {
-          critRate: 10.5,
-          critDmg: 21,
-          substatIds: ["energy-regen", null, null],
-        },
-        threeCostB: {
-          critRate: null,
-          critDmg: null,
-          substatIds: [null, null, null],
-        },
-        oneCostA: {
-          critRate: null,
-          critDmg: null,
-          substatIds: [null, null, null],
-        },
-        oneCostB: {
-          critRate: null,
-          critDmg: null,
-          substatIds: [null, null, null],
-        },
-      },
-      substats: [],
-    },
-    substatPriority: priority,
-    expectedEr: 100,
-    actualEr: 111,
-    notes: "",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
+/** Creates two distinct ER-bearing echoes for independent-set scoring tests. */
+function makeErSet(overrides: Partial<EchoSet> = {}): EchoSet {
+  const set = createEchoSet("er-set");
+  set.mode = "detailed";
+  set.scoring = "standard-crit";
+  set.actualEr = 111;
+  set.echoes.fourCost = {
+    critRate: 6.3, critDmg: 12.6,
+    substatIds: ["energy-regen", null, null, null, null],
+    prioritySubstatIds: [null, null, null, null, null],
   };
+  set.echoes.threeCostA = {
+    critRate: 10.5, critDmg: 21,
+    substatIds: ["energy-regen", null, null, null, null],
+    prioritySubstatIds: [null, null, null, null, null],
+  };
+
+  return { ...set, ...overrides };
 }
 
 describe("echo substat priorities", () => {
@@ -151,12 +102,16 @@ describe("echo substat priorities", () => {
   test("soft-caps crit value above the 30 CV target", () => {
     expect(
       getEchoCheckerCritValueRating({
+        substatIds: [null, null, null, null, null],
+        prioritySubstatIds: [null, null, null, null, null],
         critRate: 7.5,
         critDmg: 15,
       }),
     ).toBe(1);
     expect(
       getEchoCheckerCritValueRating({
+        substatIds: [null, null, null, null, null],
+        prioritySubstatIds: [null, null, null, null, null],
         critRate: 10.5,
         critDmg: 21,
       }),
@@ -165,14 +120,16 @@ describe("echo substat priorities", () => {
 
   test("adds prioritized substat boosts and ignores unprioritized selections", () => {
     const prioritizedEcho: EchoCheckerEcho = {
+      prioritySubstatIds: [null, null, null, null, null],
       critRate: 7.5,
       critDmg: 15,
-      substatIds: ["atk-percent", "atk", "skill"],
+      substatIds: ["atk-percent", "atk", "skill", null, null],
     };
     const erEcho: EchoCheckerEcho = {
+      prioritySubstatIds: [null, null, null, null, null],
       critRate: 7.5,
       critDmg: 15,
-      substatIds: ["energy-regen", null, null],
+      substatIds: ["energy-regen", null, null, null, null],
     };
 
     expect(getEchoCheckerScore(prioritizedEcho, priority)).toBe(1.18);
@@ -184,6 +141,7 @@ describe("echo substat priorities", () => {
     const supportPriority =
       "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK";
     const echo: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
       critRate: 10.5,
       critDmg: 21,
       prioritySubstatIds: [
@@ -205,16 +163,15 @@ describe("echo substat priorities", () => {
       ),
     ).toBe(1.05);
     expect(getEchoCheckerScore(echo, supportPriority, true, true)).toBe(0.68);
-    expect(isEchoCheckerEchoComplete(echo, "HybridSupport", false, true)).toBe(true);
-    expect(isEchoCheckerEchoComplete(echo, "HybridSupport", true, true)).toBe(false);
+    expect(isEchoCheckerEchoComplete(echo, "priority-stats", false)).toBe(true);
+    expect(isEchoCheckerEchoComplete(echo, "priority-stats", true)).toBe(false);
 
-    const fullyTracked = makeErCharacter({
-      noCrit: true,
+    const fullyTracked = makeErSet({
+      scoring: "priority-stats",
       actualEr: 100,
-      substatPriority: supportPriority,
     });
 
-    for (const trackedEcho of Object.values(fullyTracked.echoChecker!.echoes)) {
+    for (const trackedEcho of Object.values(fullyTracked.echoes)) {
       trackedEcho.critRate = null;
       trackedEcho.critDmg = null;
       trackedEcho.prioritySubstatIds = [
@@ -226,13 +183,7 @@ describe("echo substat priorities", () => {
       ];
     }
 
-    expect(getRatings(fullyTracked)).toMatchObject({
-      crRating: null,
-      cdRating: null,
-      critScore: null,
-      buildScore: 1.05,
-      issue: "",
-    });
+    expect(getEchoSetScore(1202, 100, fullyTracked)).toBe(1.05);
   });
 
   test("grades three non-crit stats from A- through A+ by priority", () => {
@@ -240,7 +191,12 @@ describe("echo substat priorities", () => {
       "Energy Regen > CRIT Rate > CRIT DMG > ATK% > ATK";
     const score = (prioritySubstatIds: EchoCheckerEcho["prioritySubstatIds"]) =>
       getEchoCheckerScore(
-        { critRate: null, critDmg: null, prioritySubstatIds },
+        {
+          critRate: null,
+          critDmg: null,
+          substatIds: [null, null, null, null, null],
+          prioritySubstatIds,
+        },
         orderedPriority,
         false,
         true,
@@ -280,11 +236,13 @@ describe("echo substat priorities", () => {
     const supportPriority =
       "Energy Regen (Until Satisfied) > CRIT Rate = CRIT DMG > ATK% > ATK";
     const emptyEcho: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
       critRate: null,
       critDmg: null,
       prioritySubstatIds: [null, null, null, null, null],
     };
     const fullEcho: EchoCheckerEcho = {
+      substatIds: [null, null, null, null, null],
       critRate: null,
       critDmg: null,
       prioritySubstatIds: [
@@ -305,97 +263,123 @@ describe("echo substat priorities", () => {
     expect(getEchoCheckerScore(emptyEcho, supportPriority, false, true)).toBe(0);
     expect(fullScore).toBe(1.66);
     expect(getRatingGrade(fullScore!)).toBe("S+");
-    expect(
-      getRatings(
-        makeErCharacter({
-          noCrit: true,
-          actualEr: 100,
-          substatPriority: supportPriority,
-        }),
-      ),
-    ).toMatchObject({ buildScore: 0, issue: "" });
+    expect(getEchoSetScore(1202, 100, makeErSet({
+      scoring: "priority-stats", actualEr: 100,
+    }))).toBe(0);
   });
 
-  test("counts one redundant roll per full 10.25 ER above the target", () => {
-    expect(
-      getCharacterRedundantErRollCount(makeErCharacter({ actualEr: 110.24 })),
-    ).toBe(0);
-    expect(
-      getCharacterRedundantErRollCount(makeErCharacter({ actualEr: 110.25 })),
-    ).toBe(1);
-    expect(
-      getCharacterRedundantErRollCount(makeErCharacter({ actualEr: 120.49 })),
-    ).toBe(1);
-    expect(
-      getCharacterRedundantErRollCount(makeErCharacter({ actualEr: 120.5 })),
-    ).toBe(2);
-    expect(isCharacterErOvercapped(makeErCharacter({ expectedEr: 0 }))).toBe(false);
+  test("counts full excess ER rolls and treats unknown targets neutrally", () => {
+    expect(getRedundantErRollCount(100, 110.24)).toBe(0);
+    expect(getRedundantErRollCount(100, 110.25)).toBe(1);
+    expect(getRedundantErRollCount(100, 120.49)).toBe(1);
+    expect(getRedundantErRollCount(100, 120.5)).toBe(2);
+    expect(getRedundantErRollCount(null, 150)).toBe(0);
+    expect(getRedundantErRollCount(0, 150)).toBe(0);
+    expect(getRedundantErRollCount(100, null)).toBe(0);
   });
 
-  test("ignores ER on the lowest-scoring echoes and caps at tracked ER rolls", () => {
-    expect([...getIgnoredErEchoKeys(makeErCharacter())]).toEqual(["fourCost"]);
-    expect(
-      [
-        ...getIgnoredErEchoKeys(
-          makeErCharacter({
-            actualEr: 141,
-          }),
-        ),
-      ],
-    ).toEqual(["fourCost", "threeCostA"]);
+  test("limits excess ER adjustments to the independently evaluated set", () => {
+    const first = makeErSet();
+    const second = makeErSet({ id: "other", actualEr: 100 });
+
+    expect([...getIgnoredErEchoKeys(1202, 100, first)]).toEqual(["fourCost"]);
+    expect([...getIgnoredErEchoKeys(1202, 100, second)]).toEqual([]);
+    expect([...getIgnoredErEchoKeys(1202, 100, makeErSet({ actualEr: 141 }))]).toEqual(["fourCost", "threeCostA"]);
+    expect(getEchoSetChecklist(1202, 100, first)).toMatchObject({ fourCost: false, threeCostA: true });
+    expect(getEchoSetChecklist(1202, 100, second)).toMatchObject({ fourCost: true, threeCostA: true });
   });
 
-  test("does not count ignored ER toward echo completion", () => {
-    const character = makeErCharacter();
-    const lowEcho = character.echoChecker!.echoes.fourCost;
+  test("keeps Damage and Balanced formulas equal while changing completion thresholds", () => {
+    const standard = makeErSet({ actualEr: 100 });
+    const strict = { ...standard, scoring: "strict-crit" as const };
+    const echo = standard.echoes.fourCost;
 
-    expect(isEchoCheckerEchoComplete(lowEcho, "HybridSupport")).toBe(true);
-    expect(isEchoCheckerEchoComplete(lowEcho, "HybridSupport", true)).toBe(false);
-    expect(getEffectiveChecklist(character)).toMatchObject({
-      fourCost: false,
-      threeCostA: true,
-    });
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit")).toBe(true);
+    expect(isEchoCheckerEchoComplete(echo, "strict-crit")).toBe(false);
+    expect(getEchoSetChecklist(1202, 100, standard).fourCost).toBe(true);
+    expect(getEchoSetChecklist(1202, 100, strict).fourCost).toBe(false);
+    for (const echo of Object.values(standard.echoes)) {
+      echo.critRate = 6.3;
+      echo.critDmg = 12.6;
+    }
+    expect(getEchoSetScore(1202, 100, standard)).toBeTypeOf("number");
+    expect(getEchoSetScore(1202, 100, strict)).toBe(getEchoSetScore(1202, 100, standard));
   });
 
-  test("does not fall back to a legacy stored priority when curated data is missing", () => {
-    expect(
-      getRatings(
-        makeErCharacter({
-          characterId: 999999,
-          substatPriority: priority,
-        }),
-      ),
-    ).toMatchObject({
-      buildScore: null,
-      issue: "",
-    });
-  });
-
-  test("ignores legacy checked targets that have no factual substat identity", () => {
+  test.each([
+    { critRate: 6.9, critDmg: null },
+    { critRate: null, critDmg: 15 },
+  ])("completes Balanced with one crit and four contributing stats: $critRate / $critDmg", (crit) => {
     const echo: EchoCheckerEcho = {
-      critRate: null,
-      critDmg: null,
-      hasRelevantStat: true,
-      hasSecondRelevantStat: true,
-      hasThirdRelevantStat: false,
+      ...crit,
+      substatIds: ["energy-regen", "liberation", "atk-percent", "atk", null],
+      prioritySubstatIds: [null, null, null, null, null],
     };
 
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit")).toBe(true);
+    expect(isEchoCheckerEchoComplete(echo, "strict-crit")).toBe(false);
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit", true)).toBe(false);
+    expect(isEchoCheckerEchoComplete({ ...echo, substatIds: ["liberation", "atk-percent", "atk", null, null] }, "standard-crit")).toBe(false);
+    expect(isEchoCheckerEchoComplete({ ...echo, critRate: null, critDmg: null }, "standard-crit")).toBe(false);
+  });
+
+  test("still requires a priority stat with double crit for Balanced", () => {
+    const echo: EchoCheckerEcho = {
+      critRate: 6.9,
+      critDmg: 15,
+      substatIds: [null, null, null, null, null],
+      prioritySubstatIds: [null, null, null, null, null],
+    };
+
+    expect(isEchoCheckerEchoComplete(echo, "standard-crit")).toBe(false);
+    expect(isEchoCheckerEchoComplete({ ...echo, substatIds: ["atk-percent", null, null, null, null] }, "standard-crit")).toBe(true);
+  });
+
+  test("keeps manual completion independent of detailed measurements", () => {
+    const set = makeErSet({ mode: "checklist" });
+    set.checklist.fourCost = true;
+
+    expect(getEchoSetScore(1202, 100, set)).toBeNull();
+    expect(getEchoSetChecklist(1202, 100, set)).toEqual(set.checklist);
+    expect(getEchoSetChecklist(1202, 100, { ...set, mode: "detailed" }).fourCost).toBe(false);
+    expect(set.checklist.fourCost).toBe(true);
+  });
+
+  test("requires curated priorities for detailed scores and completion", () => {
+    const set = makeErSet();
+
+    expect(getEchoSetScore(999999, 100, set)).toBeNull();
+    expect(Object.values(getEchoSetChecklist(999999, 100, set))).toEqual([false, false, false, false, false]);
+  });
+
+  test("colors actual ER against the shared minimum, with unknown values neutral", () => {
+    expect(getErStatus(120, 120)).toBe("met");
+    expect(getErStatus(130, 120)).toBe("met");
+    expect(getErStatus(119.9, 120)).toBe("below");
+    expect(getErStatus(null, 120)).toBe("unknown");
+    expect(getErStatus(120, null)).toBe("unknown");
+    expect(getErStatus(120, 0)).toBe("unknown");
+  });
+
+  test("requires shared skills and every set to be complete", () => {
+    const set = createEchoSet("complete");
+    for (const key of Object.keys(set.checklist)) Reflect.set(set.checklist, key, true);
+    const character = makeTrackedCharacter({ echoSets: [set] });
+
+    expect(isComplete(character)).toBe(true);
+    expect(isComplete({ ...character, skillsDone: false })).toBe(false);
+    expect(isComplete({ ...character, echoSets: [set, createEchoSet("incomplete")] })).toBe(false);
+  });
+
+  test("does not score empty critical echoes", () => {
+    const echo = createEchoSet("empty").echoes.fourCost;
     expect(getEchoCheckerScore(echo, priority)).toBeNull();
   });
 
-  test("clears selected stats that are no longer prioritized", () => {
-    const echo: EchoCheckerEcho = {
-      critRate: null,
-      critDmg: null,
-      substatIds: ["atk-percent", "hp-percent", "skill", null, null],
-    };
-
-    expect(reconcileEchoCheckerSubstats(echo, "ATK% > Skill")).toEqual([
-      "atk-percent",
-      null,
-      "skill",
-      null,
-      null,
-    ]);
+  test("clears unsupported selections only in the derived evaluation", () => {
+    const echo = createEchoSet("empty").echoes.fourCost;
+    echo.substatIds = ["atk-percent", "hp-percent", "skill", null, null];
+    expect(reconcileEchoCheckerSubstats(echo, "ATK% > Skill")).toEqual(["atk-percent", null, "skill", null, null]);
+    expect(echo.substatIds).toEqual(["atk-percent", "hp-percent", "skill", null, null]);
   });
 });

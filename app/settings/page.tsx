@@ -16,12 +16,14 @@ import { hasTrackerData } from "@/features/tracker/route-helpers";
 import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "@/features/tracker/types";
 
+/**
+ * Renders import, export, and local data management.
+ * @returns The page content.
+ */
 export default function SettingsPage() {
   const router = useRouter();
   const {
     characters,
-    dashboardSortKey,
-    dashboardViewMode,
     weaponInventory,
     matrixTeams,
     clearTrackerData,
@@ -76,8 +78,6 @@ export default function SettingsPage() {
 
     exportTrackerData(characters, weaponInventory, matrixTeams, {
       welcomeSeen,
-      dashboardSortKey,
-      dashboardViewMode,
       backupNoticeAcknowledgedAt: acknowledgedAt,
     });
     updatePreferences({ backupNoticeAcknowledgedAt: acknowledgedAt });
@@ -138,7 +138,7 @@ function SettingsScreen({
     {
       label: "Storage",
       title: TRACKER_DOCUMENT_STORAGE_KEY,
-      value: storageVersion ? `v${storageVersion}` : "Local",
+      value: storageVersion ? `v${storageVersion} (unified)` : "Local",
     },
   ];
 
@@ -178,7 +178,7 @@ function SettingsScreen({
               Download your characters, weapon inventory, and matrix teams as a JSON file.
             </p>
             <div className="mt-4">
-              <TextButton onClick={onExport} variant="primary">
+              <TextButton disabled={storageStatus.state === "error" && storageVersion === null} onClick={onExport} variant="primary">
                 Export Data
               </TextButton>
             </div>

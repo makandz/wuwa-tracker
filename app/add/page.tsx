@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { emptyChecklist } from "@/features/tracker/constants";
+import { createEchoSet } from "@/features/tracker/echo-sets";
 import {
   buildWeaponInventoryCountMap,
   getAssignmentCounts,
@@ -11,16 +11,6 @@ import {
   getOwnedWeaponsByType,
   getWeaponRarityTone,
 } from "@/features/tracker/domain";
-import {
-  FourCostMainControl,
-  RoleSelectionControl,
-} from "@/features/tracker/components/build-form-controls";
-import {
-  getFourCostMainSelection,
-  getNextNoCrit,
-  getNextRolesAfterRoleToggle,
-  getRolesAfterMultipleRolesChange,
-} from "@/features/tracker/components/build-form-state";
 import {
   CharacterPickerModal,
   PickerSummary,
@@ -32,12 +22,14 @@ import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
   ApiCharacter,
   Catalog,
-  FourCostMain,
-  Role,
   TrackedCharacter,
   WeaponInventoryItem,
 } from "@/features/tracker/types";
 
+/**
+ * Renders character creation with one default echo set.
+ * @returns The page content.
+ */
 export default function AddPage() {
   const router = useRouter();
   const {
@@ -99,10 +91,6 @@ function AddScreen({
       })
     : [];
   const [weaponId, setWeaponId] = useState<number | null>(availableWeapons[0]?.Id ?? null);
-  const [roles, setRoles] = useState<Role[]>(["DPS"]);
-  const [multipleRoles, setMultipleRoles] = useState(false);
-  const [fourCostMain, setFourCostMain] = useState<FourCostMain>("CR");
-  const [noCrit, setNoCrit] = useState(false);
   const [characterPickerOpen, setCharacterPickerOpen] = useState(false);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
   const trackedIds = useMemo(
@@ -110,28 +98,6 @@ function AddScreen({
     [tracked],
   );
   const selectedWeapon = availableWeapons.find((weapon) => weapon.Id === weaponId) ?? null;
-
-  function toggleRole(role: Role) {
-    setRoles((current) => {
-      return getNextRolesAfterRoleToggle({
-        multipleRoles,
-        role,
-        roles: current,
-      });
-    });
-  }
-
-  function updateMultipleRoles(checked: boolean) {
-    setMultipleRoles(checked);
-    setRoles((current) => getRolesAfterMultipleRolesChange(current, checked));
-  }
-
-  function updateFourCostMain(fourCostMain: FourCostMain) {
-    const next = getFourCostMainSelection(fourCostMain);
-
-    setFourCostMain(next.fourCostMain);
-    setNoCrit(next.noCrit);
-  }
 
   function updateSelectedCharacter(nextCharacter: ApiCharacter) {
     const nextWeapon = getOwnedWeaponsByType({
@@ -145,8 +111,9 @@ function AddScreen({
     setCharacterPickerOpen(false);
   }
 
+  /** Creates a character using the canonical saved fields. */
   function createCharacter() {
-    if (!selectedCharacter || roles.length === 0) {
+    if (!selectedCharacter) {
       return;
     }
 
@@ -157,17 +124,11 @@ function AddScreen({
       id: `${selectedCharacter.Id}-${now}`,
       characterId: selectedCharacter.Id,
       characterName: selectedCharacter.Name,
-      roles,
       weaponId: selectedWeaponForSave?.Id ?? null,
       weaponName: selectedWeaponForSave?.Name ?? "",
-      fourCostMain,
-      noCrit,
-      critRate: 0,
-      critDmg: 0,
-      checklist: { ...emptyChecklist },
-      substatPriority: "",
-      expectedEr: 0,
-      actualEr: 0,
+      skillsDone: false,
+      expectedEr: null,
+      echoSets: [createEchoSet(`${selectedCharacter.Id}-default`)],
       notes: "",
       createdAt: now,
       updatedAt: now,
@@ -182,7 +143,7 @@ function AddScreen({
         </div>
         <div className="flex flex-wrap gap-2">
           <TextButton
-            disabled={!selectedCharacter || roles.length === 0}
+            disabled={!selectedCharacter}
             onClick={createCharacter}
             variant="primary"
           >
@@ -234,20 +195,6 @@ function AddScreen({
                 qualityId: selectedWeapon?.QualityId,
               })}
               title={selectedWeapon?.Name ?? "No weapon selected"}
-            />
-
-            <RoleSelectionControl
-              multipleRoles={multipleRoles}
-              onMultipleRolesChange={updateMultipleRoles}
-              onToggleRole={toggleRole}
-              roles={roles}
-            />
-
-            <FourCostMainControl
-              fourCostMain={fourCostMain}
-              noCrit={noCrit}
-              onSelectFourCostMain={updateFourCostMain}
-              onToggleNoCrit={() => setNoCrit((current) => getNextNoCrit(current))}
             />
 
             {characterPickerOpen ? (

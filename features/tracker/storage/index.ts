@@ -1,74 +1,41 @@
-import type {
-  MatrixTeam,
-  TrackedCharacter,
-  WeaponInventoryItem,
-} from "../types";
+import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "../types";
 import {
+  createTrackerDocument,
   DEFAULT_TRACKER_PREFERENCES,
-  createTrackerDocumentV5,
-  isDashboardSortKey,
-  isDashboardViewMode,
-  normalizeCharacters,
-  normalizeMatrixTeams,
-  normalizeTrackerDocumentV5,
-  normalizeWeaponInventory,
-  type ParsedImportedTrackerData,
-  type TrackerDocumentV5,
   type TrackerPreferences,
 } from "./documents";
-import { CURRENT_SCHEMA_VERSION } from "./keys";
-import { inspectTrackerStorage } from "./inspection";
-import {
-  commitStorageMigration,
-  exportStorageMigrationBackup,
-  type StorageMigrationPlan,
-} from "./migrations/plans";
-import {
-  parseLegacyArrayExport,
-  parseLegacyObjectExport,
-} from "./migrations/legacy-imports";
-import {
-  TrackerStorageRevisionConflictError,
-  hasNewerTrackerDocumentRevision,
-  readStoredTrackerDocument,
-  writeStoredTrackerDocument,
-  writeStoredTrackerDocumentWithRevisionGuard,
-  type ReadTrackerDocumentResult,
-  type TrackerStorageStatus,
-} from "./recovery";
-import {
-  legacyArrayExportSchema,
-  legacyObjectExportSchema,
-} from "./schemas/legacy-v3";
 
 export {
-  CURRENT_SCHEMA_VERSION,
+  createTrackerDocument,
   DEFAULT_TRACKER_PREFERENCES,
-  commitStorageMigration,
-  createTrackerDocumentV5,
-  exportStorageMigrationBackup,
+  parseTrackerDocument,
+} from "./documents";
+export type {
+  ParsedImportedTrackerData,
+  TrackerData,
+  TrackerDocument,
+  TrackerPreferences,
+} from "./documents";
+export { parseImportedTrackerData } from "./imports";
+export { CURRENT_SCHEMA_VERSION } from "./keys";
+export {
   hasNewerTrackerDocumentRevision,
-  inspectTrackerStorage,
-  isDashboardSortKey,
-  isDashboardViewMode,
-  normalizeCharacters,
-  normalizeMatrixTeams,
-  normalizeTrackerDocumentV5,
-  normalizeWeaponInventory,
   readStoredTrackerDocument,
+  restoreStoredTrackerDocument,
   TrackerStorageRevisionConflictError,
   writeStoredTrackerDocument,
   writeStoredTrackerDocumentWithRevisionGuard,
-};
-export type {
-  ParsedImportedTrackerData,
-  ReadTrackerDocumentResult,
-  StorageMigrationPlan,
-  TrackerDocumentV5,
-  TrackerPreferences,
-  TrackerStorageStatus,
-};
+} from "./recovery";
+export type { ReadTrackerDocumentResult, TrackerStorageStatus } from "./recovery";
 
+/**
+ * Downloads a complete validated unified save as JSON.
+ * @param characters - The tracked character builds.
+ * @param weaponInventory - The owned weapon counts.
+ * @param matrixTeams - The saved teams.
+ * @param preferences - The tracker preferences.
+ * @param revision - The exported document revision.
+ */
 export function exportTrackerData(
   characters: TrackedCharacter[],
   weaponInventory: WeaponInventoryItem[],
@@ -76,53 +43,21 @@ export function exportTrackerData(
   preferences: TrackerPreferences = DEFAULT_TRACKER_PREFERENCES,
   revision = 1,
 ) {
-  const exportedAt = new Date().toISOString();
-  const trackerDocument = createTrackerDocumentV5({
+  const document = createTrackerDocument({
     characters,
     weaponInventory,
     matrixTeams,
     preferences,
     revision,
-    savedAt: exportedAt,
   });
-  const blob = new Blob([JSON.stringify(trackerDocument, null, 2)], {
+  const blob = new Blob([JSON.stringify(document, null, 2)], {
     type: "application/json",
   });
   const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
+  const link = window.document.createElement("a");
 
   link.href = url;
   link.download = `wuwa-tracker-${new Date().toISOString().slice(0, 10)}.json`;
   link.click();
   URL.revokeObjectURL(url);
-}
-
-export function parseImportedTrackerData(
-  text: string,
-): ParsedImportedTrackerData {
-  const parsed = JSON.parse(text) as unknown;
-  const trackerDocument = normalizeTrackerDocumentV5(parsed);
-
-  if (trackerDocument) {
-    return {
-      characters: trackerDocument.data.characters,
-      weaponInventory: trackerDocument.data.weaponInventory,
-      matrixTeams: trackerDocument.data.matrixTeams,
-      preferences: trackerDocument.data.preferences,
-    };
-  }
-
-  const legacyArray = legacyArrayExportSchema.safeParse(parsed);
-
-  if (legacyArray.success) {
-    return parseLegacyArrayExport(legacyArray.data);
-  }
-
-  const legacyObject = legacyObjectExportSchema.safeParse(parsed);
-
-  if (legacyObject.success) {
-    return parseLegacyObjectExport(legacyObject.data);
-  }
-
-  throw new Error("Invalid file.");
 }

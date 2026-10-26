@@ -33,6 +33,69 @@ export function buildWeaponInventoryCountMap(inventory: WeaponInventoryItem[]) {
   }, {});
 }
 
+export type WeaponInventoryGroup = {
+  type: number;
+  name: string;
+  weapons: ApiWeapon[];
+};
+
+/**
+ * Groups owned weapons by type while retaining entries missing from the live catalog.
+ * @param weapons - The live weapon catalog.
+ * @param inventory - Owned weapon quantities.
+ * @param query - An optional name or type search.
+ * @returns Owned weapon groups ordered by type, rarity, and name.
+ */
+export function getWeaponInventoryGroups(
+  weapons: ApiWeapon[],
+  inventory: WeaponInventoryItem[],
+  query = "",
+): WeaponInventoryGroup[] {
+  const catalogById = new Map(weapons.map((weapon) => [weapon.Id, weapon]));
+  const groups = new Map<number, WeaponInventoryGroup>();
+  const search = query.trim().toLowerCase();
+
+  for (const item of inventory) {
+    if (item.count <= 0) {
+      continue;
+    }
+
+    const weapon = catalogById.get(item.weaponId) ?? {
+      Id: item.weaponId,
+      Name: `Weapon ${item.weaponId}`,
+      Type: 0,
+      TypeName: "Other",
+      QualityId: 0,
+    };
+
+    if (!`${weapon.Name} ${weapon.TypeName}`.toLowerCase().includes(search)) {
+      continue;
+    }
+
+    let group = groups.get(weapon.Type);
+
+    if (!group) {
+      group = { type: weapon.Type, name: weapon.TypeName, weapons: [] };
+      groups.set(weapon.Type, group);
+    }
+
+    group.weapons.push(weapon);
+  }
+
+  const sortedGroups = [...groups.values()].sort((left, right) => {
+    const leftType = left.type || Number.MAX_SAFE_INTEGER;
+    const rightType = right.type || Number.MAX_SAFE_INTEGER;
+
+    return leftType - rightType;
+  });
+
+  for (const group of sortedGroups) {
+    group.weapons.sort((left, right) => right.QualityId - left.QualityId || left.Name.localeCompare(right.Name));
+  }
+
+  return sortedGroups;
+}
+
 export function getOwnedWeaponsByType({
   inventoryCounts,
   weaponTypeId,

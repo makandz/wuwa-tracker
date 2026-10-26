@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 
-import { CHECKLIST_SEGMENTS } from "../constants";
 import {
   characterElementBorderClasses,
   formatDecimalInputValue,
@@ -12,15 +11,12 @@ import {
   getWeaponToneClasses,
   parseDecimalInput,
   ratingGradeClasses,
-  roleButtonClasses,
   sanitizeDecimalInput,
 } from "../domain";
 import type {
   CharacterBadgeTone,
-  Checklist,
   ApiCharacter,
   RatingValue,
-  Role,
   TrackedCharacter,
   WeaponRarityTone,
 } from "../types";
@@ -63,7 +59,16 @@ export function StatBlock({
   );
 }
 
-export function RatingBlock({ label, value }: { label: string; value: RatingValue }) {
+/**
+ * Displays a score and its grade, optionally stacked for a compact set card.
+ * @param props - The label, score, and compact layout preference.
+ * @returns The rating display.
+ */
+export function RatingBlock({ label, value, compact = false }: {
+  label: string;
+  value: RatingValue;
+  compact?: boolean;
+}) {
   if (value === null) {
     return (
       <div className="rounded-md border border-status-warn-border bg-status-warn-bg p-2">
@@ -82,7 +87,7 @@ export function RatingBlock({ label, value }: { label: string; value: RatingValu
       <div className="text-[10px] font-medium text-app-muted-subtle">
         {label}
       </div>
-      <div className="mt-0.5 flex items-baseline gap-1.5">
+      <div className={`mt-0.5 flex ${compact ? "flex-col items-start gap-1" : "items-baseline gap-1.5"}`}>
         <span
           className={`rounded-sm px-1.5 py-0.5 text-sm font-bold leading-none ${ratingGradeClasses(
             grade,
@@ -231,57 +236,6 @@ export function Field({
   );
 }
 
-export function NumberInput({
-  value,
-  onChange,
-  placeholder,
-  disabled = false,
-}: {
-  value: number;
-  onChange: (value: number) => void;
-  placeholder?: string;
-  disabled?: boolean;
-}) {
-  const [draftValue, setDraftValue] = useState(() => formatDecimalInputValue(value * 100));
-  const [focused, setFocused] = useState(false);
-  const displayValue = focused
-    ? draftValue
-    : disabled && value === 0
-      ? "0"
-      : formatDecimalInputValue(value * 100);
-
-  return (
-    <div className="relative">
-      <input
-        className={`h-10 w-full rounded-md border border-app-border px-3 pr-9 text-sm outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 ${
-          disabled
-            ? "cursor-not-allowed bg-app-raised text-app-muted-subtle"
-            : "bg-app-surface text-app-fg"
-        }`}
-        disabled={disabled}
-        inputMode="decimal"
-        onBlur={() => setFocused(false)}
-        onChange={(event) => {
-          const nextValue = sanitizeDecimalInput(event.target.value);
-
-          setDraftValue(nextValue);
-          onChange(parseDecimalInput(nextValue) / 100);
-        }}
-        onFocus={() => {
-          setDraftValue(formatDecimalInputValue(value * 100));
-          setFocused(true);
-        }}
-        placeholder={placeholder}
-        type="text"
-        value={displayValue}
-      />
-      <span className="pointer-events-none absolute inset-y-0 right-3 grid place-items-center text-sm font-semibold text-app-muted-dim">
-        %
-      </span>
-    </div>
-  );
-}
-
 export function StarBadge({
   quality,
   tone,
@@ -344,6 +298,11 @@ export function ImageFallback({ label }: { label: string }) {
   );
 }
 
+/**
+ * Displays a dialog that closes through its close button or backdrop.
+ * @param props - The dialog content, heading, and dismissal handler.
+ * @returns The modal and its dismissible backdrop.
+ */
 export function Modal({
   title,
   subtitle,
@@ -357,9 +316,16 @@ export function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-app-bg/75 p-3 sm:p-6">
+      <button
+        aria-label="Close modal"
+        className="absolute inset-0 h-full w-full cursor-default"
+        onClick={onClose}
+        tabIndex={-1}
+        type="button"
+      />
       <div
         aria-modal="true"
-        className="grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-lg shadow-black/30"
+        className="relative grid max-h-[90vh] w-full max-w-5xl grid-rows-[auto_1fr] overflow-hidden rounded-md border border-app-border/80 bg-app-surface shadow-lg shadow-black/30"
         role="dialog"
       >
         <div className="flex items-start justify-between gap-4 border-b border-app-border/80 px-4 py-4 sm:px-5">
@@ -471,33 +437,41 @@ export function SelectInput<TValue extends string>({
   );
 }
 
+/**
+ * Edits an optional ER percentage while retaining an empty value as unknown.
+ * @param props - The percentage, change handler, placeholder, and compact display option.
+ * @returns The ER input.
+ */
 export function ErInput({
   value,
   onChange,
   placeholder,
+  compact = false,
 }: {
-  value: number;
-  onChange: (value: number) => void;
+  value: number | null;
+  onChange: (value: number | null) => void;
   placeholder?: string;
+  compact?: boolean;
 }) {
-  const [draftValue, setDraftValue] = useState(() => formatDecimalInputValue(value));
+  const [draftValue, setDraftValue] = useState(() => value === null ? "" : formatDecimalInputValue(value));
   const [focused, setFocused] = useState(false);
-  const displayValue = focused ? draftValue : formatDecimalInputValue(value);
+  const formatted = value === null ? "" : formatDecimalInputValue(value);
+  const displayValue = focused ? draftValue : formatted;
 
   return (
     <div className="relative">
       <input
-        className="h-10 w-full rounded-md border border-app-border bg-app-bg px-3 pr-9 text-sm text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
+        className={`w-full rounded-md border border-app-border bg-app-bg px-3 pr-9 text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20 ${compact ? "h-9 text-xs" : "h-10 text-sm"}`}
         inputMode="decimal"
         onBlur={() => setFocused(false)}
         onChange={(event) => {
           const nextValue = sanitizeDecimalInput(event.target.value);
 
           setDraftValue(nextValue);
-          onChange(parseDecimalInput(nextValue));
+          onChange(nextValue === "" ? null : parseDecimalInput(nextValue));
         }}
         onFocus={() => {
-          setDraftValue(formatDecimalInputValue(value));
+          setDraftValue(formatted);
           setFocused(true);
         }}
         placeholder={placeholder}
@@ -508,30 +482,6 @@ export function ErInput({
         %
       </span>
     </div>
-  );
-}
-
-export function RoleToggle({
-  role,
-  active,
-  onToggle,
-}: {
-  role: Role;
-  active: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      aria-pressed={active}
-      className={`h-9 rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-accent/20 ${roleButtonClasses(
-        role,
-        active,
-      )}`}
-      onClick={onToggle}
-      type="button"
-    >
-      {role}
-    </button>
   );
 }
 
@@ -590,38 +540,6 @@ export function CharacterAvatar({
           {display.qualityId}
         </span>
       ) : null}
-    </div>
-  );
-}
-
-export function ChecklistProgressSegments({ checklist }: { checklist: Checklist }) {
-  return (
-    <div
-      aria-label="Checklist progress"
-      className="grid h-5 grid-cols-6 gap-0.5 overflow-hidden rounded-sm bg-app-bg p-0.5"
-    >
-      {CHECKLIST_SEGMENTS.map((segment) => {
-        const complete = checklist[segment.key];
-
-        return (
-          <span
-            aria-label={`${segment.label}: ${complete ? "done" : "not done"}`}
-            className={`grid min-w-0 place-items-center rounded-sm text-[9px] font-bold leading-none transition-colors ${
-              segment.key === "skills"
-                ? complete
-                  ? "bg-weapon-gold-strong text-app-bg"
-                  : "bg-weapon-gold-bg/70 text-weapon-gold-text/70"
-                : complete
-                  ? "bg-app-accent-strong text-app-bg"
-                  : "bg-app-surface text-app-muted-dim"
-            }`}
-            key={segment.key}
-            title={`${segment.label}: ${complete ? "done" : "not done"}`}
-          >
-            {segment.shortLabel}
-          </span>
-        );
-      })}
     </div>
   );
 }

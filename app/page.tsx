@@ -2,33 +2,30 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 import {
   BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
   BACKUP_NOTICE_INTERVAL_MS,
 } from "@/features/tracker/constants";
 import {
-  formatPercent,
-  formatRoleSummaryValue,
+  ER_STATUS_CLASSES,
   getAssignmentCounts,
-  rolePillClasses,
-  roleSectionClasses,
+  getRatingGrade,
+  ratingGradeClasses,
 } from "@/features/tracker/domain";
 import {
   buildDashboardCatalogLookups,
-  filterDashboardCharacters,
+  getDashboardCharacters,
   getDashboardCharacterCardState,
   getDashboardStats,
-  groupDashboardCharacters,
 } from "@/features/tracker/domain/dashboard-selectors";
 import { exportTrackerData, type TrackerStorageStatus } from "@/features/tracker/storage";
 import { StorageStatusNotice } from "@/features/tracker/components/storage-status-notice";
+import { CharacterCardArtwork } from "@/features/tracker/components/character-card-artwork";
 import {
   CharacterAvatar,
-  ChecklistProgressSegments,
-  RatingBlock,
   SearchInput,
-  SelectInput,
   TextButton,
   WeaponStatusBadge,
 } from "@/features/tracker/components/ui";
@@ -38,21 +35,20 @@ import type {
   ApiCharacter,
   ApiWeapon,
   Catalog,
-  DashboardSortKey,
-  DashboardViewMode,
   TrackedCharacter,
-  WeaponFilter,
   WeaponInventoryItem,
 } from "@/features/tracker/types";
 
+/**
+ * Renders the release-ordered tracker dashboard after local data loads.
+ * @returns The dashboard or first-visit screen.
+ */
 export default function Home() {
   const router = useRouter();
   const {
     catalog,
     characters,
     backupNoticeAcknowledgedAt,
-    dashboardSortKey,
-    dashboardViewMode,
     matrixTeams,
     storageLoaded,
     storageStatus,
@@ -118,13 +114,12 @@ export default function Home() {
     );
   }
 
+  /** Exports the current data and acknowledges the backup reminder. */
   function exportBackupFromNotice() {
     const acknowledgedAt = Date.now();
 
     exportTrackerData(characters, weaponInventory, matrixTeams, {
       welcomeSeen,
-      dashboardSortKey,
-      dashboardViewMode,
       backupNoticeAcknowledgedAt: acknowledgedAt,
     });
     updatePreferences({ backupNoticeAcknowledgedAt: acknowledgedAt });
@@ -136,15 +131,7 @@ export default function Home() {
         assignmentCounts={assignmentCounts}
         catalog={catalog}
         characters={characters}
-        dashboardSortKey={dashboardSortKey}
-        dashboardViewMode={dashboardViewMode}
         onAdd={() => router.push("/add")}
-        onDashboardSortKeyChange={(nextSortKey) =>
-          updatePreferences({ dashboardSortKey: nextSortKey })
-        }
-        onDashboardViewModeChange={(nextViewMode) =>
-          updatePreferences({ dashboardViewMode: nextViewMode })
-        }
         onExportBackup={exportBackupFromNotice}
         onInventory={() => router.push("/inventory")}
         onOpen={(id) => {
@@ -166,18 +153,15 @@ export default function Home() {
   );
 }
 
+/** Renders a single searchable character grid. */
 function Dashboard({
   characters,
   catalog,
   weaponInventory,
   assignmentCounts,
-  dashboardSortKey,
-  dashboardViewMode,
   storageStatus,
   storageVersion,
   onAdd,
-  onDashboardSortKeyChange,
-  onDashboardViewModeChange,
   onExportBackup,
   onOpen,
   onInventory,
@@ -187,61 +171,27 @@ function Dashboard({
   catalog: Catalog;
   weaponInventory: WeaponInventoryItem[];
   assignmentCounts: Record<number, number>;
-  dashboardSortKey: DashboardSortKey;
-  dashboardViewMode: DashboardViewMode;
   storageStatus: TrackerStorageStatus;
   storageVersion: number | null;
   onAdd: () => void;
-  onDashboardSortKeyChange: (sortKey: DashboardSortKey) => void;
-  onDashboardViewModeChange: (viewMode: DashboardViewMode) => void;
   onExportBackup: () => void;
   onOpen: (id: string) => void;
   onInventory: () => void;
   showBackupNotice: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [weaponFilter, setWeaponFilter] = useState<WeaponFilter>("all");
-  const [hideComplete, setHideComplete] = useState(false);
-  const sortKey = dashboardSortKey;
-  const dashboardView = dashboardViewMode;
   const { catalogCharacterById, catalogWeaponById } = useMemo(
     () => buildDashboardCatalogLookups(catalog),
     [catalog],
   );
-  const normalizedQuery = query.trim().toLowerCase();
   const dashboardStats = useMemo(
     () => getDashboardStats({ characters, storageVersion, weaponInventory }),
     [characters, storageVersion, weaponInventory],
   );
   const visibleCharacters = useMemo(
-    () =>
-      filterDashboardCharacters({
-        assignmentCounts,
-        catalogCharacterById,
-        catalogWeaponById,
-        characters,
-        hideComplete,
-        query,
-        weaponFilter,
-        weaponInventory,
-      }),
-    [
-      assignmentCounts,
-      catalogCharacterById,
-      catalogWeaponById,
-      characters,
-      hideComplete,
-      query,
-      weaponFilter,
-      weaponInventory,
-    ],
+    () => getDashboardCharacters(characters, catalogCharacterById, query),
+    [characters, catalogCharacterById, query],
   );
-  const groupedCharacters = useMemo(
-    () => groupDashboardCharacters(visibleCharacters, sortKey),
-    [sortKey, visibleCharacters],
-  );
-
-  const filtersActive = normalizedQuery || weaponFilter !== "all" || hideComplete;
 
   return (
     <>
@@ -253,9 +203,15 @@ function Dashboard({
             </h1>
             <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
               {dashboardStats.items.map((stat) => (
-                <div className="flex items-center gap-1.5" key={stat.label}>
+                <div
+                  className="flex items-center gap-1.5"
+                  key={stat.label}
+                >
                   <dt className="text-app-muted-dim">{stat.label}</dt>
-                  <dd className="font-semibold text-app-muted" title={stat.title}>
+                  <dd
+                    className="font-semibold text-app-muted"
+                    title={stat.title}
+                  >
                     {stat.value}
                   </dd>
                 </div>
@@ -264,11 +220,17 @@ function Dashboard({
           </div>
           <div className="flex flex-wrap gap-2">
             {dashboardStats.hasWeaponCopies ? (
-              <TextButton onClick={onAdd} variant="primary">
+              <TextButton
+                onClick={onAdd}
+                variant="primary"
+              >
                 Add Character
               </TextButton>
             ) : (
-              <TextButton onClick={onInventory} variant="primary">
+              <TextButton
+                onClick={onInventory}
+                variant="primary"
+              >
                 Add Weapons First
               </TextButton>
             )}
@@ -298,16 +260,22 @@ function Dashboard({
             <h2 className="text-xl font-semibold text-app-fg">No tracked characters yet</h2>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-app-muted-subtle">
               {dashboardStats.hasWeaponCopies
-                ? "Add a character, assign a weapon, and track the build from one row."
+                ? "Add a character, assign a weapon, and track its echo sets."
                 : "Add owned weapons first so characters can be assigned real inventory copies."}
             </p>
             <div className="mt-5">
               {dashboardStats.hasWeaponCopies ? (
-                <TextButton onClick={onAdd} variant="primary">
+                <TextButton
+                  onClick={onAdd}
+                  variant="primary"
+                >
                   Add Character
                 </TextButton>
               ) : (
-                <TextButton onClick={onInventory} variant="primary">
+                <TextButton
+                  onClick={onInventory}
+                  variant="primary"
+                >
                   Add Weapons First
                 </TextButton>
               )}
@@ -315,94 +283,13 @@ function Dashboard({
           </div>
         ) : (
           <div className="grid gap-2.5">
-            <section className="flex flex-wrap items-center gap-2 rounded-md border border-app-border/80 bg-app-surface px-3 py-2">
-              <div className="min-w-[220px] flex-1">
-                <SearchInput
-                  ariaLabel="Search"
-                  compact
-                  onChange={setQuery}
-                  placeholder="Search name, element, weapon, or role"
-                  value={query}
-                />
-              </div>
-              <div className="grid flex-1 gap-2 sm:flex-none sm:grid-cols-2">
-                <SelectInput
-                  compact
-                  label="Weapon"
-                  onChange={setWeaponFilter}
-                  options={[
-                    { label: "All weapon states", value: "all" },
-                    { label: "Weapon selected", value: "selected" },
-                    { label: "No weapon", value: "missing" },
-                    { label: "Needs attention", value: "attention" },
-                  ]}
-                  showLabel={false}
-                  value={weaponFilter}
-                />
-                <SelectInput
-                  compact
-                  label="Sort"
-                  onChange={onDashboardSortKeyChange}
-                  options={[
-                    { label: "Recently updated", value: "updated" },
-                    { label: "Name A-Z", value: "name" },
-                    { label: "Closest to done", value: "completionDesc" },
-                    { label: "Needs most work", value: "completionAsc" },
-                    { label: "Highest build score", value: "weightDesc" },
-                    { label: "Lowest build score", value: "weightAsc" },
-                  ]}
-                  showLabel={false}
-                  value={sortKey}
-                />
-              </div>
-              <label className="flex min-h-9 items-center gap-2 whitespace-nowrap text-xs font-semibold text-app-muted">
-                <input
-                  checked={hideComplete}
-                  className="h-3.5 w-3.5 accent-app-accent"
-                  onChange={(event) => setHideComplete(event.target.checked)}
-                  type="checkbox"
-                />
-                Hide completed
-              </label>
-              <div
-                aria-label="Dashboard view"
-                className="flex h-9 rounded-md border border-app-border bg-app-bg p-0.5"
-                role="group"
-              >
-                {(["list", "grid"] as const).map((viewMode) => (
-                  <button
-                    aria-pressed={dashboardView === viewMode}
-                    className={`rounded-sm px-2.5 text-xs font-semibold capitalize transition-colors ${
-                      dashboardView === viewMode
-                        ? "bg-app-raised text-app-fg"
-                        : "text-app-muted hover:bg-app-surface hover:text-app-fg"
-                    }`}
-                    key={viewMode}
-                    onClick={() => onDashboardViewModeChange(viewMode)}
-                    type="button"
-                  >
-                    {viewMode}
-                  </button>
-                ))}
-              </div>
-              <div className="ml-auto flex min-h-9 items-center gap-2">
-                <span className="whitespace-nowrap text-xs font-medium text-app-muted-dim">
-                  {visibleCharacters.length}/{characters.length}
-                </span>
-                {filtersActive ? (
-                  <TextButton
-                    compact
-                    onClick={() => {
-                      setQuery("");
-                      setWeaponFilter("all");
-                      setHideComplete(false);
-                    }}
-                  >
-                    Reset
-                  </TextButton>
-                ) : null}
-              </div>
-            </section>
+            <SearchInput
+              ariaLabel="Search characters"
+              compact
+              onChange={setQuery}
+              placeholder="Search characters"
+              value={query}
+            />
 
             {visibleCharacters.length === 0 ? (
               <div className="rounded-md border border-dashed border-app-border bg-app-surface p-8 text-center text-sm text-app-muted-subtle">
@@ -410,67 +297,19 @@ function Dashboard({
               </div>
             ) : null}
 
-            {groupedCharacters.map((group) => (
-              <section className="grid gap-2" key={group.role}>
-                <div
-                  className={`flex flex-col gap-1 border-b px-1 pb-2 pt-2 sm:flex-row sm:items-center sm:justify-between ${roleSectionClasses(
-                    group.role,
-                  )}`}
-                >
-                  <h2 className="text-sm font-semibold">{group.role}</h2>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-medium text-app-muted-subtle sm:justify-end">
-                    <span>
-                      {group.summary.count} {group.summary.count === 1 ? "char" : "chars"}
-                    </span>
-                    <span>
-                      CR {formatRoleSummaryValue(group.summary.averageCr, group.summary.critCharacterCount)}
-                    </span>
-                    <span>
-                      CD {formatRoleSummaryValue(group.summary.averageCd, group.summary.critCharacterCount)}
-                    </span>
-                    <span>
-                      Build{" "}
-                      {formatRoleSummaryValue(
-                        group.summary.averageBuildScore,
-                        group.summary.count,
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                <div
-                  className={
-                    dashboardView === "grid"
-                      ? "grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-                      : "grid gap-2"
-                  }
-                >
-                  {group.characters.map((character) =>
-                    dashboardView === "grid" ? (
-                      <DashboardGridCard
-                        assignmentCounts={assignmentCounts}
-                        catalogCharacterById={catalogCharacterById}
-                        catalogWeaponById={catalogWeaponById}
-                        character={character}
-                        key={character.id}
-                        onOpen={onOpen}
-                        weaponInventory={weaponInventory}
-                      />
-                    ) : (
-                      <DashboardListCard
-                        assignmentCounts={assignmentCounts}
-                        catalogCharacterById={catalogCharacterById}
-                        catalogWeaponById={catalogWeaponById}
-                        character={character}
-                        key={character.id}
-                        onOpen={onOpen}
-                        weaponInventory={weaponInventory}
-                      />
-                    ),
-                  )}
-                </div>
-              </section>
-            ))}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {visibleCharacters.map((character) => (
+                <DashboardGridCard
+                  assignmentCounts={assignmentCounts}
+                  catalogCharacterById={catalogCharacterById}
+                  catalogWeaponById={catalogWeaponById}
+                  character={character}
+                  key={character.id}
+                  onOpen={onOpen}
+                  weaponInventory={weaponInventory}
+                />
+              ))}
+            </div>
           </div>
         )}
       </main>
@@ -487,169 +326,43 @@ type DashboardCharacterCardProps = {
   onOpen: (id: string) => void;
 };
 
-function EchoTrackerBadge() {
+type DashboardSetSummary = ReturnType<typeof getDashboardCharacterCardState>["sets"][number];
+
+/** Displays a set's score or manual progress without adding another panel. */
+function DashboardSetScore({ set }: { set: DashboardSetSummary }) {
+  if (set.mode === "checklist") {
+    return (
+      <span className="text-base font-medium tabular-nums text-app-fg">
+        {set.completedEchoes}
+        <span className="text-xs text-app-muted-subtle"> / 5</span>
+        <span className="sr-only"> echoes complete</span>
+      </span>
+    );
+  }
+
+  if (set.score === null) {
+    return <span className="text-sm text-app-muted-subtle">Unrated</span>;
+  }
+
+  const grade = getRatingGrade(set.score);
+
   return (
-    <span
-      className="rounded-sm border border-status-good-border/70 bg-status-good-bg/55 px-1.5 py-0.5 text-[10px] font-semibold text-status-good-text"
-      title="Echo Tracker mode enabled"
-    >
-      Echo Tracker
-    </span>
+    <>
+      <span
+        className={`rounded-sm px-1 py-0.5 text-sm font-medium leading-none ${ratingGradeClasses(
+          grade,
+        )}`}
+      >
+        {grade}
+      </span>
+      <span className="text-xs tabular-nums text-app-muted-subtle">
+        {set.score.toFixed(2)}
+      </span>
+    </>
   );
 }
 
-function DashboardListCard({
-  assignmentCounts,
-  catalogCharacterById,
-  catalogWeaponById,
-  character,
-  onOpen,
-  weaponInventory,
-}: DashboardCharacterCardProps) {
-  const {
-    catalogCharacter,
-    characterToneClasses,
-    characterDisplay,
-    checklistCount,
-    complete,
-    echoTrackerEnabled,
-    effectiveChecklist,
-    erBelowTarget,
-    ratings,
-    weaponDisplay,
-    weaponStatus,
-    weaponToneClasses,
-  } = getDashboardCharacterCardState({
-    assignmentCounts,
-    catalogCharacterById,
-    catalogWeaponById,
-    character,
-    weaponInventory,
-  });
-  const characterMeta =
-    [characterDisplay.elementName, characterDisplay.weaponTypeName]
-      .filter(Boolean)
-      .join(" / ") || "Catalog data unavailable";
-
-  return (
-    <button
-      className={`grid gap-3 rounded-md border px-3 py-2.5 text-left transition-colors hover:border-app-muted-dim hover:bg-app-raised lg:grid-cols-[minmax(180px,0.65fr)_minmax(250px,1fr)_minmax(210px,0.85fr)] ${
-        characterToneClasses.card
-      }`}
-      onClick={() => onOpen(character.id)}
-      type="button"
-    >
-      <div className="flex min-w-0 gap-3">
-        <CharacterAvatar character={character} catalogCharacter={catalogCharacter} />
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <h2 className="truncate text-sm font-semibold text-app-fg">
-              {characterDisplay.name}
-            </h2>
-            <span
-              className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${characterToneClasses.status}`}
-            >
-              {complete ? "Done" : "In progress"}
-            </span>
-            {echoTrackerEnabled ? <EchoTrackerBadge /> : null}
-          </div>
-          <p className="mt-0.5 text-[11px] text-app-muted-subtle">
-            {characterMeta}
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {character.roles.map((role) => (
-              <span
-                className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
-                  role,
-                )}`}
-                key={role}
-              >
-                {role}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-2">
-        <div>
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-app-muted">Checklist</span>
-            <span className="text-app-muted-dim">{checklistCount}/6</span>
-          </div>
-          <div className="mt-1.5">
-            <ChecklistProgressSegments checklist={effectiveChecklist} />
-          </div>
-        </div>
-        {character.noCrit ? (
-          <div className="grid grid-cols-1 gap-1.5">
-            <RatingBlock label="Build" value={ratings.buildScore} />
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 gap-1.5">
-            <RatingBlock label="CR" value={ratings.crRating} />
-            <RatingBlock label="CD" value={ratings.cdRating} />
-            <RatingBlock label="Build" value={ratings.buildScore} />
-          </div>
-        )}
-      </div>
-
-      <div className="grid content-start gap-1.5 text-xs text-app-muted">
-        <div className="flex justify-between gap-3">
-          <span className="text-app-muted-dim">Weapon</span>
-          <span className="flex min-w-0 flex-wrap justify-end gap-1">
-            <span
-              className={`truncate rounded-sm px-1.5 py-0.5 font-semibold ${
-                weaponDisplay.name
-                  ? `${weaponToneClasses.badge}`
-                  : "bg-app-raised text-app-muted-subtle"
-              }`}
-            >
-              {weaponDisplay.name || "Not selected"}
-            </span>
-            <WeaponStatusBadge status={weaponStatus} />
-          </span>
-        </div>
-        {character.noCrit ? null : (
-          <div className="flex justify-between gap-3">
-            <span className="text-app-muted-dim">Echo Crit</span>
-            <span className="font-medium text-app-fg">
-              {formatPercent(character.critRate)} / {formatPercent(character.critDmg)}
-            </span>
-          </div>
-        )}
-        <div
-          className={`flex justify-between gap-3 rounded-sm px-1.5 py-1 ${
-            erBelowTarget
-              ? "border border-status-warn-border bg-status-warn-bg text-status-warn-text"
-              : ""
-          }`}
-        >
-          <span className="text-app-muted-dim">ER</span>
-          <span
-            className={`font-medium ${
-              erBelowTarget ? "text-status-warn-text" : "text-app-fg"
-            }`}
-          >
-            {character.actualEr || 0}% / {character.expectedEr || 0}%
-          </span>
-        </div>
-        {character.notes.trim() ? (
-          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-            <span className="text-app-muted-dim">Notes</span>
-            <span
-              className="block min-w-0 truncate rounded-sm bg-app-bg px-1.5 py-1 text-right font-medium text-app-fg"
-              title={character.notes}
-            >
-              {character.notes}
-            </span>
-          </div>
-        ) : null}
-      </div>
-    </button>
-  );
-}
-
+/** Displays up to three independent build summaries within one character card. */
 function DashboardGridCard({
   assignmentCounts,
   catalogCharacterById,
@@ -660,14 +373,9 @@ function DashboardGridCard({
 }: DashboardCharacterCardProps) {
   const {
     catalogCharacter,
-    characterToneClasses,
     characterDisplay,
-    checklistCount,
     complete,
-    echoTrackerEnabled,
-    effectiveChecklist,
-    erBelowTarget,
-    ratings,
+    sets,
     weaponDisplay,
     weaponStatus,
     weaponToneClasses,
@@ -678,91 +386,86 @@ function DashboardGridCard({
     character,
     weaponInventory,
   });
+  const borderClasses = complete
+    ? "border-status-good-border ring-1 ring-status-good-border/25 hover:border-status-good-border"
+    : "border-app-border hover:border-app-muted-dim";
 
   return (
     <button
-      className={`grid min-h-[170px] content-start gap-2 rounded-md border px-2.5 py-2.5 text-left transition-colors hover:border-app-muted-dim hover:bg-app-raised ${
-        characterToneClasses.card
-      }`}
+      className={`dashboard-character-card relative isolate grid content-start gap-3 overflow-hidden rounded-lg border bg-app-surface p-3.5 text-left transition-colors hover:bg-app-raised ${borderClasses}`}
       onClick={() => onOpen(character.id)}
       type="button"
     >
-      <div className="flex min-w-0 gap-2">
-        <CharacterAvatar character={character} catalogCharacter={catalogCharacter} dense />
+      <CharacterCardArtwork characterId={character.characterId} />
+      <div className="relative flex min-w-0 items-center gap-2.5">
+        <CharacterAvatar
+          character={character}
+          catalogCharacter={catalogCharacter}
+          dense
+        />
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-start justify-between gap-1.5">
-            <h2 className="min-w-0 truncate text-sm font-semibold text-app-fg">
-              {characterDisplay.name}
-            </h2>
-            <span className="flex shrink-0 flex-wrap justify-end gap-1">
-              <span
-                className={`rounded-sm px-1.5 py-0.5 text-[10px] font-semibold ${
-                  characterToneClasses.status
-                }`}
-              >
-                {complete ? "Done" : "WIP"}
-              </span>
-              {echoTrackerEnabled ? <EchoTrackerBadge /> : null}
+          <h2 className="truncate text-lg font-medium leading-tight text-app-fg">
+            {characterDisplay.name}
+          </h2>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-app-muted-subtle">
+            <span>{complete ? "Done" : "In progress"}</span>
+            <span aria-hidden="true">·</span>
+            <span className={character.skillsDone ? "text-status-good-text" : ""}>
+              Skills {character.skillsDone ? "complete" : "pending"}
             </span>
           </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            {character.roles.map((role) => (
-              <span
-                className={`rounded-sm border px-1.5 py-0.5 text-[10px] font-medium ${rolePillClasses(
-                  role,
-                )}`}
-                key={role}
-              >
-                {role}
-              </span>
-            ))}
-          </div>
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between text-xs">
-          <span className="font-medium text-app-muted">Checklist</span>
-          <span className="text-app-muted-dim">{checklistCount}/6</span>
-        </div>
-        <div className="mt-1.5">
-          <ChecklistProgressSegments checklist={effectiveChecklist} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1.5">
-        <RatingBlock label="Build" value={ratings.buildScore} />
-        <div
-          className={`rounded-md border p-2 ${
-            erBelowTarget
-              ? "border-status-warn-border bg-status-warn-bg text-status-warn-text"
-              : "border-app-border/80 bg-app-surface text-app-fg"
-          }`}
-        >
-          <div className="text-[10px] font-medium text-app-muted-subtle">
-            ER
-          </div>
+      <div className="relative grid min-w-0 grid-cols-3 items-start gap-1.5">
+        {sets.map((set) => (
           <div
-            className={`mt-0.5 text-sm font-bold leading-none ${
-              erBelowTarget ? "text-status-warn-text" : "text-app-muted"
-            }`}
+            className="min-w-0 rounded-md border border-app-border bg-app-subtle/75 px-2 py-2.5"
+            key={set.id}
           >
-            {character.actualEr || 0}% / {character.expectedEr || 0}%
+            <div
+              className="mb-1.5 truncate border-b border-app-border pb-1.5 text-xs font-medium text-app-fg"
+              title={set.name}
+            >
+              {set.name}
+            </div>
+            <div className="flex min-h-6 items-center gap-1 whitespace-nowrap">
+              <DashboardSetScore set={set} />
+            </div>
+            <div className={`mt-1 flex items-center gap-1 whitespace-nowrap text-xs tabular-nums ${ER_STATUS_CLASSES[set.erStatus]}`}>
+              {set.erStatus === "met" ? <span aria-hidden="true">✓</span> : null}
+              {set.erStatus === "below" ? <span aria-hidden="true">↓</span> : null}
+              <span>{set.actualEr === null ? "— ER" : `${Math.round(set.actualEr)}% ER`}</span>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
-      <div className="flex min-w-0 flex-wrap items-center gap-1 text-[11px] font-semibold">
-        <span
-          className={`max-w-full truncate rounded-sm px-1.5 py-0.5 ${
-            weaponDisplay.name
-              ? `${weaponToneClasses.badge}`
-              : "bg-app-raised text-app-muted-subtle"
-          }`}
-        >
-          {weaponDisplay.name || "No weapon"}
+      <div className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-3.5 text-xs">
+        <span className="flex min-w-0 max-w-full items-center gap-1.5">
+          <span
+            className={`inline-flex min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 font-medium ${weaponToneClasses.badge}`}
+            title={weaponDisplay.name}
+          >
+            {weaponDisplay.icon ? (
+              <Image
+                alt=""
+                className="h-4 w-4 shrink-0 object-contain"
+                height={16}
+                sizes="16px"
+                src={weaponDisplay.icon}
+                width={16}
+              />
+            ) : null}
+            <span className="truncate">{weaponDisplay.name || "No weapon"}</span>
+          </span>
+          <WeaponStatusBadge status={weaponStatus} />
         </span>
-        <WeaponStatusBadge status={weaponStatus} />
+        <span className="shrink-0 whitespace-nowrap text-app-muted-subtle">
+          ER target <span className="font-medium text-app-fg">
+            {character.expectedEr ? `${character.expectedEr}%` : "—"}
+          </span>
+        </span>
       </div>
     </button>
   );
@@ -771,7 +474,7 @@ function DashboardGridCard({
 const workflowSteps = [
   {
     title: "Add your characters",
-    description: "Pick the characters you are building and assign their role and weapon.",
+    description: "Pick the characters you are building and assign their weapon.",
   },
   {
     title: "Track what is done",
@@ -779,7 +482,7 @@ const workflowSteps = [
   },
   {
     title: "Compare builds",
-    description: "Enter combined echo crit stats to calculate crit value across characters.",
+    description: "Track up to three echo sets per character with independent scores.",
   },
   {
     title: "Plan endgame teams",
@@ -787,6 +490,7 @@ const workflowSteps = [
   },
 ];
 
+/** Introduces the tracker before the first visit. */
 function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <main className="grid min-h-full place-items-center bg-app-bg px-4 py-8 text-app-fg sm:px-6 lg:px-8">
@@ -804,7 +508,10 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
           <h2 className="text-base font-semibold text-app-fg">Setup Flow</h2>
           <div className="grid gap-3">
             {workflowSteps.map((step, index) => (
-              <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3" key={step.title}>
+              <div
+                className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3"
+                key={step.title}
+              >
                 <div className="grid size-9 place-items-center rounded-md border border-app-border bg-app-bg text-sm font-semibold text-app-muted">
                   {index + 1}
                 </div>
@@ -818,7 +525,10 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         </section>
 
         <div className="flex flex-wrap items-center gap-3">
-          <TextButton onClick={onStart} variant="primary">
+          <TextButton
+            onClick={onStart}
+            variant="primary"
+          >
             Start Tracking
           </TextButton>
         </div>

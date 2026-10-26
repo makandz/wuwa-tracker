@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Wuthering Waves Build Tracker",
-  description: "Track Wuthering Waves character builds, echo stats, roles, and completion.",
+  description: "Track Wuthering Waves character builds, echo sets, and completion.",
 };
 
 export const viewport: Viewport = {

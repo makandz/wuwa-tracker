@@ -1,6 +1,6 @@
 import type {
   ParsedImportedTrackerData,
-  TrackerDocumentV5,
+  TrackerDocument,
   TrackerPreferences,
 } from "./storage";
 import type {
@@ -9,8 +9,14 @@ import type {
   WeaponInventoryItem,
 } from "./types";
 
-type TrackerData = TrackerDocumentV5["data"];
+type TrackerData = TrackerDocument["data"];
 
+/**
+ * Clears team slots that reference removed characters.
+ * @param matrixTeams - The saved teams.
+ * @param characters - The remaining tracked characters.
+ * @returns The teams with valid character references.
+ */
 export function cleanMatrixTeamsForCharacters(
   matrixTeams: MatrixTeam[],
   characters: TrackedCharacter[],
@@ -25,6 +31,13 @@ export function cleanMatrixTeamsForCharacters(
   }));
 }
 
+/**
+ * Adds a character unless its tracker ID is already present.
+ * @param currentData - The current tracker data.
+ * @param character - The character to add.
+ * @param timestamp - The creation and update timestamp.
+ * @returns The updated data, or null for a duplicate ID.
+ */
 export function createCharacterData(
   currentData: TrackerData,
   character: TrackedCharacter,
@@ -47,6 +60,13 @@ export function createCharacterData(
   };
 }
 
+/**
+ * Replaces an existing character build.
+ * @param currentData - The current tracker data.
+ * @param character - The updated character.
+ * @param timestamp - The update timestamp.
+ * @returns The updated data, or null when the character is missing.
+ */
 export function updateCharacterData(
   currentData: TrackerData,
   character: TrackedCharacter,
@@ -69,6 +89,12 @@ export function updateCharacterData(
   };
 }
 
+/**
+ * Removes a character and its team references.
+ * @param currentData - The current tracker data.
+ * @param id - The tracker character ID.
+ * @returns The updated data, or null when the character is missing.
+ */
 export function deleteCharacterData(currentData: TrackerData, id: string) {
   if (!currentData.characters.some((character) => character.id === id)) {
     return null;
@@ -85,6 +111,13 @@ export function deleteCharacterData(currentData: TrackerData, id: string) {
   };
 }
 
+/**
+ * Adds, updates, or removes a weapon inventory entry.
+ * @param currentData - The current tracker data.
+ * @param weaponId - The catalog weapon ID.
+ * @param count - The desired owned count.
+ * @returns The updated data, or null when nothing changes.
+ */
 export function setWeaponCountData(
   currentData: TrackerData,
   weaponId: number,
@@ -114,6 +147,12 @@ export function setWeaponCountData(
   };
 }
 
+/**
+ * Replaces builds and inventory with imported data.
+ * @param currentData - The current tracker data.
+ * @param imported - The validated imported data.
+ * @returns The replacement data, retaining preferences for character-only imports.
+ */
 export function replaceAllTrackerData(
   currentData: TrackerData,
   imported: ParsedImportedTrackerData,
@@ -126,6 +165,11 @@ export function replaceAllTrackerData(
   };
 }
 
+/**
+ * Clears builds, inventory, and teams while retaining preferences.
+ * @param currentData - The current tracker data.
+ * @returns The cleared tracker data.
+ */
 export function clearTrackerData(currentData: TrackerData) {
   return {
     characters: [],
@@ -135,6 +179,12 @@ export function clearTrackerData(currentData: TrackerData) {
   };
 }
 
+/**
+ * Replaces the saved team assignments.
+ * @param currentData - The current tracker data.
+ * @param matrixTeams - The updated teams.
+ * @returns The updated tracker data.
+ */
 export function updateMatrixTeamsData(
   currentData: TrackerData,
   matrixTeams: MatrixTeam[],
@@ -145,6 +195,12 @@ export function updateMatrixTeamsData(
   };
 }
 
+/**
+ * Merges changes into tracker preferences.
+ * @param currentData - The current tracker data.
+ * @param preferences - The preferences to change.
+ * @returns The updated tracker data.
+ */
 export function updatePreferencesData(
   currentData: TrackerData,
   preferences: Partial<TrackerPreferences>,
