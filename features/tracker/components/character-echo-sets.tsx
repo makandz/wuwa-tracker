@@ -153,7 +153,7 @@ function EchoSetControls({
   }
 
   return (
-    <div className="mb-4 grid grid-cols-2 items-start gap-3 border-b border-app-border pb-4 @2xl:grid-cols-[minmax(8rem,14rem)_8rem_9rem_7rem]">
+    <div className="mb-4 grid grid-cols-2 items-start gap-3 border-b border-app-border pb-4 @2xl:grid-cols-[minmax(8rem,14rem)_8rem_9rem_auto]">
       <label className="grid min-w-0 gap-1 text-xs font-medium text-app-muted">
         Set name
         <input
@@ -189,12 +189,12 @@ function EchoSetControls({
               onChange={(scoring) => onUpdate({ ...echoSet, scoring })}
             />
           </div>
-          <div className="grid gap-1">
-            <label className="block text-xs font-medium text-app-muted">
+          <div className="col-span-2 flex items-end gap-3 @2xl:col-span-1">
+            <label className="block w-28 shrink-0 text-xs font-medium text-app-muted">
               <span className="mb-1 block">Actual ER</span>
               <ErInput compact value={echoSet.actualEr} onChange={(actualEr) => onUpdate({ ...echoSet, actualEr })} />
             </label>
-            <span className={`text-xs ${ER_STATUS_CLASSES[erStatus]}`} title={erStatus === "below" ? "Below target ER" : undefined}>
+            <span className={`flex h-9 items-center gap-1 whitespace-nowrap text-xs ${ER_STATUS_CLASSES[erStatus]}`} title={erStatus === "below" ? "Below target ER" : undefined}>
               {erStatus === "met" ? <span aria-hidden="true">✓ </span> : null}
               {erStatus === "below" ? <span aria-hidden="true">↓ </span> : null}
               {expectedEr === null ? "No ER target" : `Target ${expectedEr}%`}
