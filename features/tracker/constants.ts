@@ -1,11 +1,4 @@
-import type {
-  Checklist,
-  DashboardSortKey,
-  DashboardViewMode,
-  EchoChecklistKey,
-  EchoCheckerPlan,
-  Role,
-} from "./types";
+import type { Checklist, EchoChecklistKey, EchoScoringPreset } from "./types";
 
 export const CHARACTER_API = "https://api-v2.encore.moe/api/en/character";
 export const WEAPON_API = "https://api-v2.encore.moe/api/en/weapon";
@@ -37,19 +30,6 @@ export const MATRIX_DOUBLE_USE_CHARACTER_NAMES = new Set<string>([
   "verina",
 ]);
 
-export const ROLES: Role[] = ["DPS", "Hybrid", "Support"];
-export const DASHBOARD_SORT_KEYS: DashboardSortKey[] = [
-  "updated",
-  "name",
-  "completionDesc",
-  "completionAsc",
-  "weightDesc",
-  "weightAsc",
-];
-export const DEFAULT_DASHBOARD_SORT_KEY: DashboardSortKey = "weightDesc";
-export const DASHBOARD_VIEW_MODES: DashboardViewMode[] = ["list", "grid"];
-export const DEFAULT_DASHBOARD_VIEW_MODE: DashboardViewMode = "list";
-
 export const STANDARD_FIVE_STAR_WEAPONS = new Set([
   "abyss surges",
   "boson astrolabe",
@@ -63,45 +43,23 @@ export const STANDARD_FIVE_STAR_WEAPONS = new Set([
   "static mist",
 ]);
 
-export const FOUR_COST_OPTIONS = [
-  { label: "Crit Rate", value: "CR" },
-  { label: "Crit DMG", value: "CD" },
-  { label: "CR/CD", value: "BOTH" },
-] as const;
-
-export const ECHO_CHECKER_PLAN_OPTIONS: {
-  label: string;
-  value: EchoCheckerPlan;
-}[] = [
-  { label: "DPS", value: "DPS" },
-  { label: "Hybrid/Support", value: "HybridSupport" },
+export const MAX_ECHO_SETS = 3;
+export const ECHO_SCORING_OPTIONS: { label: string; value: EchoScoringPreset }[] = [
+  { label: "Strict Crit", value: "strict-crit" },
+  { label: "Standard Crit", value: "standard-crit" },
+  { label: "Priority Stats", value: "priority-stats" },
 ];
 
 export const ECHO_CRIT_RATE_VALUES = [6.3, 6.9, 7.5, 8.1, 8.7, 9.3, 9.9, 10.5];
 export const ECHO_CRIT_DMG_VALUES = [12.6, 13.8, 15, 16.2, 17.4, 18.6, 19.8, 21];
 
 export const emptyChecklist: Checklist = {
-  skills: false,
   fourCost: false,
   threeCostA: false,
   threeCostB: false,
   oneCostA: false,
   oneCostB: false,
 };
-
-export const CHECKLIST_SEGMENTS: {
-  key: keyof Checklist;
-  label: string;
-  shortLabel: string;
-}[] = [
-  { key: "skills", label: "Skills", shortLabel: "Sk" },
-  { key: "fourCost", label: "4 cost echo", shortLabel: "E1" },
-  { key: "threeCostA", label: "3 cost echo 1", shortLabel: "E2" },
-  { key: "threeCostB", label: "3 cost echo 2", shortLabel: "E3" },
-  { key: "oneCostA", label: "1 cost echo 1", shortLabel: "E4" },
-  { key: "oneCostB", label: "1 cost echo 2", shortLabel: "E5" },
-];
-export const CHECKLIST_ITEM_COUNT = Object.keys(emptyChecklist).length;
 
 export const ECHO_CHECKLIST_ITEMS: {
   key: EchoChecklistKey;

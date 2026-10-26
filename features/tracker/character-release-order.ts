@@ -79,22 +79,30 @@ const characterReleaseRank = new Map<number, number>(
  * @returns A new array retaining the original character objects.
  */
 export function sortCharactersByReleaseOrder(characters: readonly ApiCharacter[]): ApiCharacter[] {
-  return [...characters].sort((a, b) => {
-    const aRank = characterReleaseRank.get(a.Id);
-    const bRank = characterReleaseRank.get(b.Id);
+  return [...characters].sort((a, b) => compareCharacterReleaseOrder(a.Id, b.Id));
+}
 
-    if (aRank === undefined && bRank === undefined) {
-      return b.Id - a.Id;
-    }
+/**
+ * Compares character IDs by release, placing unknown IDs first in descending order.
+ * @param leftId - The first catalog character ID.
+ * @param rightId - The second catalog character ID.
+ * @returns Their relative release order.
+ */
+export function compareCharacterReleaseOrder(leftId: number, rightId: number) {
+  const leftRank = characterReleaseRank.get(leftId);
+  const rightRank = characterReleaseRank.get(rightId);
 
-    if (aRank === undefined) {
-      return -1;
-    }
+  if (leftRank === undefined && rightRank === undefined) {
+    return rightId - leftId;
+  }
 
-    if (bRank === undefined) {
-      return 1;
-    }
+  if (leftRank === undefined) {
+    return -1;
+  }
 
-    return aRank - bRank;
-  });
+  if (rightRank === undefined) {
+    return 1;
+  }
+
+  return leftRank - rightRank;
 }

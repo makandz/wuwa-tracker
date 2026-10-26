@@ -1,35 +1,20 @@
-import {
-  CHECKLIST_ITEM_COUNT,
-  ECHO_CHECKLIST_ITEMS,
-  ROLES,
-} from "../constants";
+import { ECHO_CHECKLIST_ITEMS } from "../constants";
 import { parseEchoPrioritySubstats } from "../echo-estimates";
 import { getCharacterSubstatPriority } from "../substat-priorities";
-import {
-  formatPercent,
-  formatPercentInput,
-  formatRatingValue,
-} from "./input";
 import type {
   Checklist,
-  DashboardSortKey,
   EchoChecklistKey,
-  EchoChecker,
   EchoCheckerEcho,
-  EchoCheckerPlan,
   EchoCheckerSubstatId,
   EchoCheckerSubstatSlots,
-  FourCostMain,
+  EchoScoringPreset,
+  EchoSet,
+  ErStatus,
   RatingGrade,
   RatingValue,
-  Role,
   TrackedCharacter,
 } from "../types";
 
-const ECHO_CRIT_RATE_BASE = 0.375;
-const ECHO_CRIT_DMG_BASE = 0.75;
-const FOUR_COST_CRIT_RATE_BONUS = 0.22;
-const FOUR_COST_CRIT_DMG_BONUS = 0.44;
 const ECHO_CHECKER_DPS_TARGET_CRIT_VALUE = 30;
 const ECHO_CHECKER_SUBSTAT_BASE = -0.08;
 const ECHO_CHECKER_ER_BOOST = 0.11;
@@ -42,13 +27,6 @@ const ECHO_CHECKER_PRIORITY_ONLY_MIN_BOOST = 0.12;
 const ECHO_CHECKER_PRIORITY_TARGET_STAT_COUNT = 3;
 const ECHO_CHECKER_PRIORITY_STAT_BASE = 0.17;
 export const ECHO_CHECKER_MEDIAN_ER_ROLL = 10.25;
-const EMPTY_ECHO_SUBSTAT_SLOTS: EchoCheckerSubstatSlots = [
-  null,
-  null,
-  null,
-  null,
-  null,
-];
 const ECHO_CHECKER_SUBSTAT_IDS: EchoCheckerSubstatId[] = [
   "crit-rate",
   "crit-dmg",
@@ -65,38 +43,11 @@ const ECHO_CHECKER_SUBSTAT_IDS: EchoCheckerSubstatId[] = [
   "liberation",
 ];
 
-export function checklistTotal(checklist: Checklist) {
-  return Object.values(checklist).filter(Boolean).length;
-}
-
-export function getDefaultEchoCheckerPlan(roles: Role[]): EchoCheckerPlan {
-  return getPrimaryRole(roles) === "DPS" ? "DPS" : "HybridSupport";
-}
-
 /**
- * Creates empty factual and priority-only echo selections.
- * @param roles - The character roles used to choose the default plan.
- * @returns An enabled checker with five slots per selection mode.
+ * Calculates crit value from one echo’s factual rolls.
+ * @param echo - The echo measurements.
+ * @returns The crit value, or null when neither crit roll is entered.
  */
-export function createDefaultEchoChecker(roles: Role[]): EchoChecker {
-  return {
-    enabled: true,
-    plan: getDefaultEchoCheckerPlan(roles),
-    echoes: ECHO_CHECKLIST_ITEMS.reduce(
-      (echoes, item) => ({
-        ...echoes,
-        [item.key]: {
-          critRate: null,
-          critDmg: null,
-          substatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
-          prioritySubstatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
-        },
-      }),
-      {} as EchoChecker["echoes"],
-    ),
-  };
-}
-
 export function getEchoCheckerCritValue(echo: EchoCheckerEcho) {
   if (echo.critRate === null && echo.critDmg === null) {
     return null;
@@ -105,6 +56,11 @@ export function getEchoCheckerCritValue(echo: EchoCheckerEcho) {
   return Math.round(((echo.critRate ?? 0) * 2 + (echo.critDmg ?? 0)) * 10) / 10;
 }
 
+/**
+ * Applies the existing soft cap to an echo’s crit value.
+ * @param echo - The echo measurements.
+ * @returns Its crit rating, or null without crit measurements.
+ */
 export function getEchoCheckerCritValueRating(echo: EchoCheckerEcho) {
   const critValue = getEchoCheckerCritValue(echo);
 
@@ -123,24 +79,26 @@ export function getEchoCheckerCritValueRating(echo: EchoCheckerEcho) {
   );
 }
 
+/**
+ * Reads the selections belonging to the requested scoring mode.
+ * @param echo - The validated echo data.
+ * @param priorityOnly - Whether to read priority-only selections.
+ * @returns The five saved substat slots.
+ */
 export function getEchoCheckerSubstatIds(
   echo: EchoCheckerEcho,
   priorityOnly = false,
 ): EchoCheckerSubstatSlots {
-  const storedSubstats = priorityOnly
-    ? echo.prioritySubstatIds
-    : echo.substatIds;
-
-  if (storedSubstats) {
-    return Array.from(
-      { length: 5 },
-      (_, index) => storedSubstats[index] ?? null,
-    );
-  }
-
-  return [...EMPTY_ECHO_SUBSTAT_SLOTS];
+  return priorityOnly ? echo.prioritySubstatIds : echo.substatIds;
 }
 
+/**
+ * Counts selected relevant stats, excluding redundant ER when requested.
+ * @param echo - The echo measurements.
+ * @param ignoreEnergyRegen - Whether its ER roll is redundant.
+ * @param priorityOnly - Whether priority-only scoring applies.
+ * @returns The number of contributing selections.
+ */
 export function getEchoCheckerTargetStatCount(
   echo: EchoCheckerEcho,
   ignoreEnergyRegen = false,
@@ -151,20 +109,12 @@ export function getEchoCheckerTargetStatCount(
   ).length;
 }
 
-export function getCharacterRedundantErRollCount(character: TrackedCharacter) {
-  if (character.expectedEr <= 0) {
-    return 0;
-  }
-
-  const excessEr = Math.max(0, character.actualEr - character.expectedEr);
-
-  return Math.floor(excessEr / ECHO_CHECKER_MEDIAN_ER_ROLL);
-}
-
-export function isCharacterErOvercapped(character: TrackedCharacter) {
-  return getCharacterRedundantErRollCount(character) > 0;
-}
-
+/**
+ * Builds the selectable stats from curated priority text.
+ * @param substatPriority - The curated priority expression.
+ * @param includeCrit - Whether crit stats are selectable as priority stats.
+ * @returns The ordered unique selectable stats.
+ */
 export function getEchoCheckerSubstatOptions(
   substatPriority: string,
   includeCrit = false,
@@ -179,6 +129,13 @@ export function getEchoCheckerSubstatOptions(
   return [...new Set(priorityStats)];
 }
 
+/**
+ * Derives valid selections without changing stored measurements.
+ * @param echo - The saved echo.
+ * @param substatPriority - The current curated priorities.
+ * @param priorityOnly - Whether priority-only selections apply.
+ * @returns Five slots with unavailable or duplicate selections cleared.
+ */
 export function reconcileEchoCheckerSubstats(
   echo: EchoCheckerEcho,
   substatPriority: string,
@@ -199,6 +156,13 @@ export function reconcileEchoCheckerSubstats(
   });
 }
 
+/**
+ * Assigns the existing stat boosts for the chosen scoring mode.
+ * @param substatPriority - The curated priority expression.
+ * @param ignoreEnergyRegen - Whether ER contributes no boost.
+ * @param includeCrit - Whether priority-only weighting applies.
+ * @returns The boost associated with each stat.
+ */
 export function getEchoCheckerSubstatBoosts(
   substatPriority: string,
   ignoreEnergyRegen = false,
@@ -264,6 +228,14 @@ export function getEchoCheckerSubstatBoosts(
   return boosts;
 }
 
+/**
+ * Scores one echo using the existing crit or priority-stat formula.
+ * @param echo - The saved echo measurements.
+ * @param substatPriority - The curated priorities.
+ * @param ignoreEnergyRegen - Whether its ER roll is redundant.
+ * @param priorityOnly - Whether to score priority stats instead of crit values.
+ * @returns The echo score, or null when crit scoring lacks all measurements.
+ */
 export function getEchoCheckerScore(
   echo: EchoCheckerEcho,
   substatPriority = "",
@@ -310,83 +282,19 @@ export function getEchoCheckerScore(
   return roundRating((critValueRating ?? 0) + ECHO_CHECKER_SUBSTAT_BASE + substatBonus);
 }
 
-export function getIgnoredErEchoKeys(character: TrackedCharacter) {
-  const substatPriority = getCharacterSubstatPriority(character.characterId);
-
-  if (substatPriority === null) {
-    return new Set<EchoChecklistKey>();
-  }
-
-  const redundantRollCount = getCharacterRedundantErRollCount(character);
-
-  if (redundantRollCount === 0) {
-    return new Set<EchoChecklistKey>();
-  }
-
-  const erEchoes = ECHO_CHECKLIST_ITEMS.flatMap((item, index) => {
-    const echo = getEchoCheckerEcho(character, item.key);
-
-    if (
-      !getEchoCheckerSubstatIds(echo, character.noCrit).includes(
-        "energy-regen",
-      )
-    ) {
-      return [];
-    }
-
-    return [
-      {
-        index,
-        key: item.key,
-        score:
-          getEchoCheckerScore(
-            echo,
-            substatPriority,
-            false,
-            character.noCrit,
-          ) ?? 0,
-      },
-    ];
-  });
-
-  erEchoes.sort((left, right) => left.score - right.score || left.index - right.index);
-
-  return new Set(
-    erEchoes.slice(0, redundantRollCount).map(({ key }) => key),
-  );
-}
-
-function getEchoCheckerBuildScore(character: TrackedCharacter) {
-  const substatPriority = getCharacterSubstatPriority(character.characterId);
-
-  if (substatPriority === null) {
-    return null;
-  }
-
-  const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
-  const echoScores = ECHO_CHECKLIST_ITEMS.map((item) =>
-    getEchoCheckerScore(
-      getEchoCheckerEcho(character, item.key),
-      substatPriority,
-      ignoredErEchoKeys.has(item.key),
-      character.noCrit,
-    ),
-  );
-  const validEchoScores = echoScores.filter((value): value is number => value !== null);
-
-  if (validEchoScores.length !== echoScores.length) {
-    return null;
-  }
-
-  return averageRatingValues(validEchoScores);
-}
-
+/**
+ * Checks an echo against its set’s chosen completion preset.
+ * @param echo - The evaluated echo measurements.
+ * @param scoring - The selected scoring preset.
+ * @param ignoreEnergyRegen - Whether its ER roll is redundant.
+ * @returns Whether the preset’s completion requirements are met.
+ */
 export function isEchoCheckerEchoComplete(
   echo: EchoCheckerEcho,
-  plan: EchoCheckerPlan,
+  scoring: EchoScoringPreset,
   ignoreEnergyRegen = false,
-  priorityOnly = false,
 ) {
+  const priorityOnly = scoring === "priority-stats";
   const hasDoubleCrit = echo.critRate !== null && echo.critDmg !== null;
   const targetStatCount = getEchoCheckerTargetStatCount(
     echo,
@@ -402,7 +310,7 @@ export function isEchoCheckerEchoComplete(
     return false;
   }
 
-  if (plan === "HybridSupport") {
+  if (scoring === "standard-crit") {
     return targetStatCount >= 1;
   }
 
@@ -416,176 +324,11 @@ export function isEchoCheckerEchoComplete(
   );
 }
 
-export function isEchoCheckerEnabled(character: TrackedCharacter) {
-  return character.echoChecker?.enabled === true;
-}
-
 /**
- * Reads a saved echo or supplies empty selections for the UI.
- * @param character - The tracked character.
- * @param key - The echo position.
- * @returns The saved or empty echo.
+ * Rounds finite scores for display and comparisons.
+ * @param value - The calculated score.
+ * @returns The score rounded to two decimal places.
  */
-export function getEchoCheckerEcho(
-  character: TrackedCharacter,
-  key: keyof Omit<Checklist, "skills">,
-) {
-  return (
-    character.echoChecker?.echoes?.[key] ?? {
-      critRate: null,
-      critDmg: null,
-      substatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
-      prioritySubstatIds: [...EMPTY_ECHO_SUBSTAT_SLOTS],
-    }
-  );
-}
-
-function roundEchoCritStat(value: number) {
-  return Math.round(value * 1000) / 1000;
-}
-
-export function getEchoCheckerCalculatedCritStats(character: TrackedCharacter) {
-  const { critRateBase, critDmgBase } = getFourCostCritBases(character.fourCostMain);
-  const totals = ECHO_CHECKLIST_ITEMS.reduce(
-    (stats, item) => {
-      const echo = getEchoCheckerEcho(character, item.key);
-
-      return {
-        critRate: stats.critRate + (echo.critRate ?? 0) / 100,
-        critDmg: stats.critDmg + (echo.critDmg ?? 0) / 100,
-      };
-    },
-    {
-      critRate: critRateBase,
-      critDmg: critDmgBase,
-    },
-  );
-
-  return {
-    critRate: roundEchoCritStat(totals.critRate),
-    critDmg: roundEchoCritStat(totals.critDmg),
-  };
-}
-
-export function getEffectiveEchoCritStats(character: TrackedCharacter) {
-  if (isEchoCheckerEnabled(character)) {
-    return getEchoCheckerCalculatedCritStats(character);
-  }
-
-  return {
-    critRate: character.critRate,
-    critDmg: character.critDmg,
-  };
-}
-
-export function getEffectiveChecklist(character: TrackedCharacter): Checklist {
-  if (!isEchoCheckerEnabled(character)) {
-    return character.checklist;
-  }
-
-  const plan = character.echoChecker?.plan ?? getDefaultEchoCheckerPlan(character.roles);
-  const hasSubstatPriority = getCharacterSubstatPriority(character.characterId) !== null;
-  const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
-  const echoChecklist = ECHO_CHECKLIST_ITEMS.reduce(
-    (checklist, item) => ({
-      ...checklist,
-      [item.key]: hasSubstatPriority
-        ? isEchoCheckerEchoComplete(
-            getEchoCheckerEcho(character, item.key),
-            plan,
-            ignoredErEchoKeys.has(item.key),
-            character.noCrit,
-          )
-        : false,
-    }),
-    {} as Pick<Checklist, keyof Omit<Checklist, "skills">>,
-  );
-
-  return {
-    ...character.checklist,
-    ...echoChecklist,
-  };
-}
-
-export function checklistProgress(character: TrackedCharacter) {
-  return (checklistTotal(getEffectiveChecklist(character)) / CHECKLIST_ITEM_COUNT) * 100;
-}
-
-export function isComplete(character: TrackedCharacter) {
-  return checklistTotal(getEffectiveChecklist(character)) === CHECKLIST_ITEM_COUNT;
-}
-
-export function getPrimaryRole(roles: Role[]) {
-  return ROLES.find((role) => roles.includes(role)) ?? "DPS";
-}
-
-export function compareRatingValues(
-  aValue: RatingValue,
-  bValue: RatingValue,
-  direction: "asc" | "desc",
-) {
-  if (aValue === null && bValue === null) {
-    return 0;
-  }
-
-  if (aValue === null) {
-    return 1;
-  }
-
-  if (bValue === null) {
-    return -1;
-  }
-
-  return direction === "asc" ? aValue - bValue : bValue - aValue;
-}
-
-export function sortDashboardCharacters(
-  characters: TrackedCharacter[],
-  sortKey: DashboardSortKey,
-) {
-  return [...characters].sort((a, b) => {
-    const aProgress = checklistProgress(a);
-    const bProgress = checklistProgress(b);
-    const aBuildScore = getRatings(a).buildScore;
-    const bBuildScore = getRatings(b).buildScore;
-
-    switch (sortKey) {
-      case "name":
-        return a.characterName.localeCompare(b.characterName);
-      case "completionDesc":
-        return (
-          bProgress - aProgress ||
-          compareRatingValues(aBuildScore, bBuildScore, "desc") ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "completionAsc":
-        return (
-          aProgress - bProgress ||
-          compareRatingValues(aBuildScore, bBuildScore, "asc") ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "weightDesc":
-        return (
-          compareRatingValues(aBuildScore, bBuildScore, "desc") ||
-          bProgress - aProgress ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "weightAsc":
-        return (
-          compareRatingValues(aBuildScore, bBuildScore, "asc") ||
-          bProgress - aProgress ||
-          a.characterName.localeCompare(b.characterName)
-        );
-      case "updated":
-      default:
-        return (
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime() ||
-          a.characterName.localeCompare(b.characterName)
-        );
-    }
-  });
-}
-
 export function roundRating(value: number) {
   if (!Number.isFinite(value)) {
     return 0;
@@ -594,72 +337,11 @@ export function roundRating(value: number) {
   return Math.round(value * 100) / 100;
 }
 
-export function getFourCostCritBases(fourCostMain: FourCostMain) {
-  return {
-    critRateBase:
-      fourCostMain === "CR" || fourCostMain === "BOTH" ? FOUR_COST_CRIT_RATE_BONUS : 0,
-    critDmgBase:
-      fourCostMain === "CD" || fourCostMain === "BOTH" ? FOUR_COST_CRIT_DMG_BONUS : 0,
-  };
-}
-
-export function getEchoCritPlaceholders(fourCostMain: FourCostMain) {
-  const { critRateBase, critDmgBase } = getFourCostCritBases(fourCostMain);
-
-  return {
-    critRate: formatPercentInput(ECHO_CRIT_RATE_BASE + critRateBase),
-    critDmg: formatPercentInput(ECHO_CRIT_DMG_BASE + critDmgBase),
-  };
-}
-
-export function getRatings(character: TrackedCharacter) {
-  const substatPriorityAvailable =
-    getCharacterSubstatPriority(character.characterId) !== null;
-
-  if (character.noCrit) {
-    const echoCheckerBuildScore = isEchoCheckerEnabled(character)
-      ? getEchoCheckerBuildScore(character)
-      : null;
-
-    return {
-      crRating: null,
-      cdRating: null,
-      critScore: null,
-      buildScore: echoCheckerBuildScore,
-      issue: "",
-    };
-  }
-
-  const { critRateBase, critDmgBase } = getFourCostCritBases(character.fourCostMain);
-  const { critRate, critDmg } = getEffectiveEchoCritStats(character);
-  const crRating = (critRate - critRateBase) / (0.075 * 5);
-  const cdRating = (critDmg - critDmgBase) / (0.15 * 5);
-  const crRatingValid = crRating >= 0;
-  const cdRatingValid = cdRating >= 0;
-  const critScore = crRatingValid && cdRatingValid ? (crRating + cdRating) / 2 : null;
-  const echoCheckerBuildScore = isEchoCheckerEnabled(character)
-    ? getEchoCheckerBuildScore(character)
-    : null;
-  const buildScore = isEchoCheckerEnabled(character) ? echoCheckerBuildScore : critScore;
-  const issues = [
-    !crRatingValid ? `Crit Rate must be at least ${formatPercent(critRateBase)}.` : "",
-    !cdRatingValid ? `Crit DMG must be at least ${formatPercent(critDmgBase)}.` : "",
-    isEchoCheckerEnabled(character) &&
-    substatPriorityAvailable &&
-    echoCheckerBuildScore === null
-      ? "Build Score needs at least one crit roll or selected substat for every echo."
-      : "",
-  ].filter(Boolean);
-
-  return {
-    crRating: crRatingValid ? roundRating(crRating) : null,
-    cdRating: cdRatingValid ? roundRating(cdRating) : null,
-    critScore: critScore === null ? null : roundRating(critScore),
-    buildScore: buildScore === null ? null : roundRating(buildScore),
-    issue: issues.join(" "),
-  };
-}
-
+/**
+ * Maps a score to the existing letter-grade thresholds.
+ * @param value - The numeric score.
+ * @returns Its letter grade.
+ */
 export function getRatingGrade(value: number): RatingGrade {
   if (value >= 1.2) {
     return "S+";
@@ -708,6 +390,11 @@ export function getRatingGrade(value: number): RatingGrade {
   return "F";
 }
 
+/**
+ * Averages available echo scores.
+ * @param values - The scores to combine.
+ * @returns The rounded average, or null when no scores are available.
+ */
 export function averageRatingValues(values: RatingValue[]) {
   const validValues = values.filter((value): value is number => value !== null);
 
@@ -718,23 +405,159 @@ export function averageRatingValues(values: RatingValue[]) {
   return roundRating(validValues.reduce((sum, value) => sum + value, 0) / validValues.length);
 }
 
-export function getRoleSummary(characters: TrackedCharacter[]) {
-  const ratings = characters.map(getRatings);
-  const critCharacterCount = characters.filter((character) => !character.noCrit).length;
 
-  return {
-    count: characters.length,
-    critCharacterCount,
-    averageCr: averageRatingValues(ratings.map((rating) => rating.crRating)),
-    averageCd: averageRatingValues(ratings.map((rating) => rating.cdRating)),
-    averageBuildScore: averageRatingValues(ratings.map((rating) => rating.buildScore)),
-  };
-}
-
-export function formatRoleSummaryValue(value: RatingValue, critCharacterCount: number) {
-  if (value !== null) {
-    return formatRatingValue(value);
+/**
+ * Describes whether a set's actual ER meets the shared character target.
+ * @param actualEr - This set's ER, or null when unknown.
+ * @param expectedEr - The shared target, or null when unspecified.
+ * @returns A neutral, below-target, or met-target status.
+ */
+export function getErStatus(actualEr: number | null, expectedEr: number | null): ErStatus {
+  if (actualEr === null || expectedEr === null || expectedEr <= 0) {
+    return "unknown";
   }
 
-  return critCharacterCount === 0 ? "No crit" : "Check";
+  return actualEr >= expectedEr ? "met" : "below";
+}
+
+/**
+ * Counts full excess ER rolls using only this set's actual ER.
+ * @param expectedEr - The shared target.
+ * @param actualEr - This set's ER.
+ * @returns The number of redundant median ER rolls.
+ */
+export function getRedundantErRollCount(expectedEr: number | null, actualEr: number | null) {
+  if (expectedEr === null || expectedEr <= 0 || actualEr === null) {
+    return 0;
+  }
+
+  return Math.floor(Math.max(0, actualEr - expectedEr) / ECHO_CHECKER_MEDIAN_ER_ROLL);
+}
+
+/**
+ * Finds the lowest-scoring ER rolls made redundant within one set.
+ * @param characterId - The character whose curated priorities apply.
+ * @param expectedEr - The shared character target.
+ * @param echoSet - The set to evaluate.
+ * @returns Echo positions whose ER roll contributes no score or completion.
+ */
+export function getIgnoredErEchoKeys(
+  characterId: number,
+  expectedEr: number | null,
+  echoSet: EchoSet,
+) {
+  const priority = getCharacterSubstatPriority(characterId);
+  const redundant = getRedundantErRollCount(expectedEr, echoSet.actualEr);
+
+  if (priority === null || redundant === 0) {
+    return new Set<EchoChecklistKey>();
+  }
+
+  const priorityOnly = echoSet.scoring === "priority-stats";
+  const erEchoes = ECHO_CHECKLIST_ITEMS.flatMap(({ key }, index) => {
+    const echo = echoSet.echoes[key];
+
+    if (!getEchoCheckerSubstatIds(echo, priorityOnly).includes("energy-regen")) {
+      return [];
+    }
+
+    return [{ key, index, score: getEchoCheckerScore(echo, priority, false, priorityOnly) ?? 0 }];
+  });
+
+  erEchoes.sort((left, right) => left.score - right.score || left.index - right.index);
+
+  return new Set(erEchoes.slice(0, redundant).map(({ key }) => key));
+}
+
+/**
+ * Calculates a detailed set's average score without mixing it with other sets.
+ * @param characterId - The character whose curated priorities apply.
+ * @param expectedEr - The shared ER target.
+ * @param echoSet - The set to evaluate.
+ * @returns Its score, or null for checklist mode or insufficient information.
+ */
+export function getEchoSetScore(
+  characterId: number,
+  expectedEr: number | null,
+  echoSet: EchoSet,
+): RatingValue {
+  const priority = getCharacterSubstatPriority(characterId);
+
+  if (echoSet.mode === "checklist" || priority === null) {
+    return null;
+  }
+
+  const ignored = getIgnoredErEchoKeys(characterId, expectedEr, echoSet);
+  const scores = ECHO_CHECKLIST_ITEMS.map(({ key }) => getEchoCheckerScore(
+    echoSet.echoes[key],
+    priority,
+    ignored.has(key),
+    echoSet.scoring === "priority-stats",
+  ));
+
+  if (scores.some((score) => score === null)) {
+    return null;
+  }
+
+  return averageRatingValues(scores);
+}
+
+/**
+ * Reads manual completion or derives it from one set's detailed measurements.
+ * @param characterId - The character whose curated priorities apply.
+ * @param expectedEr - The shared ER target.
+ * @param echoSet - The set to evaluate.
+ * @returns Completion flags for its five echo positions.
+ */
+export function getEchoSetChecklist(
+  characterId: number,
+  expectedEr: number | null,
+  echoSet: EchoSet,
+): Checklist {
+  if (echoSet.mode === "checklist") {
+    return echoSet.checklist;
+  }
+
+  const priority = getCharacterSubstatPriority(characterId);
+  const priorityOnly = echoSet.scoring === "priority-stats";
+  const ignored = getIgnoredErEchoKeys(characterId, expectedEr, echoSet);
+  const result: Checklist = {
+    fourCost: false, threeCostA: false, threeCostB: false, oneCostA: false, oneCostB: false,
+  };
+
+  if (priority === null) {
+    return result;
+  }
+
+  for (const { key } of ECHO_CHECKLIST_ITEMS) {
+    const echo = echoSet.echoes[key];
+    const selections = reconcileEchoCheckerSubstats(echo, priority, priorityOnly);
+    const evaluated = {
+      ...echo,
+      [priorityOnly ? "prioritySubstatIds" : "substatIds"]: selections,
+    };
+    result[key] = isEchoCheckerEchoComplete(evaluated, echoSet.scoring, ignored.has(key));
+  }
+
+  return result;
+}
+
+/**
+ * Counts completed echo positions.
+ * @param checklist - The set's effective completion flags.
+ * @returns The number of completed positions.
+ */
+export function checklistTotal(checklist: Checklist) {
+  return Object.values(checklist).filter(Boolean).length;
+}
+
+/**
+ * Checks shared skills and every echo set for character completion.
+ * @param character - The tracked character.
+ * @returns Whether skills and all five positions in every set are complete.
+ */
+export function isComplete(character: TrackedCharacter) {
+  return character.skillsDone && character.echoSets.every((set) =>
+    checklistTotal(getEchoSetChecklist(character.characterId, character.expectedEr, set)) === 5,
+  );
 }

@@ -1,95 +1,48 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import {
+  use,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  ECHO_CHECKER_PLAN_OPTIONS,
-  ECHO_CHECKLIST_ITEMS,
-  ECHO_CRIT_DMG_VALUES,
-  ECHO_CRIT_RATE_VALUES,
+  ECHO_SCORING_OPTIONS, ECHO_CHECKLIST_ITEMS, ECHO_CRIT_DMG_VALUES,
+  ECHO_CRIT_RATE_VALUES, MAX_ECHO_SETS,
 } from "@/features/tracker/constants";
 import {
-  buildWeaponInventoryCountMap,
-  characterRoleToneClasses,
-  createDefaultEchoChecker,
-  findCatalogCharacter,
-  findCatalogWeapon,
-  findTrackedCharacterByRouteSegment,
-  getAssignmentCounts,
-  getDefaultEchoCheckerPlan,
-  getEchoCheckerCritValue,
-  getEchoCheckerEcho,
-  getIgnoredErEchoKeys,
-  getEchoCheckerScore,
-  getEchoCheckerSubstatIds,
-  getEchoCheckerSubstatOptions,
-  getEchoCheckerTargetStatCount,
-  getEchoCritPlaceholders,
-  getEffectiveChecklist,
-  getEffectiveEchoCritStats,
-  getOwnedWeaponsByType,
-  getPrimaryRole,
-  getPrydwenCharacterUrl,
-  getRatingGrade,
-  getRatings,
-  getTethysCharacterUrl,
-  getTrackedCharacterDisplay,
-  getTrackedWeaponDisplay,
-  getWeaponInventoryStatus,
-  getWeaponRarityTone,
-  isComplete,
-  isEchoCheckerEchoComplete,
-  isEchoCheckerEnabled,
-  reconcileEchoCheckerSubstats,
-  ratingGradeClasses,
+  ER_STATUS_CLASSES, buildWeaponInventoryCountMap, findCatalogCharacter, findCatalogWeapon,
+  findTrackedCharacterByRouteSegment, getAssignmentCounts,
+  getEchoCheckerCritValue, getEchoCheckerScore, getEchoCheckerSubstatIds,
+  getEchoCheckerSubstatOptions, getEchoSetChecklist, getEchoSetScore, getErStatus,
+  getIgnoredErEchoKeys, getOwnedWeaponsByType, getPrydwenCharacterUrl,
+  getTethysCharacterUrl, getTrackedCharacterDisplay, getTrackedWeaponDisplay,
+  getWeaponRarityTone, isComplete, ratingGradeClasses, getRatingGrade,
 } from "@/features/tracker/domain";
+import { addEchoSet, deleteEchoSet, updateEchoSet } from "@/features/tracker/echo-sets";
 import {
-  ECHO_SUBSTAT_LABELS,
-  getMakanEchoEstimate,
-  type MakanEchoEstimate,
+  ECHO_SUBSTAT_LABELS, getMakanEchoEstimate, type MakanEchoEstimate,
 } from "@/features/tracker/echo-estimates";
 import { getCharacterRotations } from "@/features/tracker/rotations";
 import { getCharacterSubstatPriority } from "@/features/tracker/substat-priorities";
-import {
-  FourCostMainControl,
-  RoleSelectionControl,
-} from "@/features/tracker/components/build-form-controls";
-import {
-  getFourCostMainSelection,
-  getNextNoCrit,
-  getNextRolesAfterRoleToggle,
-  getRolesAfterMultipleRolesChange,
-} from "@/features/tracker/components/build-form-state";
 import { PickerSummary, WeaponPickerModal } from "@/features/tracker/components/pickers";
 import { CharacterRotationsSection } from "@/features/tracker/components/rotations";
 import {
-  CharacterAvatar,
-  ErInput,
-  Field,
-  Modal,
-  NumberInput,
-  RatingSummaryBlock,
-  SelectInput,
-  TextButton,
-  TextLink,
-  WeaponStatusBadge,
+  CharacterAvatar, ErInput, Field, RatingSummaryBlock, SelectInput, TextButton, TextLink,
 } from "@/features/tracker/components/ui";
 import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
-  ApiCharacter,
-  ApiWeapon,
-  Checklist,
-  EchoChecker,
-  EchoCheckerEcho,
-  EchoCheckerPlan,
-  EchoCheckerSubstatId,
-  EchoCheckerSubstatSlots,
-  Role,
-  TrackedCharacter,
-  WeaponInventoryItem,
+  ApiCharacter, ApiWeapon, EchoCheckerSubstatId, EchoCheckerEcho,
+  EchoScoringPreset, EchoSet, TrackedCharacter, WeaponInventoryItem,
 } from "@/features/tracker/types";
 
+/**
+ * Opens the tracked character identified by its route.
+ * @param props - The asynchronous character route parameters.
+ * @returns The character editor after data loads.
+ */
 export default function CharacterPage({
   params,
 }: {
@@ -116,6 +69,7 @@ export default function CharacterPage({
     router.replace("/");
   }, [router, selectedCharacter, storageLoaded]);
 
+  /** Deletes the character after confirmation. */
   function confirmDeleteCharacter(characterId: string) {
     if (!confirm("Delete this tracked character?")) {
       return;
@@ -134,6 +88,7 @@ export default function CharacterPage({
       <DetailScreen
         assignmentCounts={assignmentCounts}
         character={selectedCharacter}
+        key={selectedCharacter.id}
         characters={catalog.characters}
         onDelete={() => confirmDeleteCharacter(selectedCharacter.id)}
         onUpdate={updateCharacter}
@@ -144,11 +99,7 @@ export default function CharacterPage({
   );
 }
 
-const FORTE_CHECKLIST_ITEM = {
-  key: "skills",
-  label: "Skills / Forte level ups",
-} satisfies { key: keyof Checklist; label: string };
-
+/** Edits an individual echo crit roll. */
 function EchoRollSelect({
   disabled = false,
   label,
@@ -176,7 +127,10 @@ function EchoRollSelect({
         >
           <option value="">-</option>
           {values.map((option) => (
-            <option key={option} value={option}>
+            <option
+              key={option}
+              value={option}
+            >
               {option}%
             </option>
           ))}
@@ -205,6 +159,7 @@ const ECHO_CHECKER_SUBSTAT_LABELS: Record<EchoCheckerSubstatId, string> = {
   liberation: "Liberation",
 };
 
+/** Edits prioritized substats within the available slot limit. */
 function EchoSubstatCheckboxes({
   erIgnored,
   onChange,
@@ -267,14 +222,17 @@ const echoEstimatePercentFormatter = new Intl.NumberFormat("en-US", {
   style: "percent",
 });
 
+/** Formats the expected echo count. */
 function formatExpectedEchoes(value: number | null) {
   return value === null ? "-" : echoEstimateNumberFormatter.format(value);
 }
 
+/** Formats the expected tuner count. */
 function formatExpectedTuners(value: number | null) {
   return value === null ? "-" : echoEstimateTunerFormatter.format(value);
 }
 
+/** Displays the existing echo resource estimate. */
 function EchoEstimateSection({ estimate }: { estimate: MakanEchoEstimate }) {
   const targetStatPrefix = estimate.parsed.usedFallback
     ? "Fallback target stats"
@@ -342,6 +300,7 @@ function EchoEstimateSection({ estimate }: { estimate: MakanEchoEstimate }) {
   );
 }
 
+/** Edits shared character settings and manages up to three independent sets. */
 function DetailScreen({
   character,
   characters,
@@ -359,796 +318,349 @@ function DetailScreen({
   onDelete: () => void;
   onUpdate: (character: TrackedCharacter) => void;
 }) {
-  const inventoryCounts = useMemo(
-    () => buildWeaponInventoryCountMap(weaponInventory),
-    [weaponInventory],
-  );
-  const catalogCharacter = findCatalogCharacter(characters, character.characterId);
-  const characterDisplay = getTrackedCharacterDisplay(character, catalogCharacter);
-  const availableWeapons = getOwnedWeaponsByType({
-    inventoryCounts,
-    weaponTypeId: characterDisplay.weaponTypeId,
-    weapons,
-  });
-  const ratings = getRatings(character);
-  const echoChecker = character.echoChecker ?? createDefaultEchoChecker(character.roles);
-  const echoCritPlaceholders = getEchoCritPlaceholders(character.fourCostMain);
-  const effectiveChecklist = getEffectiveChecklist(character);
-  const echoCheckerActive = isEchoCheckerEnabled(character);
-  const effectiveEchoCritStats = getEffectiveEchoCritStats(character);
-  const complete = isComplete(character);
-  const primaryRole = getPrimaryRole(character.roles);
-  const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
   const [weaponPickerOpen, setWeaponPickerOpen] = useState(false);
-  const [echoModeConfirmOpen, setEchoModeConfirmOpen] = useState(false);
-  const [multipleRoles, setMultipleRoles] = useState(character.roles.length > 1);
+  const [editorSetId, setEditorSetId] = useState(character.echoSets[0].id);
+  const inventoryCounts = buildWeaponInventoryCountMap(weaponInventory);
+  const catalogCharacter = findCatalogCharacter(characters, character.characterId);
+  const display = getTrackedCharacterDisplay(character, catalogCharacter);
   const selectedWeapon = findCatalogWeapon(weapons, character.weaponId);
   const weaponDisplay = getTrackedWeaponDisplay(character, selectedWeapon);
-  const rotations = getCharacterRotations(characterDisplay.name);
-  const weaponStatus = getWeaponInventoryStatus({
-    weaponId: character.weaponId,
-    inventory: weaponInventory,
-    assignmentCounts,
-  });
-  const prydwenUrl = getPrydwenCharacterUrl(characterDisplay.name);
-  const tethysUrl = getTethysCharacterUrl(character.characterId);
-  const defaultPlan = getDefaultEchoCheckerPlan(character.roles);
-  const substatPriority = getCharacterSubstatPriority(character.characterId);
-  const substatPriorityValue = substatPriority ?? "";
-  const makanEchoEstimate = useMemo(
-    () =>
-      substatPriority === null
-        ? null
-        : getMakanEchoEstimate({ substatPriority }),
-    [substatPriority],
-  );
-  const echoSubstatOptions = useMemo(
-    () => getEchoCheckerSubstatOptions(substatPriorityValue, character.noCrit),
-    [character.noCrit, substatPriorityValue],
-  );
-  const ignoredErEchoKeys = getIgnoredErEchoKeys(character);
+  const availableWeapons = getOwnedWeaponsByType({ inventoryCounts, weaponTypeId: display.weaponTypeId, weapons });
+  const echoSet = character.echoSets.find((set) => set.id === editorSetId) ?? character.echoSets[0];
+  const atLimit = character.echoSets.length >= MAX_ECHO_SETS;
 
-  useEffect(() => {
-    if (!character.echoChecker || substatPriority === null) {
-      return;
-    }
-
-    let changed = false;
-    const echoes = ECHO_CHECKLIST_ITEMS.reduce(
-      (nextEchoes, item) => {
-        const echo = character.echoChecker?.echoes[item.key];
-
-        if (!echo) {
-          return nextEchoes;
-        }
-
-        const currentSubstats = getEchoCheckerSubstatIds(
-          echo,
-          character.noCrit,
-        );
-        const nextSubstats = reconcileEchoCheckerSubstats(
-          echo,
-          substatPriority,
-          character.noCrit,
-        );
-
-        if (nextSubstats.some((stat, index) => stat !== currentSubstats[index])) {
-          changed = true;
-        }
-
-        return {
-          ...nextEchoes,
-          [item.key]: {
-            ...echo,
-            [character.noCrit ? "prioritySubstatIds" : "substatIds"]:
-              nextSubstats,
-          },
-        };
-      },
-      {} as EchoChecker["echoes"],
-    );
-
-    if (!changed) {
-      return;
-    }
-
-    onUpdate({
-      ...character,
-      echoChecker: {
-        ...character.echoChecker,
-        echoes,
-      },
-      updatedAt: new Date().toISOString(),
-    });
-  }, [character, onUpdate, substatPriority]);
-
-  const planOptions = ECHO_CHECKER_PLAN_OPTIONS.map((option) => ({
-    ...option,
-    label:
-      option.value === defaultPlan
-        ? `${option.label} (recommended)`
-        : option.label,
-  }));
-  const planSelectClassName =
-    echoChecker.plan === "DPS"
-      ? "border-role-dps-border/70 bg-role-dps-bg/35 text-role-dps-text focus:border-role-dps-border focus:ring-role-dps-border/25"
-      : "border-role-hybrid-border/70 bg-role-hybrid-bg/35 text-role-hybrid-text focus:border-role-hybrid-border focus:ring-role-hybrid-border/25";
-
+  /** Saves shared fields through the validated tracker update path. */
   function patchCharacter(patch: Partial<TrackedCharacter>) {
-    onUpdate({
-      ...character,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    });
+    onUpdate({ ...character, ...patch });
   }
 
-  function patchChecklist(key: keyof Checklist, value: boolean) {
-    patchCharacter({
-      checklist: {
-        ...character.checklist,
-        [key]: value,
-      },
-    });
+  /** Adds an independent new set or a deep copy of the currently edited one. */
+  function createSet(duplicate = false) {
+    const id = crypto.randomUUID();
+    onUpdate(addEchoSet(character, id, duplicate ? echoSet.id : undefined));
+    setEditorSetId(id);
   }
 
-  function disableEchoChecker() {
-    if (!character.echoChecker) {
-      return;
-    }
-
-    patchCharacter({
-      echoChecker: {
-        ...character.echoChecker,
-        enabled: false,
-      },
-    });
-  }
-
-  function enableEchoChecker() {
-    patchCharacter({
-      echoChecker: character.echoChecker
-        ? {
-            ...character.echoChecker,
-            enabled: true,
-          }
-        : createDefaultEchoChecker(character.roles),
-    });
-  }
-
-  function requestEnableEchoChecker() {
-    if (!character.noCrit && (character.critRate > 0 || character.critDmg > 0)) {
-      setEchoModeConfirmOpen(true);
-      return;
-    }
-
-    enableEchoChecker();
-  }
-
-  function patchEchoChecker(patch: Partial<EchoChecker>) {
-    patchCharacter({
-      echoChecker: {
-        ...echoChecker,
-        ...patch,
-      },
-    });
-  }
-
-  function patchEchoCheckerEcho(
-    key: keyof EchoChecker["echoes"],
-    patch: Partial<EchoCheckerEcho>,
-  ) {
-    patchEchoChecker({
-      enabled: true,
-      echoes: {
-        ...echoChecker.echoes,
-        [key]: {
-          ...getEchoCheckerEcho(character, key),
-          ...patch,
-        },
-      },
-    });
-  }
-
-  function toggleEchoMode() {
-    if (echoCheckerActive) {
-      disableEchoChecker();
-      return;
-    }
-
-    requestEnableEchoChecker();
-  }
-
-  function toggleRole(role: Role) {
-    const nextRoles = getNextRolesAfterRoleToggle({
-      multipleRoles,
-      role,
-      roles: character.roles,
-    });
-
-    if (nextRoles === character.roles) {
-      return;
-    }
-
-    patchCharacter({ roles: nextRoles });
-  }
-
-  function updateMultipleRoles(checked: boolean) {
-    const nextRoles = getRolesAfterMultipleRolesChange(character.roles, checked);
-
-    setMultipleRoles(checked);
-
-    if (nextRoles !== character.roles) {
-      patchCharacter({ roles: nextRoles });
+  /** Removes the current set after confirmation, retaining at least one. */
+  function removeSet() {
+    if (confirm(`Delete echo set "${echoSet.name}"?`)) {
+      onUpdate(deleteEchoSet(character, echoSet.id));
     }
   }
-
-  function updateWeapon(selectedWeapon: ApiWeapon | null) {
-    patchCharacter({
-      weaponId: selectedWeapon?.Id ?? null,
-      weaponName: selectedWeapon?.Name ?? "",
-    });
-  }
-
-  const characterMeta =
-    [characterDisplay.elementName, characterDisplay.weaponTypeName]
-      .filter(Boolean)
-      .join(" / ") || "Catalog data unavailable";
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <CharacterAvatar character={character} catalogCharacter={catalogCharacter} />
+          <CharacterAvatar
+            character={character}
+            catalogCharacter={catalogCharacter}
+          />
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold text-app-fg">{characterDisplay.name}</h1>
-              <span
-                className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${characterToneClasses.status}`}
-              >
-                {complete ? "Done" : "In progress"}
-              </span>
-            </div>
+            <h1 className="text-2xl font-bold text-app-fg">{display.name}</h1>
             <p className="mt-1 text-sm text-app-muted-subtle">
-              {characterMeta}
+              {[display.elementName, display.weaponTypeName].filter(Boolean).join(" / ")} · {isComplete(character) ? "Done" : "In progress"}
             </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <TextLink href={prydwenUrl} variant="external">
-            Prydwen
-          </TextLink>
-          <TextLink href={tethysUrl} variant="purple">
-            Tethys
-          </TextLink>
-          <TextButton onClick={onDelete} variant="danger">
-            Delete
-          </TextButton>
+          <TextLink
+            href={getPrydwenCharacterUrl(display.name)}
+            variant="external"
+          >Prydwen</TextLink>
+          <TextLink
+            href={getTethysCharacterUrl(character.characterId)}
+            variant="purple"
+          >Tethys</TextLink>
+          <TextButton
+            onClick={onDelete}
+            variant="danger"
+          >Delete Character</TextButton>
         </div>
       </div>
 
-      {ignoredErEchoKeys.size > 0 ? (
-        <section className="rounded-md border border-status-danger-border/80 bg-status-danger-bg/45 px-4 py-3 text-sm leading-6 text-status-danger-text">
-          <span className="font-semibold">ER is overcapped.</span>{" "}
-          This build has {character.actualEr}% ER against a {character.expectedEr}% target.
-          The {ignoredErEchoKeys.size === 1 ? "lowest-rated ER roll is" : `${ignoredErEchoKeys.size} lowest-rated ER rolls are`} ignored for score and completion.
-        </section>
-      ) : null}
-
-      {character.noCrit ? (
-        <section className="max-w-sm">
-          <RatingSummaryBlock
-            label="Build Score"
-            tone={
-              ratings.buildScore === null
-                ? "warn"
-                : ratings.buildScore >= 1
-                  ? "good"
-                  : "neutral"
-            }
-            value={ratings.buildScore}
+      <section className="grid gap-4 rounded-md border border-app-border bg-app-surface p-4 sm:grid-cols-2">
+        <PickerSummary
+          label="Weapon"
+          actionLabel="Change weapon"
+          image={selectedWeapon?.Icon}
+          title={weaponDisplay.name || "No weapon selected"}
+          meta={selectedWeapon ? `${selectedWeapon.TypeName} / Own ${inventoryCounts[selectedWeapon.Id] ?? 0}` : "Choose an owned weapon"}
+          quality={selectedWeapon?.QualityId}
+          rarityTone={getWeaponRarityTone({ name: selectedWeapon?.Name, qualityId: selectedWeapon?.QualityId })}
+          onClick={() => setWeaponPickerOpen(true)}
+        />
+        <Field label="Target ER (all sets)">
+          <ErInput
+            value={character.expectedEr}
+            onChange={(expectedEr) => patchCharacter({ expectedEr })}
           />
-        </section>
-      ) : (
-        <section className="grid gap-3 sm:grid-cols-3">
-          <RatingSummaryBlock
-            label="CR Rating"
-            tone={ratings.crRating === null ? "warn" : "neutral"}
-            value={ratings.crRating}
+        </Field>
+        <label className="flex items-center gap-2 text-sm font-medium text-app-muted">
+          <input
+            className="h-4 w-4 accent-app-accent"
+            type="checkbox"
+            checked={character.skillsDone}
+            onChange={(event) => patchCharacter({ skillsDone: event.target.checked })}
           />
-          <RatingSummaryBlock
-            label="CD Rating"
-            tone={ratings.cdRating === null ? "warn" : "neutral"}
-            value={ratings.cdRating}
+          Skills / Forte level ups complete
+        </label>
+        <Field label="Character notes">
+          <textarea
+            className="min-h-20 w-full rounded-md border border-app-border bg-app-bg p-3 text-sm text-app-fg"
+            value={character.notes}
+            onChange={(event) => patchCharacter({ notes: event.target.value })}
           />
-          <RatingSummaryBlock
-            label="Build Score"
-            tone={
-              ratings.buildScore === null
-                ? "warn"
-                : ratings.buildScore >= 1
-                  ? "good"
-                  : "neutral"
-            }
-            value={ratings.buildScore}
-          />
-        </section>
-      )}
-
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
-          <h2 className="text-lg font-semibold text-app-fg">Build Setup</h2>
-          <PickerSummary
-            actionLabel="Change"
-            image={weaponDisplay.icon}
-            label="Weapon"
-            meta={
-              selectedWeapon
-                ? `${selectedWeapon.TypeName} / Own ${
-                    inventoryCounts[selectedWeapon.Id] ?? 0
-                  } / Used ${assignmentCounts[selectedWeapon.Id] ?? 0}`
-                : character.weaponId
-                  ? "Catalog data unavailable"
-                  : "No weapon selected"
-            }
-            onClick={() => setWeaponPickerOpen(true)}
-            quality={weaponDisplay.qualityId}
-            rarityTone={getWeaponRarityTone({
-              name: weaponDisplay.name,
-              qualityId: weaponDisplay.qualityId,
-            })}
-            title={weaponDisplay.name || "No weapon selected"}
-          />
-          <WeaponStatusBadge status={weaponStatus} />
-
-          {weaponPickerOpen ? (
-            <WeaponPickerModal
-              onClear={() => {
-                updateWeapon(null);
-                setWeaponPickerOpen(false);
-              }}
-              onClose={() => setWeaponPickerOpen(false)}
-              onSelect={(weapon) => {
-                updateWeapon(weapon);
-                setWeaponPickerOpen(false);
-              }}
-              selectedId={character.weaponId}
-              weapons={availableWeapons}
-              inventoryCounts={inventoryCounts}
-              assignmentCounts={assignmentCounts}
-              weaponTypeName={characterDisplay.weaponTypeName || "Matching"}
-            />
-          ) : null}
-
-          <RoleSelectionControl
-            multipleRoles={multipleRoles}
-            onMultipleRolesChange={updateMultipleRoles}
-            onToggleRole={toggleRole}
-            roles={character.roles}
-          />
-
-          <FourCostMainControl
-            fourCostMain={character.fourCostMain}
-            noCrit={character.noCrit}
-            onSelectFourCostMain={(fourCostMain) =>
-              patchCharacter(getFourCostMainSelection(fourCostMain))
-            }
-            onToggleNoCrit={() => patchCharacter({ noCrit: getNextNoCrit(character.noCrit) })}
-          />
-
-          <div className="max-w-md">
-            <Field label="Expected Minimum ER">
-              <ErInput
-                onChange={(value) => patchCharacter({ expectedEr: value })}
-                placeholder="120"
-                value={character.expectedEr}
-              />
-            </Field>
-            <p className="mt-2 text-xs leading-5 text-app-muted-dim">
-              This depends on the team and rotation.
-            </p>
-          </div>
-        </section>
-
-        <section className="grid content-start gap-5 rounded-md border border-app-border/80 bg-app-surface p-5">
-          <h2 className="text-lg font-semibold text-app-fg">Completion</h2>
-          <div>
-            {character.noCrit ? (
-              <div className="max-w-sm">
-                <Field label="Actual ER">
-                  <ErInput
-                    onChange={(value) => patchCharacter({ actualEr: value })}
-                    placeholder="125"
-                    value={character.actualEr}
-                  />
-                </Field>
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Echo Crit Rate">
-                  <NumberInput
-                    disabled={echoCheckerActive}
-                    onChange={(value) => patchCharacter({ critRate: value })}
-                    placeholder={echoCritPlaceholders.critRate}
-                    value={effectiveEchoCritStats.critRate}
-                  />
-                </Field>
-                <Field label="Echo Crit DMG">
-                  <NumberInput
-                    disabled={echoCheckerActive}
-                    onChange={(value) => patchCharacter({ critDmg: value })}
-                    placeholder={echoCritPlaceholders.critDmg}
-                    value={effectiveEchoCritStats.critDmg}
-                  />
-                </Field>
-                <Field label="Actual ER">
-                  <ErInput
-                    onChange={(value) => patchCharacter({ actualEr: value })}
-                    placeholder="125"
-                    value={character.actualEr}
-                  />
-                </Field>
-              </div>
-            )}
-            <p className="mt-2 text-xs leading-5 text-app-muted-dim">
-              {character.noCrit
-                ? echoCheckerActive
-                  ? "Build Score is calculated from the prioritized substats selected in Echo Tracker."
-                  : "Use ER from the main character screen."
-                : echoCheckerActive
-                  ? "Crit Rate and Crit DMG are calculated from Echo Tracker rolls plus the selected 4 cost main stat."
-                  : "Use Crit Rate and Crit DMG from the echo selection screen, and ER from the main character screen."}
-            </p>
-          </div>
-          {ratings.issue ? (
-            <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-sm font-medium text-status-warn-text">
-              {ratings.issue}
-            </div>
-          ) : null}
-          <div className="grid gap-3">
-            <label className="flex items-center justify-between gap-4 rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3 text-sm font-medium text-app-muted">
-              {FORTE_CHECKLIST_ITEM.label}
-              <input
-                checked={character.checklist[FORTE_CHECKLIST_ITEM.key]}
-                className="h-5 w-5 accent-app-accent"
-                onChange={(event) =>
-                  patchChecklist(FORTE_CHECKLIST_ITEM.key, event.target.checked)
-                }
-                type="checkbox"
-              />
-            </label>
-
-            <div
-              aria-label="Echos"
-              className="rounded-md border border-app-border/80 bg-app-surface/70 px-3 py-3"
-              role="group"
-            >
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                <div className="mr-auto text-sm font-medium text-app-muted">Echos</div>
-                <div className="grid flex-1 grid-cols-5 gap-2 min-[520px]:flex min-[520px]:justify-end">
-                  {ECHO_CHECKLIST_ITEMS.map((item) => (
-                    <label
-                      className={`flex min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border px-2 py-2 text-xs font-semibold ${
-                        echoCheckerActive
-                          ? effectiveChecklist[item.key]
-                            ? "border-status-good-border bg-status-good-bg text-status-good-text"
-                            : "border-status-warn-border bg-status-warn-bg text-status-warn-text"
-                          : "border-app-border bg-app-surface text-app-muted"
-                      }`}
-                      key={item.key}
-                    >
-                      <span>{item.label}</span>
-                      <input
-                        checked={effectiveChecklist[item.key]}
-                        className="h-4 w-4 shrink-0 accent-app-accent disabled:opacity-70"
-                        disabled={echoCheckerActive}
-                        onChange={(event) => patchChecklist(item.key, event.target.checked)}
-                        type="checkbox"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-app-border/70 pt-3">
-                <div className="text-xs font-medium text-app-muted-dim">
-                  {echoCheckerActive
-                    ? "Echo slots are controlled by the checker."
-                    : "Manual echo tracking is active."}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <TextButton compact onClick={toggleEchoMode}>
-                    {echoCheckerActive ? "Manual Mode" : "Echo Mode"}
-                  </TextButton>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Field label="Notes">
-            <textarea
-              className="min-h-40 rounded-md border border-app-border bg-app-bg p-3 text-sm text-app-fg outline-none transition-colors focus:border-app-accent-strong focus:ring-2 focus:ring-app-accent/20"
-              onChange={(event) => patchCharacter({ notes: event.target.value })}
-              value={character.notes}
-            />
-          </Field>
-        </section>
-      </div>
-
-      <section className="grid gap-3 rounded-md border border-app-border bg-app-surface/70 p-3">
-        <div className="grid gap-2 text-sm font-semibold text-app-fg">
-          <div>Substat Priority</div>
-          <div
-            className="min-h-11 rounded-md border border-app-border bg-app-bg px-3 py-2.5 text-sm font-medium leading-5 text-app-fg"
-            id="character-substat-priority"
-          >
-            {substatPriorityValue}
-          </div>
-          {substatPriority === null ? (
-            <div className="rounded-md border border-status-warn-border bg-status-warn-bg px-3 py-2 text-xs font-medium leading-5 text-status-warn-text">
-              Substat priority is not available for this character.
-            </div>
-          ) : null}
-        </div>
+        </Field>
       </section>
 
-      <section className="relative overflow-hidden rounded-md border border-app-border/80 bg-app-surface p-5">
-        <fieldset
-          className={`grid gap-5 transition ${
-            echoCheckerActive ? "" : "pointer-events-none select-none opacity-60 blur-[2px]"
-          }`}
-          disabled={!echoCheckerActive}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold text-app-fg">Echo Tracker</h2>
-              <p className="mt-1 text-sm text-app-muted-subtle">
-                {character.noCrit
-                  ? "Priority grading: select up to five useful substats. Roll values are not graded."
-                  : echoChecker.plan === "DPS"
-                  ? "DPS: double crit, then either 30 CV plus a useful substat or two useful substats. Echo Score weighs selected substats by priority."
-                  : "Hybrid/Support: double crit plus one useful substat on each echo. Echo Score weighs selected substats by priority."}
-              </p>
-            </div>
-            {!character.noCrit ? (
-              <div className="w-full sm:w-64">
-                <SelectInput<EchoCheckerPlan>
-                  label="Checker Plan"
-                  onChange={(plan) => patchEchoChecker({ enabled: true, plan })}
-                  options={planOptions}
-                  selectClassName={planSelectClassName}
-                  showLabel={false}
-                  value={echoChecker.plan}
-                />
-              </div>
-            ) : null}
+      <section className="grid gap-4 rounded-md border border-app-border bg-app-surface p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div
+            className="flex min-w-0 flex-wrap gap-2"
+            aria-label="Echo sets"
+          >
+            {character.echoSets.map((set) => (
+              <button
+                aria-pressed={set.id === echoSet.id}
+                className={`max-w-48 truncate rounded-md border px-3 py-2 text-sm font-semibold ${set.id === echoSet.id ? "border-app-accent-strong bg-app-accent-soft text-app-fg" : "border-app-border text-app-muted"}`}
+                key={set.id}
+                onClick={() => setEditorSetId(set.id)}
+                title={set.name}
+                type="button"
+              >{set.name}</button>
+            ))}
           </div>
+          <div className="flex flex-wrap gap-2">
+            <TextButton
+              compact
+              disabled={atLimit}
+              onClick={() => createSet()}
+            >Add Set ({character.echoSets.length}/3)</TextButton>
+            <TextButton
+              compact
+              disabled={atLimit}
+              onClick={() => createSet(true)}
+            >Duplicate</TextButton>
+            <TextButton
+              compact
+              disabled={character.echoSets.length === 1}
+              onClick={removeSet}
+              variant="danger"
+            >Delete Set</TextButton>
+          </div>
+        </div>
+        <EchoSetEditor
+          key={echoSet.id}
+          characterId={character.characterId}
+          expectedEr={character.expectedEr}
+          echoSet={echoSet}
+          onUpdate={(set) => onUpdate(updateEchoSet(character, set))}
+        />
+      </section>
 
+      <CharacterRotationsSection rotations={getCharacterRotations(display.name)} />
+      {weaponPickerOpen ? (
+        <WeaponPickerModal
+          weapons={availableWeapons}
+          inventoryCounts={inventoryCounts}
+          assignmentCounts={assignmentCounts}
+          selectedId={character.weaponId}
+          weaponTypeName={display.weaponTypeName}
+          onClose={() => setWeaponPickerOpen(false)}
+          onClear={() => {
+            patchCharacter({ weaponId: null, weaponName: "" });
+            setWeaponPickerOpen(false);
+          }}
+          onSelect={(weapon) => {
+            patchCharacter({ weaponId: weapon.Id, weaponName: weapon.Name });
+            setWeaponPickerOpen(false);
+          }}
+        />
+      ) : null}
+    </main>
+  );
+}
+
+/** Edits the mode, preset, measurements, and manual progress of one set. */
+function EchoSetEditor({
+  characterId,
+  expectedEr,
+  echoSet,
+  onUpdate,
+}: {
+  characterId: number;
+  expectedEr: number | null;
+  echoSet: EchoSet;
+  onUpdate: (set: EchoSet) => void;
+}) {
+  const [name, setName] = useState(echoSet.name);
+  const priority = getCharacterSubstatPriority(characterId);
+  const priorityOnly = echoSet.scoring === "priority-stats";
+  const options = getEchoCheckerSubstatOptions(priority ?? "", priorityOnly);
+  const ignoredEr = getIgnoredErEchoKeys(characterId, expectedEr, echoSet);
+  const checklist = getEchoSetChecklist(characterId, expectedEr, echoSet);
+  const score = getEchoSetScore(characterId, expectedEr, echoSet);
+  const erStatus = getErStatus(echoSet.actualEr, expectedEr);
+  const estimate = priority === null || priorityOnly ? null : getMakanEchoEstimate({ substatPriority: priority });
+
+  /** Saves an echo measurement without affecting another position or set. */
+  function patchEcho(key: keyof EchoSet["echoes"], patch: Partial<EchoCheckerEcho>) {
+    onUpdate({
+      ...echoSet,
+      echoes: { ...echoSet.echoes, [key]: { ...echoSet.echoes[key], ...patch } },
+    });
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Field label="Set name">
+          <input
+            className="h-11 w-full rounded-md border border-app-border bg-app-bg px-3 text-sm text-app-fg"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+            onBlur={() => {
+              const trimmed = name.trim();
+              setName(trimmed || echoSet.name);
+
+              if (trimmed && trimmed !== echoSet.name) {
+                onUpdate({ ...echoSet, name: trimmed });
+              }
+            }}
+          />
+        </Field>
+        <SelectInput<EchoSet["mode"]>
+          label="Tracking mode"
+          value={echoSet.mode}
+          options={[{ label: "Checklist", value: "checklist" }, { label: "Detailed", value: "detailed" }]}
+          onChange={(mode) => onUpdate({ ...echoSet, mode })}
+        />
+        {echoSet.mode === "detailed" ? (
+          <>
+            <SelectInput<EchoScoringPreset>
+              label="Scoring preset"
+              value={echoSet.scoring}
+              options={ECHO_SCORING_OPTIONS}
+              onChange={(scoring) => onUpdate({ ...echoSet, scoring })}
+            />
+            <Field label="Actual ER (this set)">
+              <ErInput
+                value={echoSet.actualEr}
+                onChange={(actualEr) => onUpdate({ ...echoSet, actualEr })}
+              />
+              <span className={`mt-1 block text-xs ${ER_STATUS_CLASSES[erStatus]}`}>
+                {{
+                  unknown: "Set actual ER and a character target to compare.",
+                  met: "Meets target ER",
+                  below: "Below target ER",
+                }[erStatus]}
+              </span>
+            </Field>
+          </>
+        ) : null}
+      </div>
+
+      {echoSet.mode === "checklist" ? (
+        <div className="grid gap-2 sm:grid-cols-5">
+          {ECHO_CHECKLIST_ITEMS.map(({ key, label }) => (
+            <label
+              key={key}
+              className="flex items-center gap-2 rounded-md border border-app-border bg-app-bg p-3 text-sm text-app-muted"
+            >
+              <input
+                className="h-4 w-4 accent-app-accent"
+                type="checkbox"
+                checked={echoSet.checklist[key]}
+                onChange={(event) => onUpdate({ ...echoSet, checklist: { ...echoSet.checklist, [key]: event.target.checked } })}
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+            <div className="rounded-md border border-app-border bg-app-bg p-3 text-sm text-app-muted">
+              <div className="mb-1 font-semibold text-app-fg">Substat Priority</div>
+              {priority ?? "No curated priorities are available for this character yet. Measurements are saved; scoring is unavailable."}
+              <p className="mt-2 text-xs text-app-muted-dim">Strict Crit uses tougher completion requirements than Standard Crit. Both use the same crit scoring formula.</p>
+            </div>
+            <RatingSummaryBlock
+              label="Set Score"
+              value={score}
+            />
+          </div>
+          {ignoredEr.size > 0 ? (
+            <p className="rounded-md border border-status-warn-border bg-status-warn-bg p-3 text-sm text-status-warn-text">
+              {ignoredEr.size} excess ER {ignoredEr.size === 1 ? "roll is" : "rolls are"} ignored for this set&apos;s score and completion.
+            </p>
+          ) : null}
           <div className="grid items-start gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {ECHO_CHECKLIST_ITEMS.map((item) => {
-              const echo = getEchoCheckerEcho(character, item.key);
-              const substatIds = getEchoCheckerSubstatIds(
-                echo,
-                character.noCrit,
+            {ECHO_CHECKLIST_ITEMS.map(({ key, label }) => {
+              const echo = echoSet.echoes[key];
+              const selected = getEchoCheckerSubstatIds(echo, priorityOnly).filter(
+                (stat): stat is EchoCheckerSubstatId => stat !== null && options.includes(stat),
               );
-              const selectedSubstats = substatIds.filter(
-                (stat): stat is EchoCheckerSubstatId =>
-                  stat !== null && echoSubstatOptions.includes(stat),
-              );
-              const critStatCount = character.noCrit
-                ? 0
-                : Number(echo.critRate !== null) + Number(echo.critDmg !== null);
-              const selectionLimit = 5 - critStatCount;
-              const totalStatCount = selectedSubstats.length + critStatCount;
-              const erIgnored = ignoredErEchoKeys.has(item.key);
-              const echoComplete =
-                substatPriority !== null &&
-                isEchoCheckerEchoComplete(
-                  echo,
-                  echoChecker.plan,
-                  erIgnored,
-                  character.noCrit,
-                );
-              const critValue = getEchoCheckerCritValue(echo);
-              const targetStatCount =
-                substatPriority === null
-                  ? 0
-                  : getEchoCheckerTargetStatCount(
-                      echo,
-                      erIgnored,
-                      character.noCrit,
-                    );
-              const echoScore =
-                substatPriority === null
-                  ? null
-                  : getEchoCheckerScore(
-                      echo,
-                      substatPriority,
-                      erIgnored,
-                      character.noCrit,
-                    );
-              const echoScoreGrade = echoScore === null ? null : getRatingGrade(echoScore);
+              const critCount = priorityOnly ? 0 : Number(echo.critRate !== null) + Number(echo.critDmg !== null);
+              const limit = 5 - critCount;
+              const echoScore = priority === null ? null : getEchoCheckerScore(echo, priority, ignoredEr.has(key), priorityOnly);
+              const grade = echoScore === null ? null : getRatingGrade(echoScore);
 
               return (
                 <div
-                  className={`grid gap-2 rounded-md border bg-app-surface p-3 ${
-                    echoComplete
-                      ? "border-status-good-border/70"
-                      : "border-app-border"
-                  }`}
-                  key={item.key}
+                  key={key}
+                  className={`grid gap-3 rounded-md border bg-app-bg p-3 ${checklist[key] ? "border-status-good-border" : "border-app-border"}`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs font-bold text-app-fg">{item.label}</h3>
-                    <span
-                      className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
-                        echoComplete
-                          ? "border border-status-good-border/70 bg-status-good-bg text-status-good-text"
-                          : "bg-app-raised text-app-muted-dim"
-                      }`}
-                    >
-                      {echoComplete ? "Done" : "Open"}
-                    </span>
-                  </div>
-                  {!character.noCrit ? (
+                  <h3 className="text-sm font-semibold text-app-fg">{label}{checklist[key] ? " · Done" : ""}</h3>
+                  {!priorityOnly ? (
                     <>
                       <EchoRollSelect
-                        disabled={echo.critRate === null && totalStatCount >= 5}
                         label="CR"
-                        onChange={(critRate) => patchEchoCheckerEcho(item.key, { critRate })}
                         value={echo.critRate}
                         values={ECHO_CRIT_RATE_VALUES}
+                        disabled={echo.critRate === null && selected.length + critCount >= 5}
+                        onChange={(critRate) => patchEcho(key, { critRate })}
                       />
                       <EchoRollSelect
-                        disabled={echo.critDmg === null && totalStatCount >= 5}
                         label="CD"
-                        onChange={(critDmg) => patchEchoCheckerEcho(item.key, { critDmg })}
                         value={echo.critDmg}
                         values={ECHO_CRIT_DMG_VALUES}
+                        disabled={echo.critDmg === null && selected.length + critCount >= 5}
+                        onChange={(critDmg) => patchEcho(key, { critDmg })}
                       />
                     </>
                   ) : null}
-                  {echoSubstatOptions.length > 0 ? (
-                    <div className="grid gap-1.5 border-t border-app-border/70 pt-2">
-                      <div className="flex items-center justify-between gap-2 text-[11px] font-semibold text-app-muted-subtle">
-                        <span>Substats</span>
-                        <span>{totalStatCount}/5</span>
-                      </div>
-                      <EchoSubstatCheckboxes
-                        erIgnored={erIgnored}
-                        onChange={(stat, checked) => {
-                          const nextSelectedStats = checked
-                            ? [...selectedSubstats, stat]
-                            : selectedSubstats.filter(
-                                (selectedStat) => selectedStat !== stat,
-                              );
+                  <EchoSubstatCheckboxes
+                    erIgnored={ignoredEr.has(key)}
+                    options={options}
+                    selectedStats={selected}
+                    selectionLimit={limit}
+                    onChange={(stat, checked) => {
+                      const next = checked ? [...selected, stat] : selected.filter((value) => value !== stat);
 
-                          if (nextSelectedStats.length > selectionLimit) {
-                            return;
-                          }
-
-                          const nextSubstats = Array.from(
-                            { length: 5 },
-                            (_, index) => nextSelectedStats[index] ?? null,
-                          ) as EchoCheckerSubstatSlots;
-
-                          patchEchoCheckerEcho(item.key, {
-                            [character.noCrit
-                              ? "prioritySubstatIds"
-                              : "substatIds"]: nextSubstats,
-                          });
-                        }}
-                        options={echoSubstatOptions}
-                        selectedStats={selectedSubstats}
-                        selectionLimit={selectionLimit}
-                      />
-                    </div>
-                  ) : null}
-                  <div
-                    className={`grid gap-2 border-t border-app-border/70 pt-2 text-xs ${
-                      character.noCrit
-                        ? "grid-cols-2"
-                        : "grid-cols-[1.25fr_0.9fr_0.9fr]"
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-medium text-app-muted-subtle">Score</div>
-                      <div className="mt-1 flex min-h-5 items-center gap-1.5">
-                        {echoScoreGrade === null ? (
-                          <span className="rounded-sm bg-status-warn-bg px-1.5 py-0.5 text-xs font-bold leading-none text-status-warn-text">
-                            Check
-                          </span>
-                        ) : (
-                          <span
-                            className={`rounded-sm px-1.5 py-0.5 text-xs font-bold leading-none ${ratingGradeClasses(
-                              echoScoreGrade,
-                            )}`}
-                          >
-                            {echoScoreGrade}
-                          </span>
-                        )}
-                        <span className="text-sm font-semibold leading-none text-app-fg">
-                          {echoScore === null ? "-" : echoScore.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                    {!character.noCrit ? (
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-medium text-app-muted-subtle">CV</div>
-                        <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
-                          {critValue === null ? "-" : critValue}
-                        </div>
-                      </div>
-                    ) : null}
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-medium text-app-muted-subtle">Stats</div>
-                      <div className="mt-1 flex min-h-5 items-center font-semibold leading-none text-app-fg">
-                        {targetStatCount}/{character.noCrit ? 5 : 3}
-                      </div>
-                    </div>
+                      if (next.length <= limit) {
+                        const slots = Array.from({ length: 5 }, (_, index) => next[index] ?? null);
+                        patchEcho(key, { [priorityOnly ? "prioritySubstatIds" : "substatIds"]: slots });
+                      }
+                    }}
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-app-border pt-2 text-xs text-app-muted">
+                    <span className={grade === null ? "text-app-muted-dim" : ratingGradeClasses(grade)}>{grade ?? "Unrated"} {echoScore?.toFixed(2)}</span>
+                    {!priorityOnly ? <span>CV {getEchoCheckerCritValue(echo) ?? "—"}</span> : null}
                   </div>
                 </div>
               );
             })}
           </div>
-
-          <p className="border-t border-app-border/70 pt-3 text-xs font-medium leading-5 text-app-muted-dim">
-            If you swap out any echos, update the ER numbers at the top of this page.
-          </p>
-        </fieldset>
-
-        {!echoCheckerActive ? (
-          <div className="absolute inset-0 z-10 grid place-items-center bg-app-bg/45 px-4">
-            <div className="grid max-w-sm gap-3 rounded-md border border-app-border bg-app-surface px-4 py-4 text-center shadow-lg shadow-black/20">
-              <div>
-                <h2 className="text-base font-semibold text-app-fg">
-                  Enable Echo Tracker
-                </h2>
-                <p className="mt-1 text-sm leading-5 text-app-muted-subtle">
-                  {character.noCrit
-                    ? "Enable Echo Tracker to select prioritized substats and use them for grading and completion."
-                    : "Enable Echo Tracker to edit echo rolls and use them for completion."}
-                </p>
-              </div>
-              <TextButton onClick={requestEnableEchoChecker} variant="primary">
-                Enable Echo Tracker
-              </TextButton>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      {echoModeConfirmOpen ? (
-        <Modal
-          onClose={() => setEchoModeConfirmOpen(false)}
-          subtitle="Your manual Crit Rate and Crit DMG values will remain saved."
-          title="Enable Echo Tracker?"
-        >
-          <div className="grid gap-5">
-            <p className="text-sm leading-6 text-app-muted-subtle">
-              While Echo Tracker is enabled, ratings use values calculated from the five echo
-              cards instead of the manual values above. Switching back to Manual Mode restores
-              those saved values.
-            </p>
-            <div className="flex justify-end gap-2">
-              <TextButton onClick={() => setEchoModeConfirmOpen(false)}>Cancel</TextButton>
-              <TextButton
-                onClick={() => {
-                  enableEchoChecker();
-                  setEchoModeConfirmOpen(false);
-                }}
-                variant="primary"
-              >
-                Enable Echo Tracker
-              </TextButton>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-
-      {character.noCrit || makanEchoEstimate === null ? null : (
-        <EchoEstimateSection estimate={makanEchoEstimate} />
+          {estimate ? <EchoEstimateSection estimate={estimate} /> : null}
+        </>
       )}
-
-      <CharacterRotationsSection rotations={rotations} />
-    </main>
+    </div>
   );
 }

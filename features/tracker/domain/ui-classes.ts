@@ -1,5 +1,5 @@
 import { normalizeCharacterName } from "./route-display";
-import type { RatingGrade, Role, WeaponRarityTone } from "../types";
+import type { ErStatus, RatingGrade, WeaponRarityTone } from "../types";
 
 export function ratingGradeClasses(grade: RatingGrade) {
   const classes: Record<RatingGrade, string> = {
@@ -31,82 +31,6 @@ export function characterElementBorderClasses(elementName: string | null | undef
   };
 
   return classes[normalizeCharacterName(elementName)] ?? "border-app-border/80";
-}
-
-export function roleButtonClasses(role: Role, active: boolean) {
-  const palette: Record<Role, { active: string; inactive: string }> = {
-    DPS: {
-      active:
-        "border-role-dps-border bg-role-dps-active text-role-dps-text",
-      inactive:
-        "border-app-border bg-app-surface text-app-muted-subtle hover:border-role-dps-border/80 hover:bg-role-dps-bg/35 hover:text-role-dps-text",
-    },
-    Hybrid: {
-      active:
-        "border-role-hybrid-border bg-role-hybrid-active text-role-hybrid-text",
-      inactive:
-        "border-app-border bg-app-surface text-app-muted-subtle hover:border-role-hybrid-border/80 hover:bg-role-hybrid-bg/35 hover:text-role-hybrid-text",
-    },
-    Support: {
-      active:
-        "border-role-support-border bg-role-support-active text-role-support-text",
-      inactive:
-        "border-app-border bg-app-surface text-app-muted-subtle hover:border-role-support-border/80 hover:bg-role-support-bg/35 hover:text-role-support-text",
-    },
-  };
-
-  return active ? palette[role].active : palette[role].inactive;
-}
-
-export function rolePillClasses(role: Role) {
-  const classes: Record<Role, string> = {
-    DPS: "border-role-dps-border/65 bg-role-dps-bg/45 text-role-dps-text",
-    Hybrid: "border-role-hybrid-border/65 bg-role-hybrid-bg/45 text-role-hybrid-text",
-    Support: "border-role-support-border/65 bg-role-support-bg/45 text-role-support-text",
-  };
-
-  return classes[role];
-}
-
-export function characterRoleToneClasses(role: Role, complete: boolean) {
-  const classes: Record<Role, { complete: string; incomplete: string; status: string }> = {
-    DPS: {
-      complete: "border-app-border/80 border-l-role-dps-border bg-app-surface",
-      incomplete: "border-app-border/80 bg-app-surface",
-      status: complete
-        ? "border border-role-dps-border/70 bg-role-dps-bg/60 text-role-dps-text"
-        : "border border-app-border bg-app-raised text-app-muted-subtle",
-    },
-    Hybrid: {
-      complete: "border-app-border/80 border-l-role-hybrid-border bg-app-surface",
-      incomplete: "border-app-border/80 bg-app-surface",
-      status: complete
-        ? "border border-role-hybrid-border/70 bg-role-hybrid-bg/60 text-role-hybrid-text"
-        : "border border-app-border bg-app-raised text-app-muted-subtle",
-    },
-    Support: {
-      complete: "border-app-border/80 border-l-role-support-border bg-app-surface",
-      incomplete: "border-app-border/80 bg-app-surface",
-      status: complete
-        ? "border border-role-support-border/70 bg-role-support-bg/60 text-role-support-text"
-        : "border border-app-border bg-app-raised text-app-muted-subtle",
-    },
-  };
-
-  return {
-    card: `border-l-2 ${complete ? classes[role].complete : classes[role].incomplete}`,
-    status: classes[role].status,
-  };
-}
-
-export function roleSectionClasses(role: Role) {
-  const classes: Record<Role, string> = {
-    DPS: "border-app-border/80 text-app-fg",
-    Hybrid: "border-app-border/80 text-app-fg",
-    Support: "border-app-border/80 text-app-fg",
-  };
-
-  return classes[role];
 }
 
 export function getWeaponToneClasses(tone: WeaponRarityTone) {
@@ -153,3 +77,9 @@ export function getWeaponToneClasses(tone: WeaponRarityTone) {
 
   return classes[tone];
 }
+
+export const ER_STATUS_CLASSES = {
+  unknown: "text-app-muted-dim",
+  below: "text-status-warn-text",
+  met: "text-status-good-text",
+} satisfies Record<ErStatus, string>;

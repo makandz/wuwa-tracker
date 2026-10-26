@@ -4,7 +4,6 @@ const identifierSchema = z.string().min(1);
 const catalogIdSchema = z.number().int().nonnegative();
 const timestampSchema = z.iso.datetime();
 const finiteNumberSchema = z.number().finite();
-const roleSchema = z.enum(["DPS", "Hybrid", "Support"]);
 const substatIdSchema = z.enum([
   "crit-rate",
   "crit-dmg",
@@ -35,16 +34,19 @@ const echoSchema = z.strictObject({
   prioritySubstatIds: substatSlotsSchema,
 });
 const checklistSchema = z.strictObject({
-  skills: z.boolean(),
   fourCost: z.boolean(),
   threeCostA: z.boolean(),
   threeCostB: z.boolean(),
   oneCostA: z.boolean(),
   oneCostB: z.boolean(),
 });
-const echoCheckerSchema = z.strictObject({
-  enabled: z.boolean(),
-  plan: z.enum(["DPS", "HybridSupport"]),
+const echoSetSchema = z.strictObject({
+  id: identifierSchema,
+  name: z.string().min(1).refine((name) => name.trim().length > 0),
+  mode: z.enum(["checklist", "detailed"]),
+  scoring: z.enum(["strict-crit", "standard-crit", "priority-stats"]),
+  actualEr: finiteNumberSchema.nonnegative().nullable(),
+  checklist: checklistSchema,
   echoes: z.strictObject({
     fourCost: echoSchema,
     threeCostA: echoSchema,
@@ -57,35 +59,20 @@ const characterSchema = z.strictObject({
   id: identifierSchema,
   characterId: catalogIdSchema,
   characterName: z.string().min(1),
-  roles: z.array(roleSchema).min(1).refine(
-    (roles) => new Set(roles).size === roles.length,
-    "Roles must be unique.",
-  ),
   weaponId: catalogIdSchema.nullable(),
   weaponName: z.string(),
-  fourCostMain: z.enum(["CR", "CD", "BOTH"]),
-  noCrit: z.boolean(),
-  critRate: finiteNumberSchema,
-  critDmg: finiteNumberSchema,
-  checklist: checklistSchema,
-  echoChecker: echoCheckerSchema.optional(),
-  expectedEr: finiteNumberSchema,
-  actualEr: finiteNumberSchema,
+  skillsDone: z.boolean(),
+  expectedEr: finiteNumberSchema.nonnegative().nullable(),
+  echoSets: z.array(echoSetSchema).min(1).max(3).refine(
+    (sets) => new Set(sets.map((set) => set.id)).size === sets.length,
+    "Echo set IDs must be unique within a character.",
+  ),
   notes: z.string(),
   createdAt: timestampSchema,
   updatedAt: timestampSchema,
 });
 const preferencesSchema = z.strictObject({
   welcomeSeen: z.boolean(),
-  dashboardSortKey: z.enum([
-    "updated",
-    "name",
-    "completionDesc",
-    "completionAsc",
-    "weightDesc",
-    "weightAsc",
-  ]),
-  dashboardViewMode: z.enum(["list", "grid"]),
   backupNoticeAcknowledgedAt: z.number().int().nonnegative(),
 });
 const weaponInventoryItemSchema = z.strictObject({

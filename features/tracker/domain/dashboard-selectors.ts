@@ -1,31 +1,24 @@
-import { ROLES } from "../constants";
+import { compareCharacterReleaseOrder } from "../character-release-order";
 import {
   buildCatalogCharacterLookup,
   buildCatalogWeaponLookup,
-  characterRoleToneClasses,
   checklistTotal,
-  formatRatingValue,
-  getEffectiveChecklist,
-  getPrimaryRole,
-  getRatings,
-  getRoleSummary,
+  getEchoSetChecklist,
+  getEchoSetScore,
+  getErStatus,
   getTrackedCharacterDisplay,
   getTrackedWeaponDisplay,
   getWeaponInventoryStatus,
   getWeaponRarityTone,
   getWeaponToneClasses,
-  isEchoCheckerEnabled,
   isComplete,
-  sortDashboardCharacters,
 } from "../domain";
 import { TRACKER_DOCUMENT_STORAGE_KEY } from "../storage/keys";
 import type {
   ApiCharacter,
   ApiWeapon,
   Catalog,
-  DashboardSortKey,
   TrackedCharacter,
-  WeaponFilter,
   WeaponInventoryItem,
 } from "../types";
 
@@ -34,6 +27,11 @@ export type DashboardCatalogLookups = {
   catalogWeaponById: Map<number, ApiWeapon>;
 };
 
+/**
+ * Indexes catalog entries needed by dashboard cards.
+ * @param catalog - The live catalog.
+ * @returns Lookup maps for characters and weapons.
+ */
 export function buildDashboardCatalogLookups(catalog: Catalog): DashboardCatalogLookups {
   return {
     catalogCharacterById: buildCatalogCharacterLookup(catalog.characters),
@@ -41,188 +39,84 @@ export function buildDashboardCatalogLookups(catalog: Catalog): DashboardCatalog
   };
 }
 
-export function getDashboardStats({
-  characters,
-  storageVersion,
-  weaponInventory,
-}: {
+/**
+ * Summarizes shared character progress without combining independent set scores.
+ * @param input - Characters, inventory, and the loaded storage version.
+ * @returns Dashboard counts and their display values.
+ */
+export function getDashboardStats({ characters, storageVersion, weaponInventory }: {
   characters: TrackedCharacter[];
   storageVersion: number | null;
   weaponInventory: WeaponInventoryItem[];
 }) {
   const completeCount = characters.filter(isComplete).length;
-  const validBuildScores = characters
-    .map((character) => getRatings(character).buildScore)
-    .filter((score): score is number => score !== null);
-  const averageBuildScore =
-    validBuildScores.length > 0
-      ? validBuildScores.reduce((sum, score) => sum + score, 0) / validBuildScores.length
-      : null;
-  const averageBuildScoreValue =
-    characters.length === 0
-      ? "0.00"
-      : averageBuildScore !== null
-        ? formatRatingValue(averageBuildScore)
-        : formatRatingValue(null);
   const totalWeaponCopies = weaponInventory.reduce((sum, item) => sum + item.count, 0);
 
   return {
     completeCount,
     hasWeaponCopies: totalWeaponCopies > 0,
+    totalWeaponCopies,
     items: [
       { label: "Tracked", value: String(characters.length) },
       { label: "Complete", value: `${completeCount}/${characters.length}` },
-      { label: "Avg build", value: averageBuildScoreValue },
       { label: "Weapon copies", value: String(totalWeaponCopies) },
-      {
-        label: "Storage",
-        title: TRACKER_DOCUMENT_STORAGE_KEY,
-        value: storageVersion ? `v${storageVersion}` : "Local",
-      },
+      { label: "Storage", title: TRACKER_DOCUMENT_STORAGE_KEY, value: storageVersion ? `v${storageVersion}` : "Local" },
     ],
-    totalWeaponCopies,
   };
 }
 
-export function filterDashboardCharacters({
-  assignmentCounts,
-  catalogCharacterById,
-  catalogWeaponById,
-  characters,
-  hideComplete,
-  query,
-  weaponFilter,
-  weaponInventory,
-}: {
-  assignmentCounts: Record<number, number>;
-  catalogCharacterById: Map<number, ApiCharacter>;
-  catalogWeaponById: Map<number, ApiWeapon>;
-  characters: TrackedCharacter[];
-  hideComplete: boolean;
-  query: string;
-  weaponFilter: WeaponFilter;
-  weaponInventory: WeaponInventoryItem[];
-}) {
-  const normalizedQuery = query.trim().toLowerCase();
+/**
+ * Searches names and orders the roster by release without requiring live catalog data.
+ * @param characters - The tracked roster.
+ * @param catalogCharacterById - Optional live names to search.
+ * @param query - The name search text.
+ * @returns Matching characters, with unknown releases first and newest known releases next.
+ */
+export function getDashboardCharacters(
+  characters: TrackedCharacter[],
+  catalogCharacterById: Map<number, ApiCharacter>,
+  query: string,
+) {
+  const search = query.trim().toLowerCase();
 
   return characters.filter((character) => {
-    const characterDisplay = getTrackedCharacterDisplay(
-      character,
-      catalogCharacterById.get(character.characterId),
-    );
-    const weaponDisplay = getTrackedWeaponDisplay(
-      character,
-      catalogWeaponById.get(character.weaponId ?? 0),
-    );
+    const name = catalogCharacterById.get(character.characterId)?.Name ?? character.characterName;
 
-    if (hideComplete && isComplete(character)) {
-      return false;
-    }
-
-    const weaponStatus = getWeaponInventoryStatus({
-      weaponId: character.weaponId,
-      inventory: weaponInventory,
-      assignmentCounts,
-    });
-
-    if (weaponFilter === "selected" && !character.weaponId) {
-      return false;
-    }
-
-    if (weaponFilter === "missing" && character.weaponId) {
-      return false;
-    }
-
-    if (weaponFilter === "attention" && !weaponStatus) {
-      return false;
-    }
-
-    if (!normalizedQuery) {
-      return true;
-    }
-
-    const haystack = [
-      characterDisplay.name,
-      characterDisplay.elementName,
-      characterDisplay.weaponTypeName,
-      weaponDisplay.name,
-      character.roles.join(" "),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-
-    return haystack.includes(normalizedQuery);
-  });
+    return name.toLowerCase().includes(search);
+  }).sort((left, right) => compareCharacterReleaseOrder(left.characterId, right.characterId));
 }
 
-export function groupDashboardCharacters(
-  visibleCharacters: TrackedCharacter[],
-  sortKey: DashboardSortKey,
-) {
-  return ROLES.map((role) => {
-    const characters = sortDashboardCharacters(
-      visibleCharacters.filter((character) => getPrimaryRole(character.roles) === role),
-      sortKey,
-    );
-
-    return {
-      role,
-      characters,
-      summary: getRoleSummary(characters),
-    };
-  }).filter((group) => group.characters.length > 0);
-}
-
+/**
+ * Builds a compact card summary with an independent result for every set.
+ * @param input - The character, live lookups, and inventory assignment data.
+ * @returns Shared character information and up to three set summaries.
+ */
 export function getDashboardCharacterCardState({
-  assignmentCounts,
-  catalogCharacterById,
-  catalogWeaponById,
-  character,
-  weaponInventory,
-}: {
+  assignmentCounts, catalogCharacterById, catalogWeaponById, character, weaponInventory,
+}: DashboardCatalogLookups & {
   assignmentCounts: Record<number, number>;
-  catalogCharacterById: Map<number, ApiCharacter>;
-  catalogWeaponById: Map<number, ApiWeapon>;
   character: TrackedCharacter;
   weaponInventory: WeaponInventoryItem[];
 }) {
   const catalogCharacter = catalogCharacterById.get(character.characterId) ?? null;
   const catalogWeapon = catalogWeaponById.get(character.weaponId ?? 0) ?? null;
-  const characterDisplay = getTrackedCharacterDisplay(character, catalogCharacter);
   const weaponDisplay = getTrackedWeaponDisplay(character, catalogWeapon);
-  const complete = isComplete(character);
-  const primaryRole = getPrimaryRole(character.roles);
-  const characterToneClasses = characterRoleToneClasses(primaryRole, complete);
-  const effectiveChecklist = getEffectiveChecklist(character);
-  const checklistCount = checklistTotal(effectiveChecklist);
-  const ratings = getRatings(character);
-  const weaponStatus = getWeaponInventoryStatus({
-    weaponId: character.weaponId,
-    inventory: weaponInventory,
-    assignmentCounts,
-  });
-  const weaponTone = getWeaponRarityTone({
-    name: weaponDisplay.name,
-    qualityId: weaponDisplay.qualityId,
-  });
-  const weaponToneClasses = getWeaponToneClasses(weaponTone);
-  const erBelowTarget =
-    character.expectedEr > 0 && character.actualEr < character.expectedEr;
-  const echoTrackerEnabled = isEchoCheckerEnabled(character);
 
   return {
-    characterToneClasses,
     catalogCharacter,
-    characterDisplay,
-    checklistCount,
-    complete,
-    echoTrackerEnabled,
-    effectiveChecklist,
-    erBelowTarget,
-    ratings,
+    characterDisplay: getTrackedCharacterDisplay(character, catalogCharacter),
+    complete: isComplete(character),
+    sets: character.echoSets.map((set) => ({
+      id: set.id,
+      name: set.name,
+      mode: set.mode,
+      score: getEchoSetScore(character.characterId, character.expectedEr, set),
+      completedEchoes: checklistTotal(getEchoSetChecklist(character.characterId, character.expectedEr, set)),
+      actualEr: set.actualEr,
+      erStatus: getErStatus(set.actualEr, character.expectedEr),
+    })),
     weaponDisplay,
-    weaponStatus,
-    weaponToneClasses,
+    weaponStatus: getWeaponInventoryStatus({ weaponId: character.weaponId, inventory: weaponInventory, assignmentCounts }),
+    weaponToneClasses: getWeaponToneClasses(getWeaponRarityTone({ name: weaponDisplay.name, qualityId: weaponDisplay.qualityId })),
   };
 }

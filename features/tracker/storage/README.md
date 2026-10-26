@@ -8,6 +8,19 @@ types are inferred from it. Validate reads, imports, edits, and conversion outpu
 with Zod. Do not silently coerce invalid unified values, drop records, strip
 unknown properties, or use the legacy normalizers for unified data.
 
+## Character and set ownership
+
+Unified v1 is still unpublished. Each character owns shared identity, weapon,
+skills completion, notes, and an optional target ER. It contains one to three
+independent named echo sets with unique IDs. Each set retains its manual
+checklist, detailed measurements, both substat-selection modes, scoring preset,
+and optional actual ER. Switching modes or presets must preserve inactive data.
+There is no persisted selected or equipped set.
+
+Character-wide roles, aggregate crit values, four-cost main-stat selection, and
+dashboard sorting/view preferences are not part of this format. The dashboard
+uses release order, placing unknown IDs first in descending ID order.
+
 ## Legacy transition
 
 If both unified storage and its recovery copy are absent, startup reads
@@ -15,10 +28,14 @@ If both unified storage and its recovery copy are absent, startup reads
 writes unified v1. Never write or remove legacy keys, including the legacy
 `lastKnownGood` key. A damaged unified save must not fall back to legacy data.
 
-Historical JSON import adapters are separate from browser startup. Invalid
-versioned documents must not fall through to an unversioned import adapter.
-Unused priority text, custom target lists, and legacy target flags are omitted
-from unified data; actual echo measurements and both selection modes are kept.
+JSON imports accept complete legacy v5 and unified v1 documents only. Reject
+pre-v5, unversioned, and character-only exports rather than guessing their shape.
+Each legacy character becomes one Default set. Skills and target ER remain shared;
+actual ER, manual echo progress, and detailed measurements move to that set.
+Legacy DPS and HybridSupport plans map to Strict Crit and Standard Crit; No Crit
+maps to Priority Stats. Unused priority text, custom target lists, legacy target
+flags, roles, and aggregate crit fields are omitted. Both selection modes and
+disabled detailed measurements are kept.
 
 ## Backups and future versions
 

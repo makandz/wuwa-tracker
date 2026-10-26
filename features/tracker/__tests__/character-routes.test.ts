@@ -1,3 +1,4 @@
+import { makeTrackedCharacter as makeCharacter } from "./fixtures";
 import { describe, expect, test } from "vitest";
 
 import {
@@ -6,36 +7,7 @@ import {
   getTrackedCharacterRouteSegment,
   slugifyCharacterName,
 } from "../domain";
-import type { TrackedCharacter } from "../types";
 
-function makeCharacter(overrides: Partial<TrackedCharacter> = {}): TrackedCharacter {
-  return {
-    noCrit: false,
-    id: "char-1",
-    characterId: 1210,
-    characterName: "Aemeath",
-    roles: ["DPS"],
-    weaponId: null,
-    weaponName: "",
-    fourCostMain: "CR",
-    critRate: 0,
-    critDmg: 0,
-    checklist: {
-      skills: false,
-      fourCost: false,
-      threeCostA: false,
-      threeCostB: false,
-      oneCostA: false,
-      oneCostB: false,
-    },
-    expectedEr: 0,
-    actualEr: 0,
-    notes: "",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-01T00:00:00.000Z",
-    ...overrides,
-  };
-}
 
 describe("character route segments", () => {
   test("builds Tethys character links from Encore catalog ids", () => {
@@ -50,7 +22,7 @@ describe("character route segments", () => {
   });
 
   test("uses the name slug when tracked character names are unique", () => {
-    const characters = [makeCharacter()];
+    const characters = [makeCharacter({ characterId: 1210, characterName: "Aemeath" })];
 
     expect(getTrackedCharacterRouteSegment(characters[0], characters)).toBe("aemeath");
     expect(findTrackedCharacterByRouteSegment("aemeath", characters)).toBe(characters[0]);

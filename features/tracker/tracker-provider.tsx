@@ -13,8 +13,6 @@ import { useCatalog } from "./use-catalog";
 import { usePersistedTrackerState } from "./use-persisted-tracker-state";
 import type {
   Catalog,
-  DashboardSortKey,
-  DashboardViewMode,
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
@@ -26,8 +24,6 @@ type TrackerContextValue = {
   weaponInventory: WeaponInventoryItem[];
   matrixTeams: MatrixTeam[];
   welcomeSeen: boolean;
-  dashboardSortKey: DashboardSortKey;
-  dashboardViewMode: DashboardViewMode;
   backupNoticeAcknowledgedAt: number;
   createCharacter: (character: TrackedCharacter) => void;
   updateCharacter: (character: TrackedCharacter) => void;
@@ -57,8 +53,6 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     weaponInventory,
     matrixTeams,
     welcomeSeen,
-    dashboardSortKey,
-    dashboardViewMode,
     backupNoticeAcknowledgedAt,
     createCharacter,
     updateCharacter,
@@ -79,8 +73,6 @@ export function TrackerProvider({ children }: { children: ReactNode }) {
     weaponInventory,
     matrixTeams,
     welcomeSeen,
-    dashboardSortKey,
-    dashboardViewMode,
     backupNoticeAcknowledgedAt,
     createCharacter,
     updateCharacter,

@@ -1,7 +1,3 @@
-import {
-  DEFAULT_DASHBOARD_SORT_KEY,
-  DEFAULT_DASHBOARD_VIEW_MODE,
-} from "../constants";
 import { trackerDocumentV1Schema, type TrackerDocumentV1 } from "./schemas/v1";
 
 export type TrackerDocument = TrackerDocumentV1;
@@ -13,8 +9,6 @@ export type ParsedImportedTrackerData = Omit<TrackerData, "preferences"> & {
 
 export const DEFAULT_TRACKER_PREFERENCES: TrackerPreferences = {
   welcomeSeen: false,
-  dashboardSortKey: DEFAULT_DASHBOARD_SORT_KEY,
-  dashboardViewMode: DEFAULT_DASHBOARD_VIEW_MODE,
   backupNoticeAcknowledgedAt: 0,
 };
 

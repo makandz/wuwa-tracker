@@ -16,12 +16,14 @@ import { hasTrackerData } from "@/features/tracker/route-helpers";
 import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type { MatrixTeam, TrackedCharacter, WeaponInventoryItem } from "@/features/tracker/types";
 
+/**
+ * Renders import, export, and local data management.
+ * @returns The page content.
+ */
 export default function SettingsPage() {
   const router = useRouter();
   const {
     characters,
-    dashboardSortKey,
-    dashboardViewMode,
     weaponInventory,
     matrixTeams,
     clearTrackerData,
@@ -76,8 +78,6 @@ export default function SettingsPage() {
 
     exportTrackerData(characters, weaponInventory, matrixTeams, {
       welcomeSeen,
-      dashboardSortKey,
-      dashboardViewMode,
       backupNoticeAcknowledgedAt: acknowledgedAt,
     });
     updatePreferences({ backupNoticeAcknowledgedAt: acknowledgedAt });

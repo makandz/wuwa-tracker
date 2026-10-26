@@ -26,8 +26,6 @@ import {
   updatePreferencesData,
 } from "./tracker-data";
 import type {
-  DashboardSortKey,
-  DashboardViewMode,
   MatrixTeam,
   TrackedCharacter,
   WeaponInventoryItem,
@@ -45,12 +43,6 @@ export function usePersistedTrackerState() {
   const [matrixTeams, setMatrixTeams] = useState<MatrixTeam[]>([]);
   const [welcomeSeen, setWelcomeSeen] = useState(
     DEFAULT_TRACKER_PREFERENCES.welcomeSeen,
-  );
-  const [dashboardSortKey, setDashboardSortKey] = useState<DashboardSortKey>(
-    DEFAULT_TRACKER_PREFERENCES.dashboardSortKey,
-  );
-  const [dashboardViewMode, setDashboardViewMode] = useState<DashboardViewMode>(
-    DEFAULT_TRACKER_PREFERENCES.dashboardViewMode,
   );
   const [backupNoticeAcknowledgedAt, setBackupNoticeAcknowledgedAt] = useState(
     DEFAULT_TRACKER_PREFERENCES.backupNoticeAcknowledgedAt,
@@ -77,8 +69,6 @@ export function usePersistedTrackerState() {
     setWeaponInventory(data.weaponInventory);
     setMatrixTeams(data.matrixTeams);
     setWelcomeSeen(data.preferences.welcomeSeen);
-    setDashboardSortKey(data.preferences.dashboardSortKey);
-    setDashboardViewMode(data.preferences.dashboardViewMode);
     setBackupNoticeAcknowledgedAt(data.preferences.backupNoticeAcknowledgedAt);
   }
 
@@ -348,8 +338,6 @@ export function usePersistedTrackerState() {
     weaponInventory,
     matrixTeams,
     welcomeSeen,
-    dashboardSortKey,
-    dashboardViewMode,
     backupNoticeAcknowledgedAt,
     createCharacter,
     updateCharacter,

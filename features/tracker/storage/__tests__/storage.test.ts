@@ -19,8 +19,7 @@ import {
 } from "../keys";
 import { convertLegacyV5Document } from "../imports";
 import { saveTrackerUpgrade } from "../upgrades";
-import { createDefaultEchoChecker } from "../../domain/echo-rating";
-import type { TrackedCharacter } from "../../types";
+import { makeTrackedCharacter as makeCharacter } from "../../__tests__/fixtures";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -74,42 +73,13 @@ class MemoryStorage implements Storage {
 const storage = new MemoryStorage();
 const legacyBackupKey = "wuwa-tracker.document.v4.lastKnownGood";
 
-/** Creates a complete character with selections in both echo modes. */
-function makeCharacter(): TrackedCharacter {
-  const echoChecker = createDefaultEchoChecker(["DPS"]);
-  echoChecker.echoes.fourCost.critRate = 10.5;
-  echoChecker.echoes.fourCost.critDmg = 21;
-  echoChecker.echoes.fourCost.substatIds = ["atk-percent", "heavy", null, null, null];
-  echoChecker.echoes.fourCost.prioritySubstatIds = ["crit-rate", "crit-dmg", "energy-regen", null, null];
-
-  return {
-    id: "char-1",
-    characterId: 101,
-    characterName: "Rover",
-    roles: ["DPS"],
-    weaponId: 201,
-    weaponName: "Emerald of Genesis",
-    fourCostMain: "CR",
-    noCrit: false,
-    critRate: 70,
-    critDmg: 240,
-    checklist: { skills: true, fourCost: false, threeCostA: true, threeCostB: false, oneCostA: true, oneCostB: false },
-    echoChecker,
-    expectedEr: 120,
-    actualEr: 118,
-    notes: "main team",
-    createdAt: "2026-01-01T00:00:00.000Z",
-    updatedAt: "2026-01-02T00:00:00.000Z",
-  };
-}
-
 /** Creates a valid unified save with cross-referenced team data. */
 function makeDocument(revision = 2) {
   return createTrackerDocument({
     characters: [makeCharacter()],
     weaponInventory: [{ weaponId: 201, count: 2 }],
     matrixTeams: [{ id: "team-1", slots: ["char-1", null, null] }],
-    preferences: { ...DEFAULT_TRACKER_PREFERENCES, welcomeSeen: true, dashboardViewMode: "grid" },
+    preferences: { ...DEFAULT_TRACKER_PREFERENCES, welcomeSeen: true },
     revision,
     savedAt: "2026-01-03T00:00:00.000Z",
   });
@@ -126,15 +96,37 @@ function makeLegacyDocument() {
     savedAt: document.savedAt,
     data: {
       ...document.data,
-      characters: document.data.characters.map((character) => ({
-        ...character,
-        substatPriority: "Crit Rate > Crit DMG",
-        echoChecker: {
-          ...character.echoChecker!,
-          substatPriority: "historical priority",
-          substats: [{ id: "custom", label: "custom target", checked: true }],
-        },
-      })),
+      preferences: { ...document.data.preferences, dashboardSortKey: "weightDesc", dashboardViewMode: "list" },
+      characters: document.data.characters.map((character) => {
+        const set = character.echoSets[0];
+
+        return {
+          id: character.id,
+          characterId: character.characterId,
+          characterName: character.characterName,
+          roles: ["DPS"],
+          weaponId: character.weaponId,
+          weaponName: character.weaponName,
+          fourCostMain: "CR",
+          noCrit: false,
+          critRate: 70,
+          critDmg: 240,
+          checklist: { skills: character.skillsDone, ...set.checklist },
+          expectedEr: character.expectedEr,
+          actualEr: set.actualEr,
+          notes: character.notes,
+          createdAt: character.createdAt,
+          updatedAt: character.updatedAt,
+          substatPriority: "Crit Rate > Crit DMG",
+          echoChecker: {
+            enabled: set.mode === "detailed",
+            plan: "DPS",
+            echoes: set.echoes,
+            substatPriority: "historical priority",
+            substats: [{ id: "custom", label: "custom target", checked: true }],
+          },
+        };
+      }),
     },
   };
 }
@@ -160,27 +152,30 @@ describe("unified schema", () => {
     ["unknown envelope field", (document) => Reflect.set(document, "extra", true)],
     ["unknown data field", (document) => Reflect.set(document.data, "extra", true)],
     ["unknown character field", (document) => Reflect.set(document.data.characters[0], "substatPriority", "old")],
-    ["unknown checklist field", (document) => Reflect.set(document.data.characters[0].checklist, "extra", true)],
-    ["unknown checker field", (document) => Reflect.set(document.data.characters[0].echoChecker!, "substats", [])],
-    ["unknown echo field", (document) => Reflect.set(document.data.characters[0].echoChecker!.echoes.fourCost, "hasRelevantStat", true)],
-    ["unknown echo position", (document) => Reflect.set(document.data.characters[0].echoChecker!.echoes, "extra", {})],
+    ["unknown checklist field", (document) => Reflect.set(document.data.characters[0].echoSets[0].checklist, "extra", true)],
+    ["unknown checker field", (document) => Reflect.set(document.data.characters[0].echoSets[0], "substats", [])],
+    ["unknown echo field", (document) => Reflect.set(document.data.characters[0].echoSets[0].echoes.fourCost, "hasRelevantStat", true)],
+    ["unknown echo position", (document) => Reflect.set(document.data.characters[0].echoSets[0].echoes, "extra", {})],
     ["unknown preferences field", (document) => Reflect.set(document.data.preferences, "extra", true)],
     ["unknown inventory field", (document) => Reflect.set(document.data.weaponInventory[0], "extra", true)],
     ["unknown team field", (document) => Reflect.set(document.data.matrixTeams[0], "extra", true)],
-    ["missing required field", (document) => Reflect.deleteProperty(document.data.characters[0], "noCrit")],
-    ["invalid role", (document) => Reflect.set(document.data.characters[0], "roles", ["Unknown"])],
-    ["invalid plan", (document) => Reflect.set(document.data.characters[0].echoChecker!, "plan", "Unknown")],
-    ["invalid numeric type", (document) => Reflect.set(document.data.characters[0], "critRate", "70")],
-    ["nonfinite number", (document) => document.data.characters[0].critRate = Infinity],
+    ["missing required field", (document) => Reflect.deleteProperty(document.data.characters[0], "skillsDone")],
+    ["invalid scoring preset", (document) => Reflect.set(document.data.characters[0].echoSets[0], "scoring", "unknown")],
+    ["invalid tracking mode", (document) => Reflect.set(document.data.characters[0].echoSets[0], "mode", "unknown")],
+    ["invalid numeric type", (document) => Reflect.set(document.data.characters[0], "expectedEr", "120")],
+    ["nonfinite number", (document) => document.data.characters[0].expectedEr = Infinity],
     ["invalid timestamp", (document) => document.savedAt = "yesterday"],
     ["fractional catalog ID", (document) => document.data.characters[0].characterId = 1.5],
     ["fractional inventory count", (document) => document.data.weaponInventory[0].count = 1.5],
     ["zero inventory count", (document) => document.data.weaponInventory[0].count = 0],
     ["incorrect team length", (document) => document.data.matrixTeams[0].slots.push(null)],
-    ["incorrect substat length", (document) => document.data.characters[0].echoChecker!.echoes.fourCost.substatIds.pop()],
-    ["invalid substat", (document) => Reflect.set(document.data.characters[0].echoChecker!.echoes.fourCost.substatIds, 0, "other")],
-    ["duplicate substats", (document) => document.data.characters[0].echoChecker!.echoes.fourCost.substatIds[1] = "atk-percent"],
-    ["duplicate roles", (document) => document.data.characters[0].roles.push("DPS")],
+    ["incorrect substat length", (document) => document.data.characters[0].echoSets[0].echoes.fourCost.substatIds.pop()],
+    ["invalid substat", (document) => Reflect.set(document.data.characters[0].echoSets[0].echoes.fourCost.substatIds, 0, "other")],
+    ["duplicate substats", (document) => document.data.characters[0].echoSets[0].echoes.fourCost.substatIds[1] = "atk-percent"],
+    ["empty sets", (document) => document.data.characters[0].echoSets = []],
+    ["too many sets", (document) => document.data.characters[0].echoSets = Array.from({ length: 4 }, (_, id) => ({ ...document.data.characters[0].echoSets[0], id: String(id) }))],
+    ["duplicate set IDs", (document) => document.data.characters[0].echoSets.push(structuredClone(document.data.characters[0].echoSets[0]))],
+    ["negative actual ER", (document) => document.data.characters[0].echoSets[0].actualEr = -1],
     ["duplicate character IDs", (document) => document.data.characters.push(makeCharacter())],
     ["duplicate inventory IDs", (document) => document.data.weaponInventory.push({ weaponId: 201, count: 1 })],
     ["duplicate team IDs", (document) => document.data.matrixTeams.push({ ...document.data.matrixTeams[0] })],
@@ -204,6 +199,24 @@ describe("legacy bridge", () => {
     const original = structuredClone(legacy);
     expect(convertLegacyV5Document(legacy)).toEqual(makeDocument());
     expect(legacy).toEqual(original);
+  });
+
+  test.each([
+    [false, "DPS", "strict-crit"],
+    [false, "HybridSupport", "standard-crit"],
+    [true, "DPS", "priority-stats"],
+  ])("maps legacy scoring settings into one set (%s, %s)", (noCrit, plan, expected) => {
+    const legacy = makeLegacyDocument();
+    const character = legacy.data.characters[0];
+    character.noCrit = noCrit;
+    character.echoChecker.plan = plan;
+    character.echoChecker.enabled = false;
+    const converted = convertLegacyV5Document(legacy).data.characters[0];
+
+    expect(converted.skillsDone).toBe(character.checklist.skills);
+    expect(converted.echoSets[0].mode).toBe("checklist");
+    expect(converted.echoSets[0].scoring).toBe(expected);
+    expect(converted.echoSets[0].echoes).toEqual(character.echoChecker.echoes);
   });
 
   test("copies legacy v5 once without writing or deleting any legacy key", () => {
@@ -361,16 +374,7 @@ describe("JSON imports and exports", () => {
     expect(parseImportedTrackerData(JSON.stringify(makeLegacyDocument()))).toEqual(makeDocument().data);
   });
 
-  test("imports historical array and object exports", () => {
-    const legacy = makeLegacyDocument();
-    const array = parseImportedTrackerData(JSON.stringify(legacy.data.characters));
-    expect(array.characters).toEqual(makeDocument().data.characters);
-    expect(array.preferences).toBeNull();
-    expect(array.weaponInventory).toEqual([]);
-    expect(parseImportedTrackerData(JSON.stringify(legacy.data))).toEqual(makeDocument().data);
-  });
-
-  test("imports v4 exports without preserving cached catalog fields", () => {
+  test("rejects complete v4 exports even when their historical data shape is valid", () => {
     const legacy = makeLegacyDocument();
     const characters = legacy.data.characters.map((character) => ({
       ...character,
@@ -378,9 +382,13 @@ describe("JSON imports and exports", () => {
       weaponTypeId: 1, weaponTypeName: "Sword", weaponQualityId: 5,
       echoChecker: undefined,
     }));
-    const imported = parseImportedTrackerData(JSON.stringify({ ...legacy, schemaVersion: 4, data: { ...legacy.data, characters } }));
-    expect(imported.characters[0].characterName).toBe("Rover");
-    expect(imported.characters[0]).not.toHaveProperty("characterIcon");
+    const text = JSON.stringify({
+      ...legacy,
+      schemaVersion: 4,
+      data: { ...legacy.data, characters },
+    });
+
+    expect(() => parseImportedTrackerData(text)).toThrow("unsupported save format or version");
   });
 
   test("converts historical slots and flags without inventing substat identities", () => {
@@ -390,7 +398,7 @@ describe("JSON imports and exports", () => {
     Reflect.deleteProperty(echo, "prioritySubstatIds");
     Reflect.set(echo, "hasRelevantStat", true);
     const imported = parseImportedTrackerData(JSON.stringify(legacy));
-    expect(imported.characters[0].echoChecker!.echoes.fourCost).toEqual({
+    expect(imported.characters[0].echoSets[0].echoes.fourCost).toEqual({
       critRate: 10.5, critDmg: 21,
       substatIds: [null, "atk", null, null, null],
       prioritySubstatIds: [null, null, null, null, null],
@@ -401,6 +409,12 @@ describe("JSON imports and exports", () => {
     "{broken",
     JSON.stringify({ ...makeDocument(), schemaVersion: 99 }),
     JSON.stringify({ ...makeLegacyDocument(), schemaVersion: 99 }),
+    JSON.stringify({ ...makeLegacyDocument(), format: "unknown" }),
+    JSON.stringify({ ...makeDocument(), format: "unknown" }),
+    JSON.stringify({ ...makeDocument(), schemaVersion: undefined }),
+    JSON.stringify({ ...makeLegacyDocument(), schemaVersion: undefined }),
+    JSON.stringify(makeLegacyDocument().data.characters),
+    JSON.stringify(makeLegacyDocument().data),
     JSON.stringify([{ id: "broken character" }]),
   ])("rejects invalid imports without accepting them as a different format", (text) => {
     expect(() => parseImportedTrackerData(text)).toThrow();
