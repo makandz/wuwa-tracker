@@ -441,8 +441,8 @@ function DashboardGridCard({
         ))}
       </div>
 
-      <div className="relative flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-3.5 text-xs">
-        <span className="flex min-w-0 max-w-full items-center gap-1.5">
+      <div className="relative grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-app-border pt-3.5 text-xs">
+        <span className="flex min-w-0 items-center gap-1.5">
           <span
             className={`inline-flex min-w-0 items-center gap-1.5 rounded-sm px-1.5 py-0.5 font-medium ${weaponToneClasses.badge}`}
             title={weaponDisplay.name}
@@ -458,10 +458,19 @@ function DashboardGridCard({
               />
             ) : null}
             <span className="truncate">{weaponDisplay.name || "No weapon"}</span>
+            {weaponStatus === "Shared" ? (
+              <span aria-label="Shared" className="shrink-0 font-bold" role="img" title="Shared">
+                *
+              </span>
+            ) : null}
           </span>
-          <WeaponStatusBadge status={weaponStatus} />
+          {weaponStatus && weaponStatus !== "Shared" ? (
+            <span className="shrink-0">
+              <WeaponStatusBadge status={weaponStatus} />
+            </span>
+          ) : null}
         </span>
-        <span className="shrink-0 whitespace-nowrap text-app-muted-subtle">
+        <span className="whitespace-nowrap rounded-sm border border-app-border bg-app-subtle/80 px-1.5 py-0.5 text-app-muted">
           ER target <span className="font-medium text-app-fg">
             {character.expectedEr ? `${character.expectedEr}%` : "—"}
           </span>
