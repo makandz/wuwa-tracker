@@ -17,9 +17,8 @@ import {
   findTrackedCharacterByRouteSegment, getAssignmentCounts,
   getEchoCheckerCritValue, getEchoCheckerScore, getEchoCheckerSubstatIds,
   getEchoCheckerSubstatOptions, getEchoSetChecklist, getEchoSetScore, getErStatus,
-  getIgnoredErEchoKeys, getOwnedWeaponsByType, getPrydwenCharacterUrl,
-  getTethysCharacterUrl, getTrackedCharacterDisplay, getTrackedWeaponDisplay,
-  getWeaponRarityTone, isComplete, ratingGradeClasses, getRatingGrade,
+  getIgnoredErEchoKeys, getOwnedWeaponsByType, getTrackedCharacterDisplay,
+  ratingGradeClasses, getRatingGrade,
 } from "@/features/tracker/domain";
 import { addEchoSet, deleteEchoSet, updateEchoSet } from "@/features/tracker/echo-sets";
 import {
@@ -27,10 +26,11 @@ import {
 } from "@/features/tracker/echo-estimates";
 import { getCharacterRotations } from "@/features/tracker/rotations";
 import { getCharacterSubstatPriority } from "@/features/tracker/substat-priorities";
-import { PickerSummary, WeaponPickerModal } from "@/features/tracker/components/pickers";
+import { CharacterOverview } from "@/features/tracker/components/character-overview";
+import { WeaponPickerModal } from "@/features/tracker/components/pickers";
 import { CharacterRotationsSection } from "@/features/tracker/components/rotations";
 import {
-  CharacterAvatar, ErInput, Field, RatingSummaryBlock, SelectInput, TextButton, TextLink,
+  ErInput, Field, RatingSummaryBlock, SelectInput, TextButton,
 } from "@/features/tracker/components/ui";
 import { useTrackerData } from "@/features/tracker/tracker-provider";
 import type {
@@ -324,7 +324,6 @@ function DetailScreen({
   const catalogCharacter = findCatalogCharacter(characters, character.characterId);
   const display = getTrackedCharacterDisplay(character, catalogCharacter);
   const selectedWeapon = findCatalogWeapon(weapons, character.weaponId);
-  const weaponDisplay = getTrackedWeaponDisplay(character, selectedWeapon);
   const availableWeapons = getOwnedWeaponsByType({ inventoryCounts, weaponTypeId: display.weaponTypeId, weapons });
   const echoSet = character.echoSets.find((set) => set.id === editorSetId) ?? character.echoSets[0];
   const atLimit = character.echoSets.length >= MAX_ECHO_SETS;
@@ -350,69 +349,15 @@ function DetailScreen({
 
   return (
     <main className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <CharacterAvatar
-            character={character}
-            catalogCharacter={catalogCharacter}
-          />
-          <div>
-            <h1 className="text-2xl font-bold text-app-fg">{display.name}</h1>
-            <p className="mt-1 text-sm text-app-muted-subtle">
-              {[display.elementName, display.weaponTypeName].filter(Boolean).join(" / ")} · {isComplete(character) ? "Done" : "In progress"}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <TextLink
-            href={getPrydwenCharacterUrl(display.name)}
-            variant="external"
-          >Prydwen</TextLink>
-          <TextLink
-            href={getTethysCharacterUrl(character.characterId)}
-            variant="purple"
-          >Tethys</TextLink>
-          <TextButton
-            onClick={onDelete}
-            variant="danger"
-          >Delete Character</TextButton>
-        </div>
-      </div>
-
-      <section className="grid gap-4 rounded-md border border-app-border bg-app-surface p-4 sm:grid-cols-2">
-        <PickerSummary
-          label="Weapon"
-          actionLabel="Change weapon"
-          image={selectedWeapon?.Icon}
-          title={weaponDisplay.name || "No weapon selected"}
-          meta={selectedWeapon ? `${selectedWeapon.TypeName} / Own ${inventoryCounts[selectedWeapon.Id] ?? 0}` : "Choose an owned weapon"}
-          quality={selectedWeapon?.QualityId}
-          rarityTone={getWeaponRarityTone({ name: selectedWeapon?.Name, qualityId: selectedWeapon?.QualityId })}
-          onClick={() => setWeaponPickerOpen(true)}
-        />
-        <Field label="Target ER (all sets)">
-          <ErInput
-            value={character.expectedEr}
-            onChange={(expectedEr) => patchCharacter({ expectedEr })}
-          />
-        </Field>
-        <label className="flex items-center gap-2 text-sm font-medium text-app-muted">
-          <input
-            className="h-4 w-4 accent-app-accent"
-            type="checkbox"
-            checked={character.skillsDone}
-            onChange={(event) => patchCharacter({ skillsDone: event.target.checked })}
-          />
-          Skills / Forte level ups complete
-        </label>
-        <Field label="Character notes">
-          <textarea
-            className="min-h-20 w-full rounded-md border border-app-border bg-app-bg p-3 text-sm text-app-fg"
-            value={character.notes}
-            onChange={(event) => patchCharacter({ notes: event.target.value })}
-          />
-        </Field>
-      </section>
+      <CharacterOverview
+        character={character}
+        catalogCharacter={catalogCharacter}
+        weapon={selectedWeapon}
+        ownedCount={selectedWeapon ? inventoryCounts[selectedWeapon.Id] ?? 0 : 0}
+        onChangeWeapon={() => setWeaponPickerOpen(true)}
+        onDelete={onDelete}
+        onPatch={patchCharacter}
+      />
 
       <section className="grid gap-4 rounded-md border border-app-border bg-app-surface p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

@@ -7,7 +7,12 @@ import {
   BACKUP_NOTICE_FIRST_VISIT_DELAY_MS,
   BACKUP_NOTICE_INTERVAL_MS,
 } from "@/features/tracker/constants";
-import { ER_STATUS_CLASSES, getAssignmentCounts } from "@/features/tracker/domain";
+import {
+  ER_STATUS_CLASSES,
+  getAssignmentCounts,
+  getRatingGrade,
+  ratingGradeClasses,
+} from "@/features/tracker/domain";
 import {
   buildDashboardCatalogLookups,
   getDashboardCharacters,
@@ -18,7 +23,6 @@ import { exportTrackerData, type TrackerStorageStatus } from "@/features/tracker
 import { StorageStatusNotice } from "@/features/tracker/components/storage-status-notice";
 import {
   CharacterAvatar,
-  RatingBlock,
   SearchInput,
   TextButton,
   WeaponStatusBadge,
@@ -291,7 +295,7 @@ function Dashboard({
               </div>
             ) : null}
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {visibleCharacters.map((character) => (
                 <DashboardGridCard
                   assignmentCounts={assignmentCounts}
@@ -320,6 +324,42 @@ type DashboardCharacterCardProps = {
   onOpen: (id: string) => void;
 };
 
+type DashboardSetSummary = ReturnType<typeof getDashboardCharacterCardState>["sets"][number];
+
+/** Displays a set's score or manual progress without adding another panel. */
+function DashboardSetScore({ set }: { set: DashboardSetSummary }) {
+  if (set.mode === "checklist") {
+    return (
+      <span className="text-base font-medium tabular-nums text-app-fg">
+        {set.completedEchoes}
+        <span className="text-xs text-app-muted-subtle"> / 5</span>
+        <span className="sr-only"> echoes complete</span>
+      </span>
+    );
+  }
+
+  if (set.score === null) {
+    return <span className="text-sm text-app-muted-subtle">Unrated</span>;
+  }
+
+  const grade = getRatingGrade(set.score);
+
+  return (
+    <>
+      <span
+        className={`rounded-sm px-1 py-0.5 text-sm font-medium leading-none ${ratingGradeClasses(
+          grade,
+        )}`}
+      >
+        {grade}
+      </span>
+      <span className="text-xs tabular-nums text-app-muted-subtle">
+        {set.score.toFixed(2)}
+      </span>
+    </>
+  );
+}
+
 /** Displays up to three independent build summaries within one character card. */
 function DashboardGridCard({
   assignmentCounts,
@@ -338,75 +378,82 @@ function DashboardGridCard({
     weaponStatus,
     weaponToneClasses,
   } = getDashboardCharacterCardState({
-    assignmentCounts, catalogCharacterById, catalogWeaponById, character, weaponInventory,
+    assignmentCounts,
+    catalogCharacterById,
+    catalogWeaponById,
+    character,
+    weaponInventory,
   });
+  const borderClasses = complete
+    ? "border-status-good-border ring-1 ring-status-good-border/25 hover:border-status-good-border"
+    : "border-app-border hover:border-app-muted-dim";
 
   return (
     <button
-      className="grid content-start gap-2 rounded-md border border-app-border/80 bg-app-surface px-2.5 py-2.5 text-left transition-colors hover:border-app-muted-dim hover:bg-app-raised"
+      className={`grid content-start gap-3 rounded-lg border bg-app-surface p-3.5 text-left transition-colors hover:bg-app-raised ${borderClasses}`}
       onClick={() => onOpen(character.id)}
       type="button"
     >
-      <div className="flex min-w-0 items-start gap-2">
+      <div className="flex min-w-0 items-center gap-2.5">
         <CharacterAvatar
           character={character}
           catalogCharacter={catalogCharacter}
           dense
         />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-app-fg">{characterDisplay.name}</h2>
-          <div className="mt-1 flex flex-wrap gap-x-2 text-[10px] text-app-muted-subtle">
+          <h2 className="truncate text-lg font-medium leading-tight text-app-fg">
+            {characterDisplay.name}
+          </h2>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-app-muted-subtle">
             <span>{complete ? "Done" : "In progress"}</span>
+            <span aria-hidden="true">·</span>
             <span className={character.skillsDone ? "text-status-good-text" : ""}>
-              Skills {character.skillsDone ? "done" : "pending"}
+              Skills {character.skillsDone ? "complete" : "pending"}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5">
+      <div className="grid min-w-0 grid-cols-3 items-start gap-1.5">
         {sets.map((set) => (
           <div
-            className="min-w-0"
+            className="min-w-0 rounded-md border border-app-border bg-app-subtle px-2 py-2.5"
             key={set.id}
           >
             <div
-              className="mb-1 truncate text-[10px] font-semibold text-app-muted"
+              className="mb-1.5 truncate border-b border-app-border pb-1.5 text-xs font-medium text-app-fg"
               title={set.name}
             >
               {set.name}
             </div>
-            {set.mode === "detailed" ? (
-              <RatingBlock
-                label="Build"
-                value={set.score}
-                compact
-              />
-            ) : (
-              <div className="rounded-md border border-app-border/80 bg-app-surface p-1.5">
-                <div className="text-[10px] text-app-muted-subtle">Checklist</div>
-                <div className="mt-0.5 text-sm font-bold text-app-fg">{set.completedEchoes}/5</div>
-              </div>
-            )}
-            <div className={`mt-1 text-[10px] font-semibold ${ER_STATUS_CLASSES[set.erStatus]}`}>
-              {set.actualEr === null ? "— ER" : `${set.actualEr}% ER`}
+            <div className="flex min-h-6 items-center gap-1 whitespace-nowrap">
+              <DashboardSetScore set={set} />
+            </div>
+            <div className={`mt-1 flex items-center gap-1 whitespace-nowrap text-xs tabular-nums ${ER_STATUS_CLASSES[set.erStatus]}`}>
+              {set.erStatus === "met" ? <span aria-hidden="true">✓</span> : null}
+              {set.erStatus === "below" ? <span aria-hidden="true">↓</span> : null}
+              <span>{set.actualEr === null ? "— ER" : `${Math.round(set.actualEr)}% ER`}</span>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="flex min-w-0 items-center justify-between gap-2 border-t border-app-border/70 pt-2 text-[10px] font-semibold">
-        <span
-          className={`min-w-0 truncate rounded-sm px-1.5 py-0.5 ${weaponToneClasses.badge}`}
-          title={weaponDisplay.name}
-        >
-          {weaponDisplay.name || "No weapon"}
+      <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5 border-t border-app-border pt-2.5 text-xs">
+        <span className="flex min-w-0 max-w-full items-center gap-1.5">
+          <span
+            className={`min-w-0 truncate rounded-sm px-1.5 py-0.5 font-medium ${weaponToneClasses.badge}`}
+            title={weaponDisplay.name}
+          >
+            {weaponDisplay.name || "No weapon"}
+          </span>
+          <WeaponStatusBadge status={weaponStatus} />
         </span>
-        <span className="shrink-0 text-app-muted-subtle">
-          Target ER: {character.expectedEr ? `${character.expectedEr}%` : "—"}
+        <span className="shrink-0 whitespace-nowrap text-app-muted-subtle">
+          ER target <span className="font-medium text-app-fg">
+            {character.expectedEr ? `${character.expectedEr}%` : "—"}
+          </span>
         </span>
       </div>
-      <WeaponStatusBadge status={weaponStatus} />
     </button>
   );
 }
